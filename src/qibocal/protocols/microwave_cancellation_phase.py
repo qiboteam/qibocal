@@ -1,6 +1,7 @@
 """Calibration for microwave crosstalk mitigation that sweeps cancelllation pulse phase."""
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -14,7 +15,8 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
-from scipy.optimize import curve_fit
+from scipy.interpolate import CubicSpline
+from scipy.signal import savgol_filter
 
 from qibocal.auto.operation import (
     Data,
@@ -36,9 +38,6 @@ __all__ = ["microwave_cross_cancellation"]
 class MWCancellationPhaseParameters(Parameters):
     """RabiAmplitudeFreq parameters."""
 
-    phase_range: tuple[float, float, float]
-    """Phase range to sweep over."""
-
 
 MWCancPhaseType = np.dtype(
     [
@@ -54,7 +53,6 @@ MWCancPhaseType = np.dtype(
 class MWCancellationPhaseData(Data):
     """MWCancellationPhase data acquisition."""
 
-    mw_pulse: float
     cross_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
     """Cross amplitude for each qubit pair."""
     data: dict[QubitPairId, npt.NDArray[MWCancPhaseType]] = field(default_factory=dict)
@@ -69,10 +67,10 @@ class MWCancellationPhaseData(Data):
 class MWCancellationPhaseResults(Results):
     """MWCancellationPhase results."""
 
-    cancellation_pulses: dict[QubitId, list[float]] = field(default_factory=dict)
+    cancellation_pulses: dict[QubitId, dict[Literal["amplitude", "phase"], float]] = (
+        field(default_factory=dict)
+    )
     """Cancellation phase and amplitude for each qubit."""
-    fitted_parameters: dict[QubitId, list[float]] = field(default_factory=dict)
-    """Fitted parameters for each qubit."""
 
 
 def _acquisition(
@@ -81,6 +79,8 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> MWCancellationPhaseData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
+
+    phase_range = (0, 6.4, 0.1)
 
     experiment_sequence = PulseSequence()
     updates = {}
@@ -96,12 +96,22 @@ def _acquisition(
             drive_line
         ].RX()[0]
         cross_ampl = platform.calibration.microwave_crosstalk_matrix[qubit, drive_line]
+        direct_ampl = platform.calibration.microwave_crosstalk_matrix[qubit, qubit]
+
+        if not np.isfinite(cross_ampl):
+            raise ValueError(
+                f"Rabi amplitude calibration is missing for qubit {qubit} on drive line {drive_line}."
+            )
+
         cross_pulse = replace(
             drive_pulse.new(),
             duration=qd_pulse.duration,
             amplitude=cross_ampl,
         )
-        cancellation_pulse = cross_pulse.new()
+        cancellation_pulse = replace(
+            cross_pulse.new(),
+            amplitude=cross_pulse.amplitude * direct_ampl / cross_ampl,
+        )
         cross_amplitudes[(qubit, drive_line)] = cross_ampl
 
         single_q_seq |= PulseSequence(
@@ -120,12 +130,11 @@ def _acquisition(
 
     phase_sweeper = Sweeper(
         parameter=Parameter.relative_phase,
-        range=params.phase_range,
+        range=phase_range,
         pulses=canc_pulses,
     )
 
     data = MWCancellationPhaseData(
-        mw_pulse=qd_pulse.duration,
         cross_amplitude=cross_amplitudes,
     )
 
@@ -157,43 +166,62 @@ def _acquisition(
     return data
 
 
-def fitting_function(x, a, b, c, d, tau):
-    return a * (1 - np.cos(np.sqrt(b**2 + c**2 + 2 * b * c * np.cos(x - d)) * tau))
-
-
 def _fit(data: MWCancellationPhaseData) -> MWCancellationPhaseResults:
     """Do not perform any fitting procedure."""
 
     cancellation_pulses = {}
-    qubit_params = {}
-    for qubit in data.data:
-        canc_ampl = data.cross_amplitude[qubit]
-        phi = data.phases(qubit)
-        probabilities = data[qubit].prob
-        errors = data[qubit].error
+    for pair in data.data:
+        canc_ampl = data.cross_amplitude[pair]
+        phases = data.phases(pair)
+        probabilities = data[pair].prob
 
-        pguess = [0.5, canc_ampl, canc_ampl, 0, data.mw_pulse]
         try:
-            popt, perr = curve_fit(
-                fitting_function,
-                phi,
-                probabilities,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.inf, data.mw_pulse - 1e-9],
-                    [1, np.inf, np.inf, np.inf, data.mw_pulse + 1e-9],
-                ),
-                sigma=errors,
+            # creating the window for the savgol filter
+            savgol_window = np.min((len(probabilities) // 10, 4))
+            # defining the polynomial order for the savgol filter
+            savgol_poly_order = np.clip(savgol_window // 2, 3, savgol_window).astype(
+                int
             )
-            cancellation_pulses[qubit] = [popt[3], data.cross_amplitude[qubit]]
-            qubit_params[qubit] = popt.tolist()
+
+            first_derivative = savgol_filter(
+                x=probabilities,
+                window_length=savgol_window,
+                polyorder=savgol_poly_order,
+                deriv=1,
+            )
+            second_derivative = savgol_filter(
+                x=probabilities,
+                window_length=savgol_window,
+                polyorder=savgol_poly_order,
+                deriv=2,
+            )
+
+            # finding minima and maxima of the signal
+            first_der_roots = CubicSpline(phases, first_derivative).roots()
+            # creating a cubi spline for the second derivative of the signal
+            second_derivative_spline = CubicSpline(phases, second_derivative)
+
+            # compute the curvature for each minima and maxima
+            first_der_roots_curvature = second_derivative_spline(first_der_roots)
+            # we are interested only in minima, so we filter out negative curvatures
+            minima_curvatures = first_der_roots_curvature[
+                first_der_roots_curvature >= 0
+            ]
+            # we select the minimum with the smallest curvature: more stable
+            optimal_minimum_idx = np.argmin(minima_curvatures)
+
+            cancellation_pulses |= {
+                pair: {
+                    "phase": phases[optimal_minimum_idx] % (2 * np.pi),
+                    "amplitude": canc_ampl,
+                }
+            }
+
         except Exception as e:
-            log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
+            log.warning(f"Rabi fit failed for pair {pair} due to {e}.")
 
     return MWCancellationPhaseResults(
         cancellation_pulses=cancellation_pulses,
-        fitted_parameters=qubit_params,
     )
 
 
@@ -235,13 +263,13 @@ def _plot(
         col=1,
     )
 
-    if fit is not None and target in fit.fitted_parameters:
-        fit_phase = np.linspace(min(phases), max(phases), 50 * len(phases))
+    if fit is not None and target in fit.cancellation_pulses:
         fig.add_trace(
             go.Scatter(
-                x=fit_phase,
-                y=fitting_function(fit_phase, *fit.fitted_parameters[target]),
+                x=[fit.cancellation_pulses[target]["phase"]] * 2,
+                y=[min(qubit_data.prob) - 0.1, max(qubit_data.prob) + 0.1],
                 mode="lines",
+                line=go.scatter.Line(color="orange", width=3, dash="dash"),
             ),
             row=1,
             col=1,
@@ -251,7 +279,10 @@ def _plot(
             table_dict(
                 [target] * 2,
                 ["Cancellation phase", "Cancellation amplitude"],
-                fit.cancellation_pulses[target],
+                [
+                    fit.cancellation_pulses[target]["phase"],
+                    fit.cancellation_pulses[target]["amplitude"],
+                ],
             )
         )
 
@@ -267,7 +298,11 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitPairId,
 ):
-    return
+    if target in results.cancellation_pulses:
+        qubit, drive_line = target
+        platform.calibration.microwave_crosstalk_matrix[qubit, drive_line] = (
+            results.cancellation_pulses[target]["phase"]
+        )
 
 
 microwave_cross_cancellation = Protocol(_acquisition, _fit, _plot, _update)

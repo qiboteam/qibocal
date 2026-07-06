@@ -202,6 +202,8 @@ class Calibration(Model):
     flux_crosstalk_matrix: Matrix | None = Field(default_factory=Matrix)
     """Crosstalk flux matrix."""
     microwave_crosstalk_matrix: Matrix | None = Field(default_factory=Matrix)
+    """Microwave crosstalk matrix wiht amplitude information."""
+    mw_cancellation_phases_matrix: Matrix | None = Field(default_factory=Matrix)
     """Microwave crosstalk matrix."""
 
     @model_validator(mode="after")
@@ -232,6 +234,22 @@ class Calibration(Model):
                 "Microwave crosstalk matrix must have shape (nqubits, nqubits)."
             )
         self.microwave_crosstalk_matrix.qubits = self.qubits
+
+        if (
+            self.mw_cancellation_phases_matrix is None
+            or self.mw_cancellation_phases_matrix.matrix.size == 0
+        ):
+            self.mw_cancellation_phases_matrix = Matrix(
+                matrix=ndarray_serialize(np.zeros((self.nqubits, self.nqubits)))
+            )
+        self.mw_cancellation_phases_matrix.qubits = self.qubits
+        if self.mw_cancellation_phases_matrix.matrix.shape != (
+            self.nqubits,
+            self.nqubits,
+        ):
+            raise ValueError(
+                "Microwave crosstalk phase matrix must have shape (nqubits, nqubits)."
+            )
 
         return self
 
