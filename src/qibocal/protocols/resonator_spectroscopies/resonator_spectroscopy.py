@@ -14,8 +14,8 @@ from qibocal.update import replace
 
 from ..utils import (
     PowerLevel,
-    lorentzian,
     lorentzian_fit,
+    lorentzian_with_linear_background,
     readout_frequency,
 )
 from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
@@ -48,7 +48,7 @@ class ResonatorSpectroscopyFit:
 
 FITS = {
     "lorentzian": ResonatorSpectroscopyFit(
-        lorentzian,
+        lorentzian_with_linear_background,
         lorentzian_fit,
         lambda z: z.signal,
         spectroscopy_plot,

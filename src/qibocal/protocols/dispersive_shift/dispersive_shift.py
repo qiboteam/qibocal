@@ -11,8 +11,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
-    lorentzian,
     lorentzian_fit,
+    lorentzian_with_linear_background,
     readout_frequency,
     table_dict,
     table_html,
@@ -240,7 +240,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, *params),
+                    y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} fit",
                     showlegend=True,
                     legendgroup=fit_group,

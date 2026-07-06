@@ -10,8 +10,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    lorentzian,
     lorentzian_fit,
+    lorentzian_with_linear_background,
     readout_frequency,
     table_dict,
     table_html,
@@ -257,7 +257,7 @@ def _plot(
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, *params),
+                    y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),

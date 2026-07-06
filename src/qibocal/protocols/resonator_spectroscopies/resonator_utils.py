@@ -18,7 +18,7 @@ from ..utils import (
     FeatExtractionError,
     PowerLevel,
     clustering,
-    lorentzian,
+    lorentzian_with_linear_background,
     merging,
     peaks_finder,
     reshaping_raw_signal,
@@ -178,7 +178,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, *params),
+                y=lorentzian_with_linear_background(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),

@@ -94,7 +94,9 @@ def readout_frequency(
     return platform_frequency
 
 
-def lorentzian(frequency, amplitude, center, sigma, offset, slope):
+def lorentzian_with_linear_background(
+    frequency, amplitude, center, sigma, offset, slope
+):
     # http://openafox.com/science/peak-function-derivations.html
     peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
     background = offset + frequency * slope
@@ -152,7 +154,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     # fit the model with the data and guessed parameters
     try:
         fit_parameters, parameters_cov = curve_fit(
-            lorentzian,
+            lorentzian_with_linear_background,
             frequencies,
             voltages,
             p0=initial_parameters,

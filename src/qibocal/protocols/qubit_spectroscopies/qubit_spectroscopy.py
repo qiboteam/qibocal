@@ -1,7 +1,11 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
+import numpy.typing as npt
+import plotly.graph_objects as go
+import scipy.constants
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -11,20 +15,17 @@ from qibolab import (
     Sweeper,
 )
 from qibolab._core.components import IqChannel
+from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
 from ... import update
-from ..resonator_spectroscopies.resonator_spectroscopy import (
-    ResonatorSpectroscopyData,
-    ResSpecType,
-)
-from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
 from ..utils import (
-    lorentzian_fit,
+    table_dict,
+    table_html,
 )
 
 __all__ = [
@@ -34,6 +35,16 @@ __all__ = [
     "QubitSpectroscopyData",
     "_fit",
 ]
+
+
+QubitSpecType = np.dtype(
+    [
+        ("freq", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
+    ]
+)
+"""Custom dtype for qubit spectroscopy."""
 
 
 @dataclass
@@ -62,8 +73,16 @@ class QubitSpectroscopyResults(Results):
     """Raw fitting output."""
 
 
-class QubitSpectroscopyData(ResonatorSpectroscopyData):
+@dataclass
+class QubitSpectroscopyData(Data):
     """QubitSpectroscopy acquisition outputs."""
+
+    amplitudes: dict[QubitId, float]
+    """Amplitudes provided by the user."""
+    fit_function: str = "lorentzian"
+    """Fit function (optional) used for the resonance."""
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 def _calculate_batches(freq_width: int, max_if_bandwidth: int = 300_000_000):
@@ -192,9 +211,7 @@ def _acquisition(
             values[qubit]["phase"].append(_phase)
 
     # Create data structure and aggregate results
-    data = QubitSpectroscopyData(
-        resonator_type=platform.resonator_type, amplitudes=drive_amplitudes
-    )
+    data = QubitSpectroscopyData(amplitudes=drive_amplitudes)
 
     # Combine all batches for each qubit
     for qubit in targets:
@@ -204,7 +221,7 @@ def _acquisition(
         _phase = np.concatenate(values[qubit]["phase"])
 
         data.register_qubit(
-            ResSpecType,
+            QubitSpecType,
             (qubit),
             dict(
                 signal=signal,
@@ -216,15 +233,107 @@ def _acquisition(
     return data
 
 
+def lorentzian(frequency, amplitude, center, sigma, offset):
+    # http://openafox.com/science/peak-function-derivations.html
+    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    return peak + offset
+
+
+def _guess_initial_parameters(voltages, frequencies, is_peak):
+
+    guess_offset = (voltages[0] + voltages[-1]) / 2
+    voltages_no_background = voltages - guess_offset
+
+    if is_peak:
+        guess_center = frequencies[np.argmax(voltages_no_background)]
+        guess_peak_height = voltages_no_background.max()
+        indices_beyond_half = np.where(voltages_no_background > guess_peak_height / 2)[
+            0
+        ]
+    else:
+        guess_center = frequencies[np.argmin(voltages_no_background)]
+        guess_peak_height = voltages_no_background.min()
+        indices_beyond_half = np.where(voltages_no_background < guess_peak_height / 2)[
+            0
+        ]
+
+    if len(indices_beyond_half) >= 1:
+        guess_sigma = (
+            frequencies[indices_beyond_half[-1]] - frequencies[indices_beyond_half[0]]
+        ) / 2
+    else:
+        # if there is no clear peak, we give a high flexibility
+        guess_sigma = frequencies[-1] - frequencies[0]
+
+    guess_amp = guess_peak_height * guess_sigma * np.pi
+
+    return [
+        guess_amp,
+        guess_center,
+        guess_sigma,
+        guess_offset,
+    ]
+
+
+def _lorentzian_fit(data):
+    frequencies = data.freq * scipy.constants.nano
+    voltages = data.signal
+
+    freq_domain_size = frequencies[-1] - frequencies[0]
+    bounds = (
+        [-np.inf, frequencies[0], 0.0, -np.inf],
+        [np.inf, frequencies[-1], freq_domain_size, np.inf],
+    )
+
+    # Try to fit both peak and dip, and pick the best one
+    best_fit = None
+    for is_peak in [True, False]:
+        initial_parameters = _guess_initial_parameters(voltages, frequencies, is_peak)
+
+        # fit the model with the data and guessed parameters
+        try:
+            fit_parameters, parameters_cov = curve_fit(
+                lorentzian,
+                frequencies,
+                voltages,
+                p0=initial_parameters,
+                bounds=bounds,
+            )
+        except RuntimeError:
+            continue
+
+        sum_sq_residuals = float(
+            np.sum((voltages - lorentzian(frequencies, *fit_parameters)) ** 2)
+        )
+
+        if best_fit is None or sum_sq_residuals < best_fit["sum_sq_residuals"]:
+            best_fit = {
+                "fit_parameters": fit_parameters,
+                "parameters_cov": parameters_cov,
+                "sum_sq_residuals": sum_sq_residuals,
+            }
+
+    if best_fit is None:
+        raise RuntimeError("fit failed")
+
+    # The output results are stored in a json, but ndarray is not JSON serializable,
+    # so the parameters are converted to list.
+    parameter_errors = np.sqrt(np.diag(best_fit["parameters_cov"])).tolist()
+    model_parameters = best_fit["fit_parameters"].tolist()
+    return (
+        model_parameters[1] * scipy.constants.giga,
+        model_parameters,
+        parameter_errors,
+    )
+
+
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
     qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        fit_result = lorentzian_fit(
-            data[qubit], resonator_type=data.resonator_type, fit="qubit"
-        )
+        fit_result = _lorentzian_fit(data[qubit])
         if fit_result is not None:
             frequency[qubit], fitted_parameters[qubit], _ = fit_result
     return QubitSpectroscopyResults(
@@ -235,8 +344,86 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 
 
 def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyResults):
-    """Plotting function for QubitSpectroscopy."""
-    return spectroscopy_plot(data, target, fit)
+    figures = []
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+    )
+    qubit_data = data[target]
+    fitting_report = ""
+    frequencies = qubit_data.freq * scipy.constants.nano
+    signal = qubit_data.signal
+
+    phase = qubit_data.phase
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies,
+            y=signal,
+            opacity=1,
+            name="Frequency",
+            showlegend=True,
+            legendgroup="Frequency",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies,
+            y=phase,
+            opacity=1,
+            name="Phase",
+            showlegend=True,
+            legendgroup="Phase",
+        ),
+        row=1,
+        col=2,
+    )
+
+    freqrange = np.linspace(
+        min(frequencies),
+        max(frequencies),
+        2 * len(frequencies),
+    )
+
+    if fit is not None:
+        params = fit.fitted_parameters[target]
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorentzian(freqrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
+
+        if data.amplitudes[target] is not None:
+            labels = ["Qubit Frequency [Hz]", "Amplitude"]
+            values = [fit.frequency[target], data.amplitudes[target]]
+
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    labels,
+                    values,
+                )
+            )
+
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title="Frequency [GHz]",
+        yaxis_title="Signal [a.u.]",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
+    )
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
 def _update(
