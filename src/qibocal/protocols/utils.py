@@ -806,17 +806,14 @@ def zca_whiten(X):
 
 def scaling_global(sig: np.ndarray) -> np.ndarray:
     """Min–max scaling over the whole np.ndarray (global)."""
-    return scaling_slice(sig, axis=None)
+    return minmax_scaling(sig, axis=None)
 
 
-def scaling_slice(sig: np.ndarray, axis: int | None) -> np.ndarray:
+def minmax_scaling(sig: np.ndarray, axis: int | None) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
-
-    def expand(a):
-        return np.expand_dims(a, axis) if axis is not None else a
-
-    sig_min = expand(np.min(sig, axis=axis))
-    return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
+    sig_min = np.min(sig, axis=axis, keepdims=True)
+    sig_max = np.max(sig, axis=axis, keepdims=True)
+    return (sig - sig_min) / (sig_max - sig_min)
 
 
 # not used - we can remove

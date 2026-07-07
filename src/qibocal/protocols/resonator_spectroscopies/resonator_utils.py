@@ -20,10 +20,10 @@ from ..utils import (
     clustering,
     lorentzian_with_linear_background,
     merging,
+    minmax_scaling,
     peaks_finder,
     reshaping_raw_signal,
     scaling_global,
-    scaling_slice,
     table_dict,
     table_html,
 )
@@ -721,7 +721,7 @@ def punchout_mask(matrix_z: np.ndarray) -> np.ndarray:
     gauss_layer_1 = ndimage.gaussian_filter(matrix_z, 1)
 
     # renormalizing
-    minmax_layer_1 = scaling_slice(gauss_layer_1, axis=1)
+    minmax_layer_1 = minmax_scaling(gauss_layer_1, axis=1)
 
     laplace_layer_1 = -ndimage.gaussian_laplace(minmax_layer_1, sigma=1)
 

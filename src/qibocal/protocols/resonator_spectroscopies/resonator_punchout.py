@@ -10,7 +10,7 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
+from ..utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
@@ -78,7 +78,7 @@ class ResonatorPunchoutData(Data):
                 len(np.unique(self.frequencies[qubit])),
             )
         )
-        return scaling_slice(signal, axis=1)
+        return minmax_scaling(signal, axis=1)
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray, np.ndarray]:
         x, y, z = self.grid(qubit)
