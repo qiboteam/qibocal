@@ -39,9 +39,7 @@ JAZZType = np.dtype(
 class JAZZParameters(Parameters):
     """JAZZ runcard inputs."""
 
-    start_wait: float
-    end_wait: float
-    nsteps: int
+    waits_range: tuple[float, float, float]
 
 
 @dataclass
@@ -65,52 +63,53 @@ def _acquisition(
 
     if len(targets) != 1:
         raise ValueError("simultaneous pair is not supported for JAZZ.")
-    q0 = targets[0][0]
-    q1 = targets[0][1]
-    wait_range = np.linspace(
-        params.start_wait, params.end_wait, params.nsteps, endpoint=True
-    )
+    # qubit we measure to estimate zz coupling
+    target = targets[0][0]
+    # qubit we flip in the middle of the sequence
+    spectator = targets[0][1]
 
-    q0_drive_channel = platform.qubits[q0].drive
-    q0_natives = platform.natives.single_qubit[q0]
-    ro_channel, ro_pulse = q0_natives.MZ()[0]
-    q1_drive_channel = platform.qubits[q1].drive
-    q1_natives = platform.natives.single_qubit[q1]
+    # target qubit channels and native pulses
+    target_drive_channel = platform.qubits[target].drive
+    target_natives = platform.natives.single_qubit[target]
+    target_ro_channel, target_ro_pulse = target_natives.MZ()[0]
+
+    # spectator qubit channnels and native pulses
+    spectator_drive_channel = platform.qubits[spectator].drive
+    spectator_natives = platform.natives.single_qubit[spectator]
+
     delay = Delay(duration=0)
 
     sequence = PulseSequence()
-    # X(pi/2)
-    for channel, pulse in q0_natives.R(theta=np.pi / 2):
-        sequence += [(channel, pulse)]
-        sequence += [(ro_channel, Delay(duration=pulse.duration))]
-        sequence += [(q1_drive_channel, Delay(duration=pulse.duration))]
+
     # delay
-    sequence += [(q0_drive_channel, delay)]
-    sequence += [(q1_drive_channel, delay)]
-    sequence += [(ro_channel, delay)]
-    # X(pi)
-    for channel, pulse in q0_natives.RX():
-        sequence += [(channel, pulse)]
-        sequence += [(ro_channel, Delay(duration=pulse.duration))]
-        sequence += [(q1_drive_channel, Delay(duration=pulse.duration))]
-    # X(pi) on q1
-    for channel, pulse in q1_natives.RX():
-        sequence += [(channel, pulse)]
-        sequence += [(ro_channel, Delay(duration=pulse.duration))]
-        sequence += [(q0_drive_channel, Delay(duration=pulse.duration))]
+    sequence += [(target_drive_channel, delay)]
+    sequence += [(spectator_drive_channel, delay)]
+    sequence += [(target_ro_channel, delay)]
+
+    # X(pi) on both spectator and target qubits
+    _, target_pi_pulse = target_natives.RX()[0]
+    sequence += [
+        (target_drive_channel, target_pi_pulse),
+        (target_ro_channel, Delay(duration=target_pi_pulse.duration)),
+    ]
+    sequence += spectator_natives.RX()
+
     # delay
-    sequence += [(q0_drive_channel, delay)]
-    sequence += [(ro_channel, delay)]
+    sequence += [(target_drive_channel, delay)]
+    sequence += [(target_ro_channel, delay)]
+
     # Y(pi/2)
-    for channel, pulse in q0_natives.R(theta=np.pi / 2, phi=np.pi / 2):
-        sequence += [(channel, pulse)]
-        sequence += [(ro_channel, Delay(duration=pulse.duration))]
-    # MZ
-    sequence += [(ro_channel, ro_pulse)]
+    sequence += spectator_natives.R(theta=np.pi / 2, phi=np.pi / 2)
+
+    # measuring target qubit
+    sequence |= [(target_ro_channel, target_ro_pulse)]
+
+    # adding the initial X(pi/2) on target
+    sequence = target_natives.R(theta=np.pi / 2) | sequence
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=wait_range,
+        range=params.waits_range,
         pulses=[delay],
     )
 
@@ -123,14 +122,14 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    prob = results[ro_pulse.id]
+    prob = results[target_ro_pulse.id]
     error = np.sqrt(prob * (1 - prob) / params.nshots)
     data = JAZZData()
     data.register_qubit(
         JAZZType,
         (targets[0]),
         dict(
-            wait=np.array(wait_range),
+            wait=sweeper.values,
             prob=np.array(prob),
             errors=np.array(error),
         ),
