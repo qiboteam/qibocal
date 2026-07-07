@@ -84,7 +84,7 @@ def test_serialization_crosstalk_matrices(tmp_path):
     cal = Calibration(single_qubits=single_qubits)
 
     assert cal.flux_crosstalk_matrix["A0", "A1"] == 0
-    assert cal.microwave_crosstalk_matrix["A0", "A1"] == 0
+    assert cal.microwave_crosstalk_matrix["A0", "A1"] == np.inf
 
     cal.flux_crosstalk_matrix["A0", "A1"] = 1
     assert cal.flux_crosstalk_matrix["A0", "A1"] == 1
