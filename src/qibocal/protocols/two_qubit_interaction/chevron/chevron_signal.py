@@ -4,13 +4,12 @@ from dataclasses import dataclass
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
-from sklearn.preprocessing import minmax_scale
 
 from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
-from ...utils import HZ_TO_GHZ, readout_frequency
+from ...utils import HZ_TO_GHZ, minmax_scaling, readout_frequency
 from ..utils import order_pair
 from .chevron import (
     ChevronData,
@@ -122,10 +121,10 @@ def _aquisition(
 
         data.data[pair[0], pair[1]] = np.stack(
             [
-                minmax_scale(magnitude(results[ro_low.id])),
-                1 - minmax_scale(magnitude(results[ro_high.id]))
+                minmax_scaling(magnitude(results[ro_low.id]), axis=None),
+                1 - minmax_scaling(magnitude(results[ro_high.id]), axis=None)
                 if params.native == "CZ"
-                else minmax_scale(magnitude(results[ro_high.id])),
+                else minmax_scaling(magnitude(results[ro_high.id]), axis=None),
             ]
         )
 

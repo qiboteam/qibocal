@@ -804,11 +804,6 @@ def zca_whiten(X):
     return X_white
 
 
-def scaling_global(sig: np.ndarray) -> np.ndarray:
-    """Min–max scaling over the whole np.ndarray (global)."""
-    return minmax_scaling(sig, axis=None)
-
-
 def minmax_scaling(sig: np.ndarray, axis: int | None) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
     sig_min = np.min(sig, axis=axis, keepdims=True)
@@ -831,7 +826,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     y_ = peaks_dict["y"]["idx"]
     z_ = z[y_, x_]
 
-    return np.stack((x_, y_, scaling_global(z_))).T
+    return np.stack((x_, y_, minmax_scaling(z_, axis=None))).T
 
 
 def peaks_finder(x, y, z) -> dict | None:

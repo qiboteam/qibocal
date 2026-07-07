@@ -23,7 +23,6 @@ from ..utils import (
     minmax_scaling,
     peaks_finder,
     reshaping_raw_signal,
-    scaling_global,
     table_dict,
     table_html,
 )
@@ -725,7 +724,7 @@ def punchout_mask(matrix_z: np.ndarray) -> np.ndarray:
 
     laplace_layer_1 = -ndimage.gaussian_laplace(minmax_layer_1, sigma=1)
 
-    global_minmax_layer_1 = scaling_global(laplace_layer_1)
+    global_minmax_layer_1 = minmax_scaling(laplace_layer_1, axis=None)
 
     return global_minmax_layer_1
 
