@@ -78,8 +78,6 @@ class QubitSpectroscopyData(Data):
 
     amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    fit_function: str = "lorentzian"
-    """Fit function (optional) used for the resonance."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -236,23 +234,18 @@ def _lorentzian_with_offset(frequency, amplitude, center, sigma, offset):
     return lorentzian(frequency, amplitude, center, sigma) + offset
 
 
-def _guess_initial_parameters(voltages, frequencies, is_peak):
+def _guess_initial_parameters(signal, frequencies, is_peak):
+    k = max(1, int(0.1 * len(signal)))
+    guess_offset = np.mean(np.concatenate([signal[:k], signal[-k:]]))
 
-    guess_offset = (voltages[0] + voltages[-1]) / 2
-    voltages_no_background = voltages - guess_offset
+    guess_offset = (signal[0] + signal[-1]) / 2
+    signal_no_background = signal - guess_offset
 
-    if is_peak:
-        guess_center = frequencies[np.argmax(voltages_no_background)]
-        guess_peak_height = voltages_no_background.max()
-        indices_beyond_half = np.where(voltages_no_background > guess_peak_height / 2)[
-            0
-        ]
-    else:
-        guess_center = frequencies[np.argmin(voltages_no_background)]
-        guess_peak_height = voltages_no_background.min()
-        indices_beyond_half = np.where(voltages_no_background < guess_peak_height / 2)[
-            0
-        ]
+    sign = 1 if is_peak else -1
+    signal_flipped = signal_no_background * sign
+    guess_center = frequencies[np.argmax(signal_flipped)]
+    guess_peak_height = signal_flipped.max() * sign
+    indices_beyond_half = np.where(signal_flipped > signal_flipped.max() / 2)[0]
 
     if len(indices_beyond_half) >= 1:
         guess_sigma = (
@@ -274,7 +267,7 @@ def _guess_initial_parameters(voltages, frequencies, is_peak):
 
 def _lorentzian_fit(data):
     frequencies = data.freq * scipy.constants.nano
-    voltages = data.signal
+    signal = data.signal
 
     freq_domain_size = frequencies[-1] - frequencies[0]
     bounds = (
@@ -285,14 +278,14 @@ def _lorentzian_fit(data):
     # Try to fit both peak and dip, and pick the best one
     best_fit = None
     for is_peak in [True, False]:
-        initial_parameters = _guess_initial_parameters(voltages, frequencies, is_peak)
+        initial_parameters = _guess_initial_parameters(signal, frequencies, is_peak)
 
         # fit the model with the data and guessed parameters
         try:
             fit_parameters, parameters_cov = curve_fit(
                 _lorentzian_with_offset,
                 frequencies,
-                voltages,
+                signal,
                 p0=initial_parameters,
                 bounds=bounds,
             )
@@ -301,7 +294,7 @@ def _lorentzian_fit(data):
 
         sum_sq_residuals = float(
             np.sum(
-                (voltages - _lorentzian_with_offset(frequencies, *fit_parameters)) ** 2
+                (signal - _lorentzian_with_offset(frequencies, *fit_parameters)) ** 2
             )
         )
 

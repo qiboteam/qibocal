@@ -109,13 +109,13 @@ def lorentzian_with_linear_background(
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
-    voltages = data.signal
+    signal = data.signal
 
     # Guess parameters for Lorentzian max or min
-    guess_slope = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
-    guess_offset = voltages[0] - guess_slope * frequencies[0]
+    guess_slope = (signal[-1] - signal[0]) / (frequencies[-1] - frequencies[0])
+    guess_offset = signal[0] - guess_slope * frequencies[0]
     guess_background = guess_offset + guess_slope * frequencies
-    voltages_no_background = voltages - guess_background
+    voltages_no_background = signal - guess_background
 
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
@@ -160,7 +160,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         fit_parameters, parameters_cov = curve_fit(
             lorentzian_with_linear_background,
             frequencies,
-            voltages,
+            signal,
             p0=initial_parameters,
             bounds=bounds,
         )
