@@ -186,6 +186,7 @@ def _acquisition(
         for result, (bell_state, basis) in zip(results, bases):
             data.register_basis(pair, bell_state, basis, result)
 
+        for bell_state in params.bell_states:
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
             )
