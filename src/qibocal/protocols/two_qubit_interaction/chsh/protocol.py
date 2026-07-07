@@ -145,7 +145,7 @@ class CHSHResults(Results):
 def _acquisition(
     params: CHSHParameters,
     platform: Platform,
-    targets: list[list[QubitId]],
+    targets: list[QubitPairId],
 ) -> CHSHData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
@@ -176,7 +176,7 @@ def _acquisition(
 
         results = execute_circuits(
             circuits,
-            [pair] * len(circuits),
+            [list(pair)] * len(circuits),
             platform,
             transpiler,
             compiler,
