@@ -17,16 +17,15 @@ from qibolab import (
 from qibolab._core.components import IqChannel
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude, phase
-from qibocal.update import replace
-
-from ... import update
-from ..utils import (
+from qibocal.protocols.utils import (
+    lorentzian,
     table_dict,
     table_html,
 )
+from qibocal.result import magnitude, phase
 
 __all__ = [
     "qubit_spectroscopy",
@@ -144,9 +143,9 @@ def _acquisition(
             _, qd_pulse = natives.RX()[0]
             ro_channel, ro_pulse = natives.MZ()[0]
 
-            qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+            qd_pulse = update.replace(qd_pulse, duration=params.drive_duration)
             if params.drive_amplitude is not None:
-                qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+                qd_pulse = update.replace(qd_pulse, amplitude=params.drive_amplitude)
 
             if qubit not in drive_amplitudes:
                 # If already added, skip re-adding since the drive amplitude is
@@ -233,10 +232,8 @@ def _acquisition(
     return data
 
 
-def lorentzian(frequency, amplitude, center, sigma, offset):
-    # http://openafox.com/science/peak-function-derivations.html
-    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
-    return peak + offset
+def _lorentzian_with_offset(frequency, amplitude, center, sigma, offset):
+    return lorentzian(frequency, amplitude, center, sigma) + offset
 
 
 def _guess_initial_parameters(voltages, frequencies, is_peak):
@@ -293,7 +290,7 @@ def _lorentzian_fit(data):
         # fit the model with the data and guessed parameters
         try:
             fit_parameters, parameters_cov = curve_fit(
-                lorentzian,
+                _lorentzian_with_offset,
                 frequencies,
                 voltages,
                 p0=initial_parameters,
@@ -303,7 +300,9 @@ def _lorentzian_fit(data):
             continue
 
         sum_sq_residuals = float(
-            np.sum((voltages - lorentzian(frequencies, *fit_parameters)) ** 2)
+            np.sum(
+                (voltages - _lorentzian_with_offset(frequencies, *fit_parameters)) ** 2
+            )
         )
 
         if best_fit is None or sum_sq_residuals < best_fit["sum_sq_residuals"]:
@@ -394,7 +393,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, *params),
+                y=_lorentzian_with_offset(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),

@@ -9,15 +9,15 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sw
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude, phase
-from qibocal.update import replace
-
-from ..utils import (
+from qibocal.protocols.utils import (
     PowerLevel,
     lorentzian_fit,
     lorentzian_with_linear_background,
     readout_frequency,
 )
+from qibocal.result import magnitude, phase
+from qibocal.update import replace
+
 from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
 
 __all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]

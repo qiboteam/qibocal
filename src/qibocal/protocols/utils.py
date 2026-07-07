@@ -94,11 +94,15 @@ def readout_frequency(
     return platform_frequency
 
 
+def lorentzian(frequency, amplitude, center, sigma):
+    # http://openafox.com/science/peak-function-derivations.html
+    return (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+
+
 def lorentzian_with_linear_background(
     frequency, amplitude, center, sigma, offset, slope
 ):
-    # http://openafox.com/science/peak-function-derivations.html
-    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    peak = lorentzian(frequency, amplitude, center, sigma)
     background = offset + frequency * slope
     return peak + background
 
