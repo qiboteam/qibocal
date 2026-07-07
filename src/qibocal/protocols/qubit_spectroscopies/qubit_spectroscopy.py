@@ -108,7 +108,7 @@ def _acquisition(
 
     # Initialize storage for intermediate results
     values = {qubit: defaultdict(list) for qubit in targets}
-    amplitudes = {qubit: None for qubit in targets}
+    drive_amplitudes: dict[QubitId, float] = {}
 
     # Execute each batch
     for start, end, lo_offset in batches:
@@ -129,8 +129,10 @@ def _acquisition(
             if params.drive_amplitude is not None:
                 qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
 
-            if qubit not in amplitudes:
-                amplitudes[qubit] = qd_pulse.amplitude
+            if qubit not in drive_amplitudes:
+                # If already added, skip re-adding since the drive amplitude is
+                # unchanged across batches.
+                drive_amplitudes[qubit] = qd_pulse.amplitude
 
             ro_pulses[qubit] = ro_pulse
 
@@ -191,7 +193,7 @@ def _acquisition(
 
     # Create data structure and aggregate results
     data = QubitSpectroscopyData(
-        resonator_type=platform.resonator_type, amplitudes=amplitudes
+        resonator_type=platform.resonator_type, amplitudes=drive_amplitudes
     )
 
     # Combine all batches for each qubit
