@@ -45,4 +45,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     chsh
     twpa_calibration/twpa
     cross_resonance/cross_resonance
+    zz_interaction/zz_interaction
     references

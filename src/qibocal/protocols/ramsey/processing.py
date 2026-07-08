@@ -77,7 +77,8 @@ def fitting(
     delta_x = x_max - x_min
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
-    y_err = y_err / delta_y
+    if y_err is not None:
+        y_err = y_err / delta_y
 
     omega = quinn_fernandes_algorithm(y, x, speedup_flag=True)
     median_sig = np.median(y)

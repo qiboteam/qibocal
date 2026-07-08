@@ -278,31 +278,26 @@ def _plot(
     )
     fitting_report = ""
 
-    if fit is None or any(
-        term not in fit.fitted_parameters[target] for term in ("I", "X")
+    if fit is not None and all(
+        term in fit.fitted_parameters[target] for term in ("I", "X")
     ):
-        fit_params = None
-    else:
-        fit_params = fit.fitted_parameters[target]
+        for s in ("I", "X"):
+            target_traces, spectator_trace = signal_plot(
+                signal=data[target, s],
+                fit_params=fit.fitted_parameters[target][s],
+                label=s,
+            )
+            fig.add_traces(
+                target_traces + spectator_trace,
+                rows=1,
+                cols=[1] * len(target_traces) + [2],
+            )
+        fig.update_layout(showlegend=True)
+        fig.update_xaxes(title_text="Time [ns]", col=1)
+        fig.update_xaxes(title_text="Time [ns]", col=2)
+        fig.update_yaxes(title_text="Excited state probability", col=1)
+        fig.update_yaxes(title_text="Excited state probability", col=2)
 
-    for s in ("I", "X"):
-        target_traces, spectator_trace = signal_plot(
-            signal=data[target, s],
-            fit_params=fit_params[s],
-            label=s,
-        )
-        fig.add_traces(
-            target_traces + spectator_trace,
-            rows=1,
-            cols=[1] * len(target_traces) + [2],
-        )
-    fig.update_layout(showlegend=True)
-    fig.update_xaxes(title_text="Time [ns]", col=1)
-    fig.update_xaxes(title_text="Time [ns]", col=2)
-    fig.update_yaxes(title_text="Excited state probability", col=1)
-    fig.update_yaxes(title_text="Excited state probability", col=2)
-
-    if fit_params is not None:
         fitting_report = create_report_table(target, fit)
 
     return [fig], fitting_report
