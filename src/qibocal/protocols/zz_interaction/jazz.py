@@ -221,11 +221,11 @@ def _plot(
         rows=1,
         cols=[1] * len(target_traces) + [2],
     )
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
-        yaxis_title="Excited state probability",
-    )
+    fig.update_layout(showlegend=True)
+    fig.update_xaxes(title_text="Time [ns]", col=1)
+    fig.update_xaxes(title_text="Time [ns]", col=2)
+    fig.update_yaxes(title_text="Excited state probability", col=1)
+    fig.update_yaxes(title_text="Excited state probability", col=2)
     fig.update_yaxes(range=[0, 1.1], col=2)
 
     if fit_params is not None:
