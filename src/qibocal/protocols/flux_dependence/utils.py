@@ -13,9 +13,9 @@ from ..utils import (
     FeatExtractionError,
     clustering,
     merging,
+    minmax_scaling,
     peaks_finder,
     reshaping_raw_signal,
-    scaling_slice,
     zca_whiten,
 )
 
@@ -363,7 +363,7 @@ def flux_extract_feature(
     z_masked = filter_data(reshaped_z)
 
     # renormalizing
-    z_masked_norm = scaling_slice(z_masked, axis=1)
+    z_masked_norm = minmax_scaling(z_masked, axis=1)
 
     # filter data using find_peaks
     peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked_norm)

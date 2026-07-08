@@ -94,22 +94,28 @@ def readout_frequency(
     return platform_frequency
 
 
-def lorentzian(frequency, amplitude, center, sigma, offset, slope):
+def lorentzian(frequency, amplitude, center, sigma):
     # http://openafox.com/science/peak-function-derivations.html
-    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    return (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+
+
+def lorentzian_with_linear_background(
+    frequency, amplitude, center, sigma, offset, slope
+):
+    peak = lorentzian(frequency, amplitude, center, sigma)
     background = offset + frequency * slope
     return peak + background
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
-    frequencies = data.freq * HZ_TO_GHZ
-    voltages = data.signal
+    frequencies = data.freq
+    signal = data.signal
 
     # Guess parameters for Lorentzian max or min
-    guess_slope = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
-    guess_offset = voltages[0] - guess_slope * frequencies[0]
+    guess_slope = (signal[-1] - signal[0]) / (frequencies[-1] - frequencies[0])
+    guess_offset = signal[0] - guess_slope * frequencies[0]
     guess_background = guess_offset + guess_slope * frequencies
-    voltages_no_background = voltages - guess_background
+    voltages_no_background = signal - guess_background
 
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
@@ -152,9 +158,9 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     # fit the model with the data and guessed parameters
     try:
         fit_parameters, parameters_cov = curve_fit(
-            lorentzian,
+            lorentzian_with_linear_background,
             frequencies,
-            voltages,
+            signal,
             p0=initial_parameters,
             bounds=bounds,
         )
@@ -162,7 +168,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         # so the parameters are converted to list.
         parameter_errors = np.sqrt(np.diag(parameters_cov)).tolist()
         model_parameters = fit_parameters.tolist()
-        return model_parameters[1] * GHZ_TO_HZ, model_parameters, parameter_errors
+        return model_parameters[1], model_parameters, parameter_errors
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
 
@@ -798,19 +804,11 @@ def zca_whiten(X):
     return X_white
 
 
-def scaling_global(sig: np.ndarray) -> np.ndarray:
-    """Min–max scaling over the whole np.ndarray (global)."""
-    return scaling_slice(sig, axis=None)
-
-
-def scaling_slice(sig: np.ndarray, axis: int | None) -> np.ndarray:
+def minmax_scaling(sig: np.ndarray, axis: int | None) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
-
-    def expand(a):
-        return np.expand_dims(a, axis) if axis is not None else a
-
-    sig_min = expand(np.min(sig, axis=axis))
-    return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
+    sig_min = np.min(sig, axis=axis, keepdims=True)
+    sig_max = np.max(sig, axis=axis, keepdims=True)
+    return (sig - sig_min) / (sig_max - sig_min)
 
 
 # not used - we can remove
@@ -828,7 +826,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     y_ = peaks_dict["y"]["idx"]
     z_ = z[y_, x_]
 
-    return np.stack((x_, y_, scaling_global(z_))).T
+    return np.stack((x_, y_, minmax_scaling(z_, axis=None))).T
 
 
 def peaks_finder(x, y, z) -> dict | None:

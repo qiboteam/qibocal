@@ -9,15 +9,15 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sw
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import (
+    PowerLevel,
+    lorentzian_fit,
+    lorentzian_with_linear_background,
+    readout_frequency,
+)
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
-from ..utils import (
-    PowerLevel,
-    lorentzian,
-    lorentzian_fit,
-    readout_frequency,
-)
 from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
 
 __all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
@@ -48,7 +48,7 @@ class ResonatorSpectroscopyFit:
 
 FITS = {
     "lorentzian": ResonatorSpectroscopyFit(
-        lorentzian,
+        lorentzian_with_linear_background,
         lorentzian_fit,
         lambda z: z.signal,
         spectroscopy_plot,
@@ -236,13 +236,13 @@ def _fit(
         )
         if fit_result is not None:
             frequency[qubit], fitted_parameters[qubit], _ = fit_result
-            if data.power_level is PowerLevel.high:
+            if data.power_level == PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
-        bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
+        bare_frequency=bare_frequency if data.power_level == PowerLevel.high else {},
         amplitude=data.amplitudes,
     )
 
