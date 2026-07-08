@@ -271,7 +271,7 @@ def _lorentzian_fit(data):
 
     freq_domain_size = frequencies[-1] - frequencies[0]
     bounds = (
-        [-np.inf, frequencies[0], 0.0, -np.inf],
+        [0.0, frequencies[0], 0.0, -np.inf],
         [np.inf, frequencies[-1], freq_domain_size, np.inf],
     )
 
