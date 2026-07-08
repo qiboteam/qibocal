@@ -395,7 +395,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         )
 
         if data.amplitudes[target] is not None:
-            labels = ["Qubit Frequency [Hz]", "Amplitude"]
+            labels = ["Qubit Frequency [Hz]", "Drive Amplitude [a.u.]"]
             values = [fit.frequency[target], data.amplitudes[target]]
 
             fitting_report = table_html(
