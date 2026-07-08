@@ -236,13 +236,13 @@ def _fit(
         )
         if fit_result is not None:
             frequency[qubit], fitted_parameters[qubit], _ = fit_result
-            if data.power_level is PowerLevel.high:
+            if data.power_level == PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
-        bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
+        bare_frequency=bare_frequency if data.power_level == PowerLevel.high else {},
         amplitude=data.amplitudes,
     )
 

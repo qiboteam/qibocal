@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 import plotly.graph_objects as go
+import scipy.constants
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from scipy import ndimage
@@ -14,7 +15,6 @@ from ..utils import (
     DELAY_FIT_PERCENTAGE,
     DISTANCE_XY,
     DISTANCE_Z,
-    HZ_TO_GHZ,
     FeatExtractionError,
     PowerLevel,
     clustering,
@@ -136,13 +136,13 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     qubit_data = data[qubit]
     fitting_report = ""
-    frequencies = qubit_data.freq * HZ_TO_GHZ
+    frequencies = qubit_data.freq
     signal = qubit_data.signal
 
     phase = qubit_data.phase
     fig.add_trace(
         go.Scatter(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,
             y=signal,
             opacity=1,
             name="Frequency",
@@ -155,7 +155,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
 
     fig.add_trace(
         go.Scatter(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,
             y=phase,
             opacity=1,
             name="Phase",
@@ -176,7 +176,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
+                x=freqrange * scipy.constants.nano,
                 y=lorentzian_with_linear_background(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -186,7 +186,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         )
 
         if data.power_level == PowerLevel.low:
-            label = "Readout Frequency [Hz]"
+            label = "Dressed Resonator Frequency [Hz]"
             freq = fit.frequency
         else:
             label = "Bare Resonator Frequency [Hz]"
@@ -257,7 +257,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
 
     fig_raw.add_trace(
         go.Scatter(
-            x=frequencies * HZ_TO_GHZ,
+            x=frequencies * scipy.constants.nano,
             y=signal,
             mode="markers",
             marker=dict(
@@ -274,7 +274,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
 
     fig_raw.add_trace(
         go.Scatter(
-            x=frequencies * HZ_TO_GHZ,
+            x=frequencies * scipy.constants.nano,
             y=phase,
             mode="markers",
             marker=dict(
@@ -312,7 +312,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
         )
         fig_raw.add_trace(
             go.Scatter(
-                x=freqrange * HZ_TO_GHZ,
+                x=freqrange * scipy.constants.nano,
                 y=np.abs(s21_fitted),
                 name="Magnitude Fit",
                 line=go.scatter.Line(dash="solid"),
@@ -322,7 +322,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
         )
         fig_raw.add_trace(
             go.Scatter(
-                x=freqrange * HZ_TO_GHZ,
+                x=freqrange * scipy.constants.nano,
                 y=np.unwrap(np.angle(s21_fitted)),
                 name="Phase Fit",
                 line=go.scatter.Line(dash="solid"),
@@ -331,15 +331,12 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             col=2,
         )
 
-        if data.power_level is PowerLevel.low:
-            label = "Readout Frequency [Hz]"
+        if data.power_level == PowerLevel.low:
+            label = "Dressed Resonator Frequency [Hz]"
             freq = fit.frequency
-        elif data.power_level is PowerLevel.high:
+        else:
             label = "Bare Resonator Frequency [Hz]"
             freq = fit.bare_frequency
-        else:
-            label = "Qubit Frequency [Hz]"
-            freq = fit.frequency
 
         if data.amplitudes[qubit] is not None:
             labels = [
@@ -405,7 +402,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
 
         fig_calibrated.add_trace(
             go.Scatter(
-                x=frequencies * HZ_TO_GHZ,
+                x=frequencies * scipy.constants.nano,
                 y=np.abs(s21_calibrated),
                 mode="markers",
                 marker=dict(
@@ -422,7 +419,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
 
         fig_calibrated.add_trace(
             go.Scatter(
-                x=frequencies * HZ_TO_GHZ,
+                x=frequencies * scipy.constants.nano,
                 y=np.unwrap(np.angle(s21_calibrated)),
                 mode="markers",
                 marker=dict(
@@ -458,7 +455,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
         )
         fig_calibrated.add_trace(
             go.Scatter(
-                x=freqrange * HZ_TO_GHZ,
+                x=freqrange * scipy.constants.nano,
                 y=np.abs(s21_calibrated_fitted),
                 name="Transmission Fit",
                 line=go.scatter.Line(dash="solid"),
@@ -468,7 +465,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
         )
         fig_calibrated.add_trace(
             go.Scatter(
-                x=freqrange * HZ_TO_GHZ,
+                x=freqrange * scipy.constants.nano,
                 y=np.unwrap(np.angle(s21_calibrated_fitted)),
                 name="Phase Fit",
                 line=go.scatter.Line(dash="solid"),

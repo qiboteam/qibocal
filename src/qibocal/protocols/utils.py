@@ -108,7 +108,7 @@ def lorentzian_with_linear_background(
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
-    frequencies = data.freq * HZ_TO_GHZ
+    frequencies = data.freq
     signal = data.signal
 
     # Guess parameters for Lorentzian max or min
@@ -168,7 +168,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         # so the parameters are converted to list.
         parameter_errors = np.sqrt(np.diag(parameters_cov)).tolist()
         model_parameters = fit_parameters.tolist()
-        return model_parameters[1] * GHZ_TO_HZ, model_parameters, parameter_errors
+        return model_parameters[1], model_parameters, parameter_errors
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
 
