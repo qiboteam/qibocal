@@ -270,15 +270,15 @@ def _lorentzian_fit(data):
     signal = data.signal
 
     freq_domain_size = frequencies[-1] - frequencies[0]
-    bounds = (
-        [0.0, frequencies[0], 0.0, -np.inf],
-        [np.inf, frequencies[-1], freq_domain_size, np.inf],
-    )
 
     # Try to fit both peak and dip, and pick the best one
     best_fit = None
     for is_peak in [True, False]:
         initial_parameters = _guess_initial_parameters(signal, frequencies, is_peak)
+        bounds = (
+            [0.0 if is_peak else -np.inf, frequencies[0], 0.0, -np.inf],
+            [np.inf if is_peak else 0.0, frequencies[-1], freq_domain_size, np.inf],
+        )
 
         # fit the model with the data and guessed parameters
         try:
