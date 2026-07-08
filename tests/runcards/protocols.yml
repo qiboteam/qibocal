@@ -941,3 +941,12 @@ actions:
       nshots: 2000
       pulse_amplitude: 0.1
       interpolated_sweeper: true
+
+  - id: cz_amplitude_sea
+    operation: cz_amplitude_sea
+    targets: [[0, 1]]
+    parameters:
+      nshots: 2000
+      repetitions_max: 10
+      repetitions_step: 1
+      delta_amplitude: 0.1

@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
+from qibolab import AcquisitionType, AveragingMode, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal import update
@@ -11,13 +11,13 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Resu
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
+    COLORBAND,
+    COLORBAND_LINE,
+    chi2_reduced,
     fallback_period,
     guess_period,
     table_dict,
     table_html,
-    chi2_reduced,
-    COLORBAND,
-    COLORBAND_LINE,
 )
 
 __all__ = ["cz_amplitude_sea"]
@@ -30,7 +30,7 @@ def cz_sea_sequence(
     repetitions: int,
 ):
     """Pulse sequence for the CZ amplitude standard error amplification (SEA) experiment.
-    
+
     Args:
         platform: CalibrationPlatform
         pair: QubitPairId
@@ -74,6 +74,7 @@ def cz_sea_sequence(
 class CZAmplitudeSEAParameters(Parameters):
     """CZ amplitude SEA runcard inputs."""
 
+    # NOTE: missing guardrail for maximum number of repetitions vs relaxation time and nshots
     repetitions_max: int
     """Maximum number of repetitions n (2n CZs, n of them active)."""
     repetitions_step: int
@@ -195,8 +196,7 @@ def sea_fit(x, offset, amplitude, omega, phase, gamma):
 
 
 def _fit(data: CZAmplitudeSEAData) -> CZAmplitudeSEAResults:
-    r"""Post-processing function for the CZ amplitude SEA experiment.
-    """
+    r"""Post-processing function for the CZ amplitude SEA experiment."""
     pairs = data.qubits
     corrected_amplitudes = {}
     phase_error = {}
@@ -371,7 +371,10 @@ def _update(
 ):
     """Write CZ amplitude correction in calibration."""
     target = tuple(pair)
-    platform.calibration.two_qubits[target].conditional_phase = results.phase_error[target][0]
+    platform.calibration.two_qubits[target].conditional_phase = results.phase_error[
+        target
+    ][0]
+
 
 cz_amplitude_sea = Protocol(_acquisition, _fit, _plot, _update)
 """CZ amplitude SEA Protocol object."""
