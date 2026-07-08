@@ -145,7 +145,7 @@ class CHSHResults(Results):
 def _acquisition(
     params: CHSHParameters,
     platform: Platform,
-    targets: list[list[QubitId]],
+    targets: list[QubitPairId],
 ) -> CHSHData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
@@ -161,6 +161,8 @@ def _acquisition(
         except AssertionError:
             mitigation_matrix = None
 
+        circuits = []
+        bases = []
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(
@@ -169,16 +171,22 @@ def _acquisition(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    [result] = execute_circuits(
-                        [circuit],
-                        [pair],
-                        platform,
-                        transpiler,
-                        compiler,
-                        nshots=params.nshots,
-                    )
-                    data.register_basis(pair, bell_state, basis, result)
+                    circuits.append(circuit)
+                    bases.append([bell_state, basis])
 
+        results = execute_circuits(
+            circuits,
+            [list(pair)] * len(circuits),
+            platform,
+            transpiler,
+            compiler,
+            nshots=params.nshots,
+        )
+
+        for result, (bell_state, basis) in zip(results, bases):
+            data.register_basis(pair, bell_state, basis, result)
+
+        for bell_state in params.bell_states:
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
             )
