@@ -185,15 +185,12 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             col=1,
         )
 
-        if data.power_level is PowerLevel.low:
+        if data.power_level == PowerLevel.low:
             label = "Readout Frequency [Hz]"
             freq = fit.frequency
-        elif data.power_level is PowerLevel.high:
+        else:
             label = "Bare Resonator Frequency [Hz]"
             freq = fit.bare_frequency
-        else:
-            label = "Qubit Frequency [Hz]"
-            freq = fit.frequency
 
         if data.amplitudes[qubit] is not None:
             labels = [label, "Amplitude"]
