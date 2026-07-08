@@ -8,6 +8,7 @@ from pydantic import BaseModel, TypeAdapter
 from qibolab import Platform, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitId, QubitPairId
+from qibocal.calibration.calibration import TwoQubitCalibration
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -255,7 +256,10 @@ def readout_coupling(g: float, platform: Platform, qubit: QubitId):
 
 
 def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
-    platform.calibration.two_qubits[pair].coupling = g
+    if pair in platform.calibration.two_qubits:
+        platform.calibration.two_qubits[pair].coupling = g
+    else:
+        platform.calibration.two_qubits |= {pair: TwoQubitCalibration(coupling=g)}
 
 
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
