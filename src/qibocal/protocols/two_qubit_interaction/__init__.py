@@ -25,5 +25,4 @@ __all__ = [
     "cr_amplitude",
     "cancellation_amplitude_tuning",
     "cancellation_phase_tuning",
-    "jazz",
 ]
