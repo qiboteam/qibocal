@@ -266,7 +266,7 @@ def _guess_initial_parameters(signal, frequencies, is_peak):
 
 
 def _lorentzian_fit(data):
-    frequencies = data.freq * scipy.constants.nano
+    frequencies = data.freq
     signal = data.signal
 
     freq_domain_size = frequencies[-1] - frequencies[0]
@@ -313,7 +313,7 @@ def _lorentzian_fit(data):
     parameter_errors = np.sqrt(np.diag(best_fit["parameters_cov"])).tolist()
     model_parameters = best_fit["fit_parameters"].tolist()
     return (
-        model_parameters[1] * scipy.constants.giga,
+        model_parameters[1],
         model_parameters,
         parameter_errors,
     )
@@ -345,13 +345,13 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     )
     qubit_data = data[target]
     fitting_report = ""
-    frequencies = qubit_data.freq * scipy.constants.nano
+    frequencies = qubit_data.freq
     signal = qubit_data.signal
 
     phase = qubit_data.phase
     fig.add_trace(
         go.Scatter(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,
             y=signal,
             opacity=1,
             name="Frequency",
@@ -364,7 +364,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
 
     fig.add_trace(
         go.Scatter(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,
             y=phase,
             opacity=1,
             name="Phase",
@@ -385,7 +385,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
+                x=freqrange * scipy.constants.nano,
                 y=_lorentzian_with_offset(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
