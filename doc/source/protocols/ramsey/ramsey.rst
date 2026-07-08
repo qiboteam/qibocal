@@ -43,7 +43,7 @@ A possible runcard to launch a Ramsey experiment could be the following:
     - id: ramsey
       operation: ramsey
       parameters:
-        delay: (50, 2000, 50)
+        delay: [50, 2000, 50]
         detuning: -1000000
         nshots: 1024
 
@@ -89,51 +89,10 @@ Example
     - id: ramsey with signal
       operation: ramsey_signal
       parameters:
-        delay: (50, 25000, 1000)
+        delay: [50, 25000, 1000]
         nshots: 1024
 
 
 .. image:: ramsey_signal.png
 
 Note that in this case error bars will not be provided.
-
-
-Measuring the ZZ coupling with a Ramsey experiment
----------------------------------------------------
-
-By repeating the Ramsey experiment while putting one of the neighbor qubits in
-state :math:`\ket{1}` we can have an estimate on the ZZ coupling :math:`\zeta`.
-The ZZ coupling :math:`\zeta` is a residual interaction which leads to shifts in
-the frequency of the qubit when one of the neighbor is in the excited state.
-Given that through a Ramsey experiment we can measure carefully the frequency of the qubit,
-by comparing the outcome of a standard Ramsey experiment with the outcome when one of the neighbor
-qubit is excited we can infer the ZZ coupling term :math:`\zeta`. For superconducting platforms
-without tunable couplers such terms is expected to be of the order of a few hundred kHz.
-
-Parameters
-^^^^^^^^^^
-
-.. autoclass:: qibocal.protocols.ramsey.acquisition.RamseyParameters
-    :noindex:
-
-
-Example
-^^^^^^^
-
-.. code-block:: yaml
-
-    - id: ramsey zz
-      operation: ramsey_zz
-      parameters:
-        delay: (10, 2000, 50)
-        detuning: 500000
-        nshots: 1024
-        targets: [D1, D0]
-
-
-.. image:: ramsey_zz.png
-
-Requirements
-^^^^^^^^^^^^
-
-- :ref:`rabi`

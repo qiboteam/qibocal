@@ -464,10 +464,21 @@ actions:
     operation: ramsey_zz
     targets: [[0, 1]]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
-      delay_between_pulses_step: 1
+      delay_range:
+      - 0
+      - 20
+      - 1
       detuning: 0
+      nshots: 1024
+
+  - id: jazz
+    operation: jazz
+    targets: [[0, 1]]
+    parameters:
+      delay_range:
+      - 0
+      - 20
+      - 1
       nshots: 1024
 
   - id: calibrate_state_discrimination
