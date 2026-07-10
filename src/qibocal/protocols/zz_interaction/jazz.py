@@ -195,6 +195,9 @@ def _plot(
 ):
     """Plotting function for JAZZ Experiment."""
 
+    # casting target as a tuple
+    target = tuple(target)
+
     targ, spect = target
     fig = make_subplots(
         rows=1,

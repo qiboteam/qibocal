@@ -169,8 +169,7 @@ def _acquisition(
         updates=[updates],
     )
 
-    for pair in targets:
-        targ, spect = pair
+    for targ, spect in targets:
         for setup in ("I", "X"):
             targ_ro_pulse = list(
                 sequences[setup].channel(platform.qubits[targ].acquisition)
@@ -212,7 +211,8 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     ] = {}
     zz: dict[QubitId, list[float]] = {}
     coupling: dict[QubitId, list[float]] = {}
-    for target, spectator in data.pairs:
+    for pair in data.pairs:
+        target, spectator = pair
         try:
             setup_param_dict = {}
             for setup in ["I", "X"]:
@@ -226,10 +226,10 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
                 ]
                 setup_param_dict[setup] = popt
 
-            popts[target, spectator] = setup_param_dict
+            popts[pair] = setup_param_dict
             # compute zz and qq coupling
             # zz the difference in frequency between the two measurement
-            zz[target, spectator] = [
+            zz[pair] = [
                 float(
                     delta_fitting_measure[target, spectator, "X"][0]
                     - delta_fitting_measure[target, spectator, "I"][0]
@@ -243,12 +243,12 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
             ]
 
             # here we compute coupling as a frequency
-            coupling[target, spectator] = coupling_strength(
+            coupling[pair] = coupling_strength(
                 omega1=data.qubit_freqs[target],
                 omega2=data.qubit_freqs[spectator],
                 anharmonicity1=data.anharmonicity[target],
                 anharmonicity2=data.anharmonicity[spectator],
-                zz=zz[target, spectator],
+                zz=zz[pair],
             )
 
         except Exception as e:
@@ -268,6 +268,9 @@ def _plot(
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 
+    # castin target into a tuple
+    target = tuple(target)
+
     targ, spect = target
     fig = make_subplots(
         rows=1,
@@ -281,12 +284,12 @@ def _plot(
     fitting_report = ""
 
     if fit is not None and all(
-        term in fit.fitted_parameters[targ, spect] for term in ("I", "X")
+        term in fit.fitted_parameters[target] for term in ("I", "X")
     ):
         for s in ("I", "X"):
             target_traces, spectator_trace = signal_plot(
                 signal=data[targ, spect, s],
-                fit_params=fit.fitted_parameters[targ, spect][s],
+                fit_params=fit.fitted_parameters[target][s],
                 label=s,
             )
             fig.add_traces(
