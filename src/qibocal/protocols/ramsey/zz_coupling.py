@@ -233,9 +233,6 @@ def _acquisition(
     In the second execution one qubit is brought to the excited state.
     """
 
-    # casting targets into tuples
-    targets = [tuple(pair) for pair in targets]
-
     qubits_list = list(chain.from_iterable(targets))
     qubits_set = set(qubits_list)
 
@@ -414,9 +411,6 @@ def _plot(
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 
-    # casting target as a tuple
-    target = tuple(target)
-
     fitting_report = ""
 
     fig = make_subplots(
@@ -501,8 +495,6 @@ def _update(
     results: RamseyZZResults, platform: CalibrationPlatform, target: QubitPairId
 ) -> None:
     """Update the platform calibration with the results of the Ramsey ZZ experiment."""
-    # casting target as a tuple
-    target = tuple(target)
     update.pair_coupling(results.coupling[target], platform, target)
 
 
