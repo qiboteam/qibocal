@@ -31,6 +31,8 @@ def test_range_conversion():
 
     with pytest.raises(ValueError, match="center"):
         to_range(("center", 1e6, 10))
+    with pytest.raises(ValueError, match="2 steps"):
+        to_range(("lincenter", 1e6, 1), center=5e9)
 
     with pytest.raises(ValidationError):
         to_range(("linwindow", 50, 10))

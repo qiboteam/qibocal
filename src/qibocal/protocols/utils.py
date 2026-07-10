@@ -1234,29 +1234,31 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
     """Convert any range specification into the default representation."""
 
     spec_ = _RangeLike.validate_python(spec)
+    mode = spec_[0]
 
-    if not isinstance(spec_[0], str):
+    if not isinstance(mode, str):
         # Default case: assume it's a tuple of (start, stop, step)
         return spec_
 
-    if any(lab in spec_[0] for lab in {"center", "asym"}) and center is None:
-        raise ValueError(
-            f"Center must be provided for '{spec_[0]}' range specification."
-        )
+    if any(lab in mode for lab in {"center", "asym"}) and center is None:
+        raise ValueError(f"Center must be provided for '{mode}' range specification.")
 
-    if spec_[0] == "linspace":
+    if mode == "linspace":
         start, stop = spec_[1:3]
-    elif spec_[0].endswith("window"):
+    elif mode.endswith("window"):
         center_, width = spec_[1:3]
         start, stop = center_ - width / 2, center_ + width / 2
-    elif spec_[0].endswith("center"):
+    elif mode.endswith("center"):
         width = spec_[1]
         start, stop = center - width / 2, center + width / 2
-    elif spec_[0].endswith("asym"):
+    elif mode.endswith("asym"):
         left_shift, right_shift = spec_[1]
         start, stop = center - left_shift, center + right_shift
 
-    if spec_[0].startswith("lin"):
-        step = (stop - start) / (spec_[-1] - 1)
+    if mode.startswith("lin"):
+        n = spec_[-1]
+        if n <= 1:
+            raise ValueError(f"At least 2 steps required for {mode}, passed {n}")
+        step = (stop - start) / (n - 1)
         return start, stop, step
     return start, stop, spec_[-1]
