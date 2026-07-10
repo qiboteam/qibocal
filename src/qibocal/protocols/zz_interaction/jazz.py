@@ -133,15 +133,15 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for pair in targets:
-        q_targ, q_spect = pair
+    for q_targ, q_spect in targets:
         targ_prob = results[targets_ro_pulses[q_targ].id]
         targ_error = np.sqrt(targ_prob * (1 - targ_prob) / params.nshots)
         spect_prob = results[spectator_ro_pulses[q_spect].id]
         spect_error = np.sqrt(spect_prob * (1 - spect_prob) / params.nshots)
         data.register_qubit(
             ZZIntType,
-            pair,
+            q_targ,
+            q_spect,
             dict(
                 delay=sweeper.values,
                 targ_prob=np.array(targ_prob),

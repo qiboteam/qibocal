@@ -53,7 +53,7 @@ class RamseyZZData(ZZInteractionData):
 
     detuning: float | None = None
     """Frequency detuning [Hz]."""
-    data: dict[tuple[QubitPairId, Literal["I", "X"]], ZZIntType] = field(
+    data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], ZZIntType] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -183,7 +183,7 @@ def _acquisition(
 
             data.register_qubit(
                 ZZIntType,
-                (pair, setup),
+                (targ, spect, setup),
                 dict(
                     delay=parsweepers[setup].values,
                     targ_prob=np.array(targ_probs),
@@ -206,53 +206,55 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
 
     """
     delays = data.delays
-    popts: dict[QubitId, list[float]] = {}
-    delta_fitting_measure: dict[QubitId, list[float]] = {}
+    popts: dict[QubitPairId, dict[Literal["I", "X"], list[float]]] = {}
+    delta_fitting_measure: dict[
+        tuple[QubitId, QubitId, Literal["I", "X"]], list[float]
+    ] = {}
     zz: dict[QubitId, list[float]] = {}
     coupling: dict[QubitId, list[float]] = {}
-    for pair in data.qubits:
-        target, spectator = pair
-
+    for target, spectator in data.pairs:
         try:
             setup_param_dict = {}
             for setup in ["I", "X"]:
-                setup_data = data[pair, setup]
+                setup_data = data[target, spectator, setup]
                 popt, perr = ramsey_fitting(
                     delays, setup_data["targ_prob"], setup_data["targ_error"]
                 )
-                delta_fitting_measure[pair, setup] = [
+                delta_fitting_measure[target, spectator, setup] = [
                     -popt[2] / (2 * np.pi) * GHZ_TO_HZ,
                     perr[2] * GHZ_TO_HZ / (2 * np.pi),
                 ]
                 setup_param_dict[setup] = popt
 
-            popts[pair] = setup_param_dict
+            popts[target, spectator] = setup_param_dict
             # compute zz and qq coupling
             # zz the difference in frequency between the two measurement
-            zz[pair] = [
+            zz[target, spectator] = [
                 float(
-                    delta_fitting_measure[pair, "X"][0]
-                    - delta_fitting_measure[pair, "I"][0]
+                    delta_fitting_measure[target, spectator, "X"][0]
+                    - delta_fitting_measure[target, spectator, "I"][0]
                 ),
                 float(
                     np.sqrt(
-                        delta_fitting_measure[pair, "X"][1] ** 2
-                        + delta_fitting_measure[pair, "I"][1] ** 2
+                        delta_fitting_measure[target, spectator, "X"][1] ** 2
+                        + delta_fitting_measure[target, spectator, "I"][1] ** 2
                     )
                 ),
             ]
 
             # here we compute coupling as a frequency
-            coupling[pair] = coupling_strength(
+            coupling[target, spectator] = coupling_strength(
                 omega1=data.qubit_freqs[target],
                 omega2=data.qubit_freqs[spectator],
                 anharmonicity1=data.anharmonicity[target],
                 anharmonicity2=data.anharmonicity[spectator],
-                zz=zz[pair],
+                zz=zz[target, spectator],
             )
 
         except Exception as e:
-            log.warning(f"Ramsey fitting failed for qubit pair {pair} due to {e}.")
+            log.warning(
+                f"Ramsey fitting failed for qubit pair {tuple(target, spectator)} due to {e}."
+            )
 
     return RamseyZZResults(
         fitted_parameters=popts,
@@ -279,12 +281,12 @@ def _plot(
     fitting_report = ""
 
     if fit is not None and all(
-        term in fit.fitted_parameters[target] for term in ("I", "X")
+        term in fit.fitted_parameters[targ, spect] for term in ("I", "X")
     ):
         for s in ("I", "X"):
             target_traces, spectator_trace = signal_plot(
-                signal=data[target, s],
-                fit_params=fit.fitted_parameters[target][s],
+                signal=data[targ, spect, s],
+                fit_params=fit.fitted_parameters[targ, spect][s],
                 label=s,
             )
             fig.add_traces(
