@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from pydantic import TypeAdapter
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -1226,32 +1227,36 @@ The other variants are the following:
   asymmetric interval around it, i.e. ``("asim", (left-shift, right-shift), step)``
 """
 
+_RangeLike = TypeAdapter(RangeLike)
+
 
 def to_range(spec: RangeLike, center: float | None = None) -> Range:
     """Convert any range specification into the default representation."""
 
-    if not isinstance(spec[0], str):
-        # Default case: assume it's a tuple of (start, stop, step)
-        return spec
+    spec_ = _RangeLike.validate_python(spec)
 
-    if any(lab in spec[0] for lab in {"center", "asym"}) and center is None:
+    if not isinstance(spec_[0], str):
+        # Default case: assume it's a tuple of (start, stop, step)
+        return spec_
+
+    if any(lab in spec_[0] for lab in {"center", "asym"}) and center is None:
         raise ValueError(
-            f"Center must be provided for '{spec[0]}' range specification."
+            f"Center must be provided for '{spec_[0]}' range specification."
         )
 
-    if spec[0] == "linspace":
-        start, stop = spec[1:3]
-    elif spec[0].endswith("window"):
-        center_, width = spec[1:3]
+    if spec_[0] == "linspace":
+        start, stop = spec_[1:3]
+    elif spec_[0].endswith("window"):
+        center_, width = spec_[1:3]
         start, stop = center_ - width / 2, center_ + width / 2
-    elif spec[0].endswith("center"):
-        width = spec[1]
+    elif spec_[0].endswith("center"):
+        width = spec_[1]
         start, stop = center - width / 2, center + width / 2
-    elif spec[0].endswith("asym"):
-        left_shift, right_shift = spec[1]
+    elif spec_[0].endswith("asym"):
+        left_shift, right_shift = spec_[1]
         start, stop = center - left_shift, center + right_shift
 
-    if spec[0].startswith("lin"):
-        step = (stop - start) / (spec[-1] - 1)
+    if spec_[0].startswith("lin"):
+        step = (stop - start) / (spec_[-1] - 1)
         return start, stop, step
-    return start, stop, spec[-1]
+    return start, stop, spec_[-1]
