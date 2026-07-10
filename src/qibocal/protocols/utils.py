@@ -1203,7 +1203,7 @@ RangeLike = (
 """Range specification.
 
 The alternative options allow for multiple representations of a range, which could all
-be reconducted to a sequence of evenly spaced values.
+be mapped to a sequence of evenly spaced values.
 
 The semantics of the default one is equivalent to that of the built-in :func:`range`, in
 which the three values correspond to ``(start, stop, step)``. Unlike :func:`range`, all
@@ -1214,7 +1214,7 @@ The other variants are unambiguously discriminated by a starting label, e.g.
 
 In the ``linspace`` variant, the ``step`` element is replaced with the number of steps.
 Since the step specification is always mandatory, for each of the other variants a
-further ``lin<...>`` version is also avaialble, making the same substitution.
+further ``lin<...>`` version is also available, making the same substitution.
 
 The other variants are the following:
 
