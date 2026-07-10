@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from pydantic import TypeAdapter
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -1185,3 +1186,79 @@ def fallback_period(period: NDArray) -> NDArray:
     )
 
     return np.where(np.isnan(period), 4, period)
+
+
+Range = tuple[float, float, float]
+"""Value range, corresponding to ``(start, stop, step)``."""
+
+RangeLike = (
+    tuple[float, float, float]
+    | tuple[Literal["linspace"], float, float, int]
+    | tuple[Literal["window"], float, float, float]
+    | tuple[Literal["linwindow"], float, float, int]
+    | tuple[Literal["center"], float, float]
+    | tuple[Literal["lincenter"], float, int]
+    | tuple[Literal["asym"], tuple[float, float], float]
+    | tuple[Literal["linasym"], tuple[float, float], int]
+)
+"""Range specification.
+
+The alternative options allow for multiple representations of a range, which could all
+be mapped to a sequence of evenly spaced values.
+
+The semantics of the default one is equivalent to that of the built-in :func:`range`, in
+which the three values correspond to ``(start, stop, step)``. Unlike :func:`range`, all
+values are mandatory, since the usual defaults are often unsuitable.
+
+The other variants are unambiguously discriminated by a starting label, e.g.
+``("linspace", 1.2, 1.5, 70)``.
+
+In the ``linspace`` variant, the ``step`` element is replaced with the number of steps.
+Since the step specification is always mandatory, for each of the other variants a
+further ``lin<...>`` version is also available, making the same substitution.
+
+The other variants are the following:
+
+- ``window``, which allows to specify the center and width of the window, instead of its
+  extremes, i.e. ``("window", center, width, step)``
+- ``center``, similar to the former, but assuming a default for the center, which
+  depends the chosen protocol, i.e. ``("center", width, step)``
+- ``asym``, which is also a way to build upon an implicit center, but with specifying an
+  asymmetric interval around it, i.e. ``("asim", (left-shift, right-shift), step)``
+"""
+
+_RangeLike = TypeAdapter(RangeLike)
+
+
+def to_range(spec: RangeLike, center: float | None = None) -> Range:
+    """Convert any range specification into the default representation."""
+
+    spec_ = _RangeLike.validate_python(spec)
+    mode = spec_[0]
+
+    if not isinstance(mode, str):
+        # Default case: assume it's a tuple of (start, stop, step)
+        return spec_
+
+    if any(lab in mode for lab in {"center", "asym"}) and center is None:
+        raise ValueError(f"Center must be provided for '{mode}' range specification.")
+
+    if mode == "linspace":
+        start, stop = spec_[1:3]
+    elif mode.endswith("window"):
+        center_, width = spec_[1:3]
+        start, stop = center_ - width / 2, center_ + width / 2
+    elif mode.endswith("center"):
+        width = spec_[1]
+        start, stop = center - width / 2, center + width / 2
+    elif mode.endswith("asym"):
+        left_shift, right_shift = spec_[1]
+        start, stop = center - left_shift, center + right_shift
+
+    if mode.startswith("lin"):
+        n = spec_[-1]
+        if n <= 1:
+            raise ValueError(f"At least 2 steps required for {mode}, passed {n}")
+        step = (stop - start) / (n - 1)
+        return start, stop, step
+    return start, stop, spec_[-1]
