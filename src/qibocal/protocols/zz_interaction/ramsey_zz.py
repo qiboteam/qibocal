@@ -268,9 +268,6 @@ def _plot(
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 
-    # castin target into a tuple
-    target = tuple(target)
-
     targ, spect = target
     fig = make_subplots(
         rows=1,

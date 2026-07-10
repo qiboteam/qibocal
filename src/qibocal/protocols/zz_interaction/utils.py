@@ -194,7 +194,5 @@ def zz_update(
     target: QubitPairId,
 ) -> None:
     """Update the platform calibration with the results of the Ramsey ZZ experiment."""
-    # casting target into a tuple
-    target = tuple(target)
     if target in results.coupling:
         update.pair_coupling(results.coupling[target], platform, target)
