@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 from qibocal.protocols.utils import cumulative, eval_magnitude, to_range
 
@@ -30,3 +31,10 @@ def test_range_conversion():
 
     with pytest.raises(ValueError, match="center"):
         to_range(("center", 1e6, 10))
+
+    with pytest.raises(ValidationError):
+        to_range(("linwindow", 50, 10))
+    with pytest.raises(ValidationError):
+        to_range(("center", 50, 10, 20))
+    with pytest.raises(ValidationError):
+        to_range(("asym", -10, 10, 20))
