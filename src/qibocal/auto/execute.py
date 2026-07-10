@@ -137,8 +137,9 @@ class Executor(BaseModel):
             targets: Targets | None = None,
             **kwargs: Any,
         ):
-            # casting targest to be of type Targets
-            targets = TypeAdapter(Targets).validate_python(targets)
+            # casting targest to be of type Targets if not None
+            if targets is not None:
+                targets = TypeAdapter(Targets | None).validate_python(targets)
 
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
