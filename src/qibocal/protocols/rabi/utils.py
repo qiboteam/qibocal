@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import Delay, Platform, PulseSequence
+from qibolab import Delay, Platform, Pulse, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, QubitId
@@ -264,13 +264,18 @@ def sequence_amplitude(
     params: Parameters,
     platform: Platform,
     rx90: bool,
-) -> tuple[PulseSequence, dict, dict, dict]:
+) -> tuple[
+    PulseSequence,
+    dict[QubitId, Pulse],
+    dict[QubitId, Pulse],
+    dict[QubitId, float],
+]:
     """Return sequence for rabi amplitude."""
 
     sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    durations = {}
+    qd_pulses: dict[QubitId, Pulse] = {}
+    ro_pulses: dict[QubitId, Pulse] = {}
+    durations: dict[QubitId, float] = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
 
@@ -299,14 +304,16 @@ def sequence_length(
     platform: Platform,
     rx90: bool,
     use_align: bool = False,
-) -> tuple[PulseSequence, dict, dict, dict]:
+) -> tuple[
+    PulseSequence, dict[QubitId, Pulse], dict[QubitId, Delay], dict[QubitId, Pulse]
+]:
     """Return sequence for rabi length."""
 
     sequence = PulseSequence()
-    qd_pulses = {}
-    delays = {}
-    ro_pulses = {}
-    amplitudes = {}
+    qd_pulses: dict[QubitId, Pulse] = {}
+    delays: dict[QubitId, Delay] = {}
+    ro_pulses: dict[QubitId, Pulse] = {}
+    amplitudes: dict[QubitId, float] = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
 
