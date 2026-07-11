@@ -21,9 +21,12 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
+    Range,
+    RangeLike,
     lorentzian,
     table_dict,
     table_html,
+    to_range,
 )
 from qibocal.result import magnitude, phase
 
@@ -50,14 +53,31 @@ QubitSpecType = np.dtype(
 class QubitSpectroscopyParameters(Parameters):
     """QubitSpectroscopy runcard inputs."""
 
-    freq_width: int
+    frequency: RangeLike | None = None
+    """Drive frequency [Hz] range for sweep."""
+    freq_width: int | None = None
     """Width [Hz] for frequency sweep relative  to the qubit frequency."""
-    freq_step: int
+    freq_step: int | None = None
     """Frequency [Hz] step for sweep."""
-    drive_duration: int
+    drive_duration: int = 4000
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: float | None = None
     """Drive pulse amplitude (optional). Same for all qubits."""
+
+    def frequency_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.freq_width is not None and self.freq_step is not None
+            return (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
+
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else legacy_range()
+        )
 
 
 @dataclass
@@ -82,7 +102,9 @@ class QubitSpectroscopyData(Data):
     """Raw data acquired."""
 
 
-def _calculate_batches(freq_width: int, max_if_bandwidth: int = 300_000_000):
+def _calculate_batches(
+    freq_width: float, max_if_bandwidth: float = 300e6
+) -> npt.NDArray[np.float64]:
     """
     Calculate frequency batches for wideband spectroscopy.
 
@@ -105,7 +127,9 @@ def _acquisition(
     """
 
     # Calculate batches
-    batches = _calculate_batches(params.freq_width)
+    freq_range = params.frequency_range()
+    width = freq_range[1] - freq_range[0]
+    batches = _calculate_batches(freq_width=width)
 
     # Get drive channels and LO channels for each qubit
     drive_channels = {}
@@ -128,7 +152,7 @@ def _acquisition(
 
     # Execute each batch
     for start, end, lo_offset in batches:
-        delta_frequency_range = np.arange(start, end, params.freq_step)
+        delta_frequency_range = np.arange(start, end, freq_range[2])
 
         # Build the pulse sequence
         sequence = PulseSequence()
