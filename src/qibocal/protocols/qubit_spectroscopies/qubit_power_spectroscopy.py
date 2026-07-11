@@ -16,7 +16,7 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
-from ..utils import HZ_TO_GHZ, readout_frequency
+from ..utils import HZ_TO_GHZ, Range, readout_frequency, to_range
 from .qubit_spectroscopy import QubitSpectroscopyResults
 
 __all__ = ["qubit_power_spectroscopy"]
@@ -26,18 +26,46 @@ __all__ = ["qubit_power_spectroscopy"]
 class QubitPowerSpectroscopyParameters(Parameters):
     """QubitPowerSpectroscopy runcard inputs."""
 
-    freq_width: int
+    frequency: Range | None = None
+    """Frequencies for the sweep [Hz]."""
+    freq_width: int | None = None
     """Width for frequency sweep relative  to the drive frequency [Hz]."""
-    freq_step: int
+    freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
-    min_amp: float
+    amplitude: Range | None = None
+    """Amplitudes for the sweep [a.u.]."""
+    min_amp: float | None = None
     """Minimum amplitude."""
-    max_amp: float
+    max_amp: float | None = None
     """Maximum amplitude."""
-    step_amp: float
+    step_amp: float | None = None
     """Step amplitude."""
-    duration: int
+    duration: int = 4000
     """Drive duration."""
+
+    def frequency_range(self, q: QubitId, platform: CalibrationPlatform) -> Range:
+        try:
+            qd_channel = platform.qubits[q].drive
+            center = platform.config(qd_channel).frequency
+        except KeyError:
+            center = 0.0
+        assert isinstance(center, float)
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
+        )
+
+    def amplitude_range(self) -> Range:
+        return (
+            to_range(self.amplitude, center=0.0)
+            if self.amplitude is not None
+            else (self.min_amp, self.max_amp, self.step_amp)
+        )
 
 
 @dataclass
@@ -62,9 +90,6 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     freq_sweepers = {}
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         qd_channel, qd_pulse = natives.RX()[0]
@@ -79,16 +104,15 @@ def _acquisition(
         sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
         sequence.append((ro_channel, ro_pulse))
 
-        f0 = platform.config(qd_channel).frequency
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
-            values=f0 + delta_frequency_range,
+            range=params.frequency_range(qubit, platform),
             channels=[qd_channel],
         )
 
     amp_sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
+        range=params.amplitude_range(),
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
