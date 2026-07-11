@@ -67,7 +67,7 @@ def average_iq(i: npt.NDArray, q: npt.NDArray) -> tuple[npt.NDArray, npt.NDArray
     return average(collect(i, q))
 
 
-def phase(iq: npt.NDArray):
+def phase(iq: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """Signal phase in radians.
 
     It is assumed that the I and Q component are discriminated by the

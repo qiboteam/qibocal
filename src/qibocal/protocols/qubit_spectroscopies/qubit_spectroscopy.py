@@ -1,5 +1,5 @@
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import numpy.typing as npt
@@ -9,9 +9,12 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    ChannelId,
     Delay,
     Parameter,
+    Pulse,
     PulseSequence,
+    Rectangular,
     Sweeper,
 )
 from qibolab._core.components import IqChannel
@@ -61,7 +64,7 @@ class QubitSpectroscopyParameters(Parameters):
     """Frequency [Hz] step for sweep."""
     drive_duration: int = 4000
     """Drive pulse duration [ns]. Same for all qubits."""
-    drive_amplitude: float | None = None
+    drive_amplitude: float = 1.0
     """Drive pulse amplitude (optional). Same for all qubits."""
 
     def frequency_range(self, center: float = 0.0) -> Range:
@@ -84,7 +87,7 @@ class QubitSpectroscopyParameters(Parameters):
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
 
-    frequency: dict[QubitId, dict[str, float]]
+    frequency: dict[QubitId, float]
     """Drive frequecy [GHz] for each qubit."""
     amplitude: dict[QubitId, float]
     """Input drive amplitude. Same for all qubits."""
@@ -96,10 +99,18 @@ class QubitSpectroscopyResults(Results):
 class QubitSpectroscopyData(Data):
     """QubitSpectroscopy acquisition outputs."""
 
+    drive_frequencies: dict[QubitId, list[float]]
+    """Frequencies."""
     amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[np.float64]]
     """Raw data acquired."""
+
+    def signal(self, qubit: QubitId) -> npt.NDArray[np.float64]:
+        return magnitude(self.data[qubit])
+
+    def phase(self, qubit: QubitId) -> npt.NDArray[np.float64]:
+        return phase(self.data[qubit])
 
 
 def _calculate_batches(
@@ -132,15 +143,14 @@ def _acquisition(
     batches = _calculate_batches(freq_width=width)
 
     # Get drive channels and LO channels for each qubit
-    drive_channels = {}
-    lo_channels = {}
+    drive_channels: dict[QubitId, ChannelId] = {}
+    lo_channels: dict[QubitId, str | None] = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        qd_channel, _ = natives.RX()[0]
-        drive_channels[qubit] = qd_channel
+        drive_channels[qubit] = platform.qubits[qubit].drive
 
         # Get the LO channel associated with this drive channel
-        channel_obj = platform.channels[qd_channel]
+        channel_obj = platform.channels[drive_channels[qubit]]
         if isinstance(channel_obj, IqChannel) and channel_obj.lo is not None:
             lo_channels[qubit] = channel_obj.lo
         else:
@@ -148,7 +158,11 @@ def _acquisition(
 
     # Initialize storage for intermediate results
     values = {qubit: defaultdict(list) for qubit in targets}
-    drive_amplitudes: dict[QubitId, float] = {}
+    # TODO: remove, and propagate differently, since it is always the same for
+    # all qubits
+    drive_amplitudes: dict[QubitId, float] = {
+        q: params.drive_amplitude for q in targets
+    }
 
     # Execute each batch
     for start, end, lo_offset in batches:
@@ -162,18 +176,14 @@ def _acquisition(
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
             qd_channel = drive_channels[qubit]
-            _, qd_pulse = natives.RX()[0]
+            assert natives.MZ is not None
             ro_channel, ro_pulse = natives.MZ()[0]
 
-            qd_pulse = update.replace(qd_pulse, duration=params.drive_duration)
-            if params.drive_amplitude is not None:
-                qd_pulse = update.replace(qd_pulse, amplitude=params.drive_amplitude)
-
-            if qubit not in drive_amplitudes:
-                # If already added, skip re-adding since the drive amplitude is
-                # unchanged across batches.
-                drive_amplitudes[qubit] = qd_pulse.amplitude
-
+            qd_pulse = Pulse(
+                amplitude=params.drive_amplitude,
+                duration=params.drive_duration,
+                envelope=Rectangular(),
+            )
             ro_pulses[qubit] = ro_pulse
 
             sequence.append((qd_channel, qd_pulse))
@@ -223,35 +233,21 @@ def _acquisition(
             result = results[ro_pulses[qubit].id]
             f0 = platform.config(drive_channels[qubit]).frequency
 
-            signal = magnitude(result)
-            _phase = phase(result)
-
             # Store results with absolute frequencies
             values[qubit]["frequency"].append(delta_frequency_range + f0)
-            values[qubit]["signal"].append(signal)
-            values[qubit]["phase"].append(_phase)
+            values[qubit]["result"].append(result)
 
-    # Create data structure and aggregate results
-    data = QubitSpectroscopyData(amplitudes=drive_amplitudes)
-
+    freqs: dict[QubitId, list[float]] = {}
+    data: dict[QubitId, npt.NDArray[np.float64]] = {}
     # Combine all batches for each qubit
-    for qubit in targets:
+    for q in targets:
         # Concatenate arrays from all batches
-        freq = np.concatenate(values[qubit]["frequency"])
-        signal = np.concatenate(values[qubit]["signal"])
-        _phase = np.concatenate(values[qubit]["phase"])
+        freqs[q] = np.concatenate(values[q]["frequency"]).tolist()
+        data[q] = np.concatenate(values[q]["result"])
 
-        data.register_qubit(
-            QubitSpecType,
-            (qubit),
-            dict(
-                signal=signal,
-                phase=_phase,
-                freq=freq,
-            ),
-        )
-
-    return data
+    return QubitSpectroscopyData(
+        drive_frequencies=freqs, amplitudes=drive_amplitudes, data=data
+    )
 
 
 def _lorentzian_with_offset(frequency, amplitude, center, sigma, offset):
@@ -289,10 +285,9 @@ def _guess_initial_parameters(signal, frequencies, is_peak):
     ]
 
 
-def _lorentzian_fit(data):
-    frequencies = data.freq
-    signal = data.signal
-
+def _lorentzian_fit(
+    frequencies: np.ndarray, signal: np.ndarray
+) -> tuple[float, list[float], list[float]]:
     freq_domain_size = frequencies[-1] - frequencies[0]
 
     # Try to fit both peak and dip, and pick the best one
@@ -346,15 +341,16 @@ def _lorentzian_fit(data):
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
     qubits = data.qubits
-    frequency = {}
-    fitted_parameters = {}
+    frequency: dict[QubitId, float] = {}
+    params: dict[QubitId, list[float]] = {}
     for qubit in qubits:
-        fit_result = _lorentzian_fit(data[qubit])
-        if fit_result is not None:
-            frequency[qubit], fitted_parameters[qubit], _ = fit_result
+        fit_result = _lorentzian_fit(
+            np.array(data.drive_frequencies[qubit]), magnitude(data.data[qubit])
+        )
+        frequency[qubit], params[qubit], _ = fit_result
     return QubitSpectroscopyResults(
         frequency=frequency,
-        fitted_parameters=fitted_parameters,
+        fitted_parameters=params,
         amplitude=data.amplitudes,
     )
 
@@ -367,12 +363,11 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
     )
-    qubit_data = data[target]
     fitting_report = ""
-    frequencies = qubit_data.freq
-    signal = qubit_data.signal
+    frequencies = np.array(data.drive_frequencies[target])
+    signal = data.signal(target)
+    phase = data.phase(target)
 
-    phase = qubit_data.phase
     fig.add_trace(
         go.Scatter(
             x=frequencies * scipy.constants.nano,
