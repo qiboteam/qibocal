@@ -81,6 +81,7 @@ def _acquisition(
     drive: dict[QubitId, float] = {}
     drive12_ranges: dict[QubitId, Range] = {}
 
+    freq_range = params.frequency_range()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
 
@@ -111,7 +112,8 @@ def _acquisition(
         assert isinstance(qd_config, IqConfig)
         assert isinstance(qd12_config, IqConfig)
         drive[qubit] = qd_config.frequency
-        f12_range = params.frequency_range(center=qd12_config.frequency)
+        f12 = qd12_config.frequency
+        f12_range = (f12 + freq_range[0], f12 + freq_range[1], freq_range[2])
         drive12_ranges[qubit] = f12_range
         # TODO: it makes no sense to propagate the unraveled range, but it is to
         # match the format of the plotting function from the qubit spectroscopy
