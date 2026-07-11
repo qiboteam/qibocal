@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-import numpy as np
 import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
