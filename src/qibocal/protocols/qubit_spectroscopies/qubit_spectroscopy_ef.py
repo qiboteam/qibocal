@@ -1,28 +1,29 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 import numpy as np
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Delay,
+    IqConfig,
+    ParallelSweepers,
     Parameter,
+    Pulse,
     PulseSequence,
+    Readout,
+    Rectangular,
     Sweeper,
 )
 
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.update import replace
 
 from ... import update
-from ...result import magnitude, phase
-from ..utils import readout_frequency, table_dict, table_html
+from ..utils import Range, readout_frequency, table_dict, table_html
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
-    QubitSpecType,
-    _fit,
+    _lorentzian_fit,
 )
 from .qubit_spectroscopy import _plot as qubit_spectroscopy_plot
 
@@ -45,18 +46,10 @@ class QubitSpectroscopyEFResults(QubitSpectroscopyResults):
 class QubitSpectroscopyEFData(QubitSpectroscopyData):
     """QubitSpectroscopy acquisition outputs."""
 
-    drive_frequencies: dict[QubitId, float] = field(default_factory=dict)
-
-
-def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
-    results = _fit(data)
-    anharmoncities = {
-        qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
-        for qubit in data.qubits
-        if qubit in results
-    }
-    params = asdict(results)
-    return QubitSpectroscopyEFResults(anharmonicity=anharmoncities, **params)
+    drive: dict[QubitId, float]
+    """Frequency used for the drive pi pulse."""
+    drive12_ranges: dict[QubitId, Range]
+    """Frequency ranges for the spectroscopic tone."""
 
 
 def _acquisition(
@@ -79,51 +72,57 @@ def _acquisition(
     # long drive probing pulse - MZ
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
-    ro_pulses = {}
-    amplitudes = {}
-    sweepers = []
-    drive_frequencies = {}
+    ro_pulses: dict[QubitId, Readout] = {}
+    # TODO: remove, and propagate differently, since it is always the same for
+    # all qubits
+    amplitudes: dict[QubitId, float] = {q: params.drive_amplitude for q in targets}
+    sweepers: ParallelSweepers = []
+    drive_frequencies: dict[QubitId, list[float]] = {}
+    drive: dict[QubitId, float] = {}
+    drive12_ranges: dict[QubitId, Range] = {}
 
-    delta_frequency_range = np.arange(
-        -params.freq_width, params.freq_width, params.freq_step
-    )
+    freq_range = params.frequency_range()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
 
-        qd_channel, qd_pulse = natives.RX()[0]
-        qd12_channel, qd12_pulse = natives.RX12()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
+        assert natives.RX is not None
+        assert natives.MZ is not None
+        qd_channel = platform.qubits[qubit].drive
+        qd12_channel = platform.qubits[qubit].drive_extra[1, 2]
+        assert qd_channel is not None
+        readout = natives.MZ()
 
-        qd12_pulse = replace(qd12_pulse, duration=params.drive_duration)
-        if params.drive_amplitude is not None:
-            qd12_pulse = replace(qd12_pulse, amplitude=params.drive_amplitude)
-
-        amplitudes[qubit] = qd12_pulse.amplitude
-        ro_pulses[qubit] = ro_pulse
-
-        sequence.append((qd_channel, qd_pulse))
-        sequence.append((qd12_channel, Delay(duration=qd_pulse.duration)))
-        sequence.append((qd12_channel, qd12_pulse))
-        sequence.append(
-            (ro_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
+        ro = readout[0][1]
+        assert isinstance(ro, Readout)
+        ro_pulses[qubit] = ro
+        qd12_pulse = Pulse(
+            duration=params.drive_duration,
+            amplitude=params.drive_amplitude,
+            envelope=Rectangular(),
         )
-        sequence.append((ro_channel, ro_pulse))
 
-        drive_frequencies[qubit] = platform.calibration.single_qubits[
-            qubit
-        ].qubit.frequency_01
+        seq = PulseSequence()
+        seq |= natives.RX()
+        seq |= [(qd12_channel, qd12_pulse)]
+        seq |= readout
+        sequence.extend(seq)
+
+        qd_config = platform.config(qd_channel)
+        qd12_config = platform.config(qd12_channel)
+        assert isinstance(qd_config, IqConfig)
+        assert isinstance(qd12_config, IqConfig)
+        drive[qubit] = qd_config.frequency
+        f12 = qd12_config.frequency
+        f12_range = (f12 + freq_range[0], f12 + freq_range[1], freq_range[2])
+        drive12_ranges[qubit] = f12_range
+        # TODO: it makes no sense to propagate the unraveled range, but it is to
+        # match the format of the plotting function from the qubit spectroscopy
+        drive_frequencies[qubit] = np.arange(*f12_range).tolist()
         sweepers.append(
             Sweeper(
-                parameter=Parameter.frequency,
-                values=platform.config(qd12_channel).frequency + delta_frequency_range,
-                channels=[qd12_channel],
+                parameter=Parameter.frequency, range=f12_range, channels=[qd12_channel]
             )
         )
-
-    data = QubitSpectroscopyEFData(
-        amplitudes=amplitudes,
-        drive_frequencies=drive_frequencies,
-    )
 
     results = platform.execute(
         [sequence],
@@ -143,24 +142,31 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
-        result = results[ro_pulse.id]
+    return QubitSpectroscopyEFData(
+        amplitudes=amplitudes,
+        drive_frequencies=drive_frequencies,
+        drive12_ranges=drive12_ranges,
+        drive=drive,
+        data={q: results[ro_pulses[q].id] for q in targets},
+    )
 
-        f0 = platform.config(platform.qubits[qubit].drive_extra[1, 2]).frequency
 
-        signal = magnitude(result)
-        _phase = phase(result)
+def _fit(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
+    frequency: dict[QubitId, float] = {}
+    params: dict[QubitId, list[float]] = {}
+    for qubit in data.qubits:
+        freqs = np.arange(*data.drive12_ranges[qubit])
+        frequency[qubit], params[qubit], _ = _lorentzian_fit(freqs, data.signal(qubit))
 
-        data.register_qubit(
-            QubitSpecType,
-            (qubit),
-            dict(
-                signal=signal,
-                phase=_phase,
-                freq=delta_frequency_range + f0,
-            ),
-        )
-    return data
+    anharmonicities = {
+        qubit: frequency[qubit] - data.drive[qubit] for qubit in data.qubits
+    }
+    return QubitSpectroscopyEFResults(
+        frequency=frequency,
+        amplitude=data.amplitudes,
+        fitted_parameters=params,
+        anharmonicity=anharmonicities,
+    )
 
 
 def _plot(
@@ -199,5 +205,5 @@ def _update(
     ]
 
 
-qubit_spectroscopy_ef = Protocol(_acquisition, fit_ef, _plot, _update)
+qubit_spectroscopy_ef = Protocol(_acquisition, _fit, _plot, _update)
 """QubitSpectroscopyEF Protocol object."""
