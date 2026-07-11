@@ -6,10 +6,13 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    ParallelSweepers,
+    Parameter,
     Pulse,
     PulseSequence,
     Readout,
     Rectangular,
+    Sweeper,
 )
 from scipy.constants import nano
 
@@ -27,7 +30,7 @@ class TwoLevelsCrossingParameters(Parameters):
     """Second tone frequency range for sweep [Hz]."""
     duration: float = 4000
     """Spectroscopic pulses duration."""
-    amplitude: float = 1.0
+    amplitude: float | tuple[float, float] = 1.0
     """Spectroscopic pulses amplitude."""
 
 
@@ -51,9 +54,11 @@ class TwoLevelsCrossingData(Data):
         return phase(self.data[qubit])
 
     def grid(self, qubit: QubitId) -> tuple[np.ndarray, np.ndarray]:
-        drive1 = np.arange(*self.drive1[qubit])
-        drive2 = np.arange(*self.drive2[qubit])
+        drive1, drive2 = self.coords(qubit)
         return np.meshgrid(drive1, drive2)
+
+    def coords(self, qubit: QubitId) -> tuple[np.ndarray, np.ndarray]:
+        return np.arange(*self.drive1[qubit]), np.arange(*self.drive2[qubit])
 
 
 @dataclass
@@ -68,36 +73,53 @@ def _acquisition(
 ) -> TwoLevelsCrossingData:
     drive1: dict[QubitId, Range] = {}
     drive2: dict[QubitId, Range] = {}
+    if isinstance(params.amplitude, tuple):
+        amp1, amp2 = params.amplitude
+    else:
+        amp1 = amp2 = params.amplitude
 
     sequence = PulseSequence()
+    sweep1: ParallelSweepers = []
+    sweep2: ParallelSweepers = []
     readouts: dict[QubitId, Readout] = {}
     for q in targets:
-        frequency = platform.calibration.single_qubits[q].qubit.frequency_01
-        drive1[q] = to_range(params.drive1, center=frequency)
-        drive2[q] = to_range(params.drive2, center=frequency)
-
         qubit = platform.qubits[q]
+        drive12 = qubit.drive_extra[(1, 2)]
         natives = platform.natives.single_qubit[q]
+        assert qubit.drive is not None
+        assert drive12 is not None
         assert natives.MZ is not None
         readout = natives.MZ()
         assert isinstance(readout[0][1], Readout)
         readouts[q] = readout[0][1]
 
-        tone1 = Pulse(
-            amplitude=params.amplitude, duration=params.duration, envelope=Rectangular()
-        )
-        tone2 = tone1.new()
+        tone1 = Pulse(amplitude=amp1, duration=params.duration, envelope=Rectangular())
+        tone2 = tone1.new().model_copy(update={"amplitude": amp2})
         sequence += [
             (qubit.drive, tone1),
-            (qubit.drive, tone2),
+            (drive12, tone2),
             (qubit.acquisition, Delay(duration=params.duration)),
         ]
         sequence += readout
 
+        frequency = platform.calibration.single_qubits[q].qubit.frequency_01
+        drive1[q] = to_range(params.drive1, center=frequency)
+        drive2[q] = to_range(params.drive2, center=frequency)
+        sweep1.append(
+            Sweeper(
+                parameter=Parameter.frequency, range=drive1[q], channels=[qubit.drive]
+            )
+        )
+        sweep2.append(
+            Sweeper(parameter=Parameter.frequency, range=drive2[q], channels=[drive12])
+        )
+
     results = platform.execute(
         [sequence],
-        [[], []],
-        acuisition_type=AcquisitionType.INTEGRATION,
+        [sweep2, sweep1],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
 
@@ -117,7 +139,7 @@ def _fit(
 
 
 def _plot(data: TwoLevelsCrossingData, target: QubitId, fit: TwoLevelsCrossingResults):
-    x, y = tuple(c * nano for c in data.grid(target))
+    x, y = tuple(c * nano for c in data.coords(target))
     signal = data.signal(target)
     phase = data.phase(target)
 
