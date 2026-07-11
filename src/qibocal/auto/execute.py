@@ -12,7 +12,7 @@ from functools import cached_property, reduce
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from qibo.backends import construct_backend
 from qibolab import Platform
 
@@ -137,6 +137,10 @@ class Executor(BaseModel):
             targets: Targets | None = None,
             **kwargs: Any,
         ):
+            # casting targest to be of type Targets if not None
+            if targets is not None:
+                targets = TypeAdapter(Targets).validate_python(targets)
+
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
             )

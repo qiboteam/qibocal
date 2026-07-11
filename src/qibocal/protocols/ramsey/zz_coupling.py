@@ -212,11 +212,7 @@ def _execute_ramsey_zz(
                 RamseyZZType,
                 (pair, setup),
                 dict(
-                    wait=np.arange(
-                        params.delay_between_pulses_start,
-                        params.delay_between_pulses_end,
-                        params.delay_between_pulses_step,
-                    ),
+                    wait=np.arange(*params.delay_range),
                     targ_prob=targ_probs,
                     spect_prob=spect_probs,
                 ),
@@ -499,7 +495,6 @@ def _update(
     results: RamseyZZResults, platform: CalibrationPlatform, target: QubitPairId
 ) -> None:
     """Update the platform calibration with the results of the Ramsey ZZ experiment."""
-
     update.pair_coupling(results.coupling[target], platform, target)
 
 
