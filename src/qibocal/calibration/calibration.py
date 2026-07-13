@@ -13,7 +13,7 @@ from pydantic import (
 )
 from scipy.sparse import lil_matrix
 
-from .serialize import NdArray, SparseArray, ndarray_serialize
+from .serialize import NdArray, SparseArray, eq
 
 QubitId = Annotated[Union[int, str], Field(union_mode="left_to_right")]
 """Qubit name."""
@@ -159,37 +159,6 @@ class TwoQubitCalibration(Model):
     """Qubit-qubit coupling."""
 
 
-class Matrix(Model):
-    """Generic matrix indexed by qubits."""
-
-    qubits: list[QubitId] = Field(default_factory=list, exclude=True)
-    """List of QubitIds."""
-    matrix: NdArray | None = np.array([])
-    """Matrix array."""
-
-    def __eq__(self, tmp):
-        array_equal = np.allclose(self.matrix, tmp.matrix)
-        return self.qubits == tmp.qubits and array_equal
-
-    def __getitem__(self, pair: QubitPairId) -> float:
-        """Getting matrix element from QubitIds.
-
-        The first element is the target qubit, the second is the drive line."""
-        target, drive = pair
-        return self.matrix[self.qubits.index(target)][  # pylint: disable=E1136
-            self.qubits.index(drive)
-        ]
-
-    def __setitem__(self, pair: QubitPairId, value: float) -> None:
-        """Setting matrix element from QubitIds.
-
-        The first element is the target qubit, the second is the drive line."""
-        target, drive = pair
-        self.matrix[self.qubits.index(target)][  # pylint: disable=E1136
-            self.qubits.index(drive)
-        ] = value
-
-
 class Calibration(Model):
     """Calibration container."""
 
@@ -199,58 +168,47 @@ class Calibration(Model):
     """Dict with qubit pairs calibration."""
     readout_mitigation_matrix: SparseArray | None = None
     """Readout mitigation matrix."""
-    flux_crosstalk_matrix: Matrix | None = Field(default_factory=Matrix)
+    flux_crosstalk_matrix: NdArray | None = None
     """Crosstalk flux matrix."""
-    microwave_crosstalk_matrix: Matrix | None = Field(default_factory=Matrix)
-    """Microwave crosstalk matrix wiht amplitude information."""
-    mw_cancellation_phases_matrix: Matrix | None = Field(default_factory=Matrix)
-    """Microwave crosstalk matrix."""
+    microwave_crosstalk_matrix: NdArray | None = None
+    """Microwave crosstalk matrix (complex)."""
 
     @model_validator(mode="after")
-    def validate_matrices(self):
+    def validate_flux_matrix(self):
+        """Validate or initialize the flux crosstalk matrix.
 
-        if (
-            self.flux_crosstalk_matrix is None
-            or self.flux_crosstalk_matrix.matrix.size == 0
-        ):
-            self.flux_crosstalk_matrix = Matrix(
-                matrix=ndarray_serialize(np.eye(self.nqubits))
-            )
-        self.flux_crosstalk_matrix.qubits = self.qubits
-        if self.flux_crosstalk_matrix.matrix.shape != (self.nqubits, self.nqubits):
+        If the matrix is missing or empty, initialize it as an identity matrix of
+        shape (nqubits, nqubits). If provided, verify the matrix shape is correct.
+        """
+        if self.flux_crosstalk_matrix is None or self.flux_crosstalk_matrix.size == 0:
+            self.flux_crosstalk_matrix = np.eye(self.nqubits)
+        elif self.flux_crosstalk_matrix.shape != (self.nqubits, self.nqubits):
             raise ValueError(
                 "Drive crosstalk matrix must have shape (nqubits, nqubits)."
             )
+        return self
 
+    @model_validator(mode="after")
+    def validate_microwave_matrix(self):
+        """Validate or initialize the microwave crosstalk matrix.
+
+        If the matrix is missing or empty, initialize it as a complex-valued
+        matrix of shape (nqubits, nqubits) filled with infinity. If provided,
+        verify the matrix shape is correct and convert its dtype to complex.
+        """
         if (
             self.microwave_crosstalk_matrix is None
-            or self.microwave_crosstalk_matrix.matrix.size == 0
+            or self.microwave_crosstalk_matrix.size == 0
         ):
-            self.microwave_crosstalk_matrix = Matrix(
-                matrix=ndarray_serialize(np.full((self.nqubits, self.nqubits), np.inf))
+            self.microwave_crosstalk_matrix = np.full(
+                (self.nqubits, self.nqubits), np.inf, dtype=complex
             )
-        if self.microwave_crosstalk_matrix.matrix.shape != (self.nqubits, self.nqubits):
+        elif self.microwave_crosstalk_matrix.shape != (self.nqubits, self.nqubits):
             raise ValueError(
                 "Microwave crosstalk matrix must have shape (nqubits, nqubits)."
             )
-        self.microwave_crosstalk_matrix.qubits = self.qubits
-
-        if (
-            self.mw_cancellation_phases_matrix is None
-            or self.mw_cancellation_phases_matrix.matrix.size == 0
-        ):
-            self.mw_cancellation_phases_matrix = Matrix(
-                matrix=ndarray_serialize(np.zeros((self.nqubits, self.nqubits)))
-            )
-        self.mw_cancellation_phases_matrix.qubits = self.qubits
-        if self.mw_cancellation_phases_matrix.matrix.shape != (
-            self.nqubits,
-            self.nqubits,
-        ):
-            raise ValueError(
-                "Microwave crosstalk phase matrix must have shape (nqubits, nqubits)."
-            )
-
+        else:
+            self.microwave_crosstalk_matrix.astype(complex)
         return self
 
     @property
@@ -262,6 +220,14 @@ class Calibration(Model):
     def nqubits(self) -> int:
         """Number of qubits available."""
         return len(self.qubits)
+
+    def __eq__(self, other: "Calibration") -> bool:
+        """Compare calibrations.
+
+        The comparison requires adaption, since it may involve NumPy arrays, which do
+        not generate a single boolean as output of the comparison operator.
+        """
+        return eq(self, other)
 
     def dump(self, path: Path):
         """Dump calibration model."""
@@ -295,3 +261,61 @@ class Calibration(Model):
         assert self.readout_mitigation_matrix is not None
         ids = self._readout_mitigation_matrix_indices(target)
         return self.readout_mitigation_matrix[ids]
+
+    def _get_element(
+        self, matrix: NdArray, qubit: QubitId, line: QubitId
+    ) -> float | complex:
+        """Return the matrix element for a target qubit and a physical line."""
+        return matrix[self.qubits.index(qubit), self.qubits.index(line)]
+
+    def get_flux_crosstalk(self, qubit: QubitId, flux_line: QubitId) -> float:
+        """Return the flux crosstalk coefficient for a target qubit and a flux line."""
+        return self._get_element(
+            matrix=self.flux_crosstalk_matrix,
+            qubit=qubit,
+            line=flux_line,
+        )
+
+    def get_microwave_crosstalk(
+        self, qubit: QubitId, microwave_line: QubitId
+    ) -> tuple[float, float]:
+        """Return the microwave crosstalk coefficient (module and phase) for a target qubit and a microwave line."""
+        complex_el = self._get_element(
+            matrix=self.microwave_crosstalk_matrix,
+            qubit=qubit,
+            line=microwave_line,
+        )
+        return np.abs(complex_el), np.angle(complex_el)
+
+    def _set_element(
+        self, matrix: NdArray, qubit: QubitId, line: QubitId, value: float | complex
+    ) -> NdArray:
+        """Set the matrix element for a target qubit and a physical line."""
+        matrix[self.qubits.index(qubit), self.qubits.index(line)] = value
+        return matrix
+
+    def set_flux_crosstalk(
+        self, qubit: QubitId, flux_line: QubitId, value: float
+    ) -> None:
+        """Set the flux crosstalk coefficient for a target qubit and a flux line."""
+        self.flux_crosstalk_matrix = self._set_element(
+            matrix=self.flux_crosstalk_matrix,
+            qubit=qubit,
+            line=flux_line,
+            value=value,
+        )
+
+    def set_microwave_crosstalk(
+        self, qubit: QubitId, microwave_line: QubitId, module: float, phase: float = 0
+    ) -> None:
+        """Return the microwave crosstalk coefficient (module and phase) for a target qubit and a microwave line."""
+        if np.isfinite(module):
+            complex_val = module * np.exp(1j * phase)
+        else:
+            complex_val = np.inf + 0j
+        self.microwave_crosstalk_matrix = self._set_element(
+            matrix=self.microwave_crosstalk_matrix,
+            qubit=qubit,
+            line=microwave_line,
+            value=complex_val,
+        )

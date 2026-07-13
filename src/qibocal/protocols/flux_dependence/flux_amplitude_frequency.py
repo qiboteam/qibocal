@@ -401,9 +401,11 @@ def _update(
         ].qubit.flux_coefficients = results.fitted_parameters_detuning[target]
 
     # TODO: needs to be inverted
-    flux_qubit = results.crosstalk if results.crosstalk is not None else target
-    platform.calibration.flux_crosstalk_matrix[target, flux_qubit] = (
-        results.fitted_parameters_flux[target][0]
+    flux_line = results.crosstalk if results.crosstalk is not None else target
+    platform.calibration.set_flux_crosstalk(
+        qubit=target,
+        flux_line=flux_line,
+        value=results.fitted_parameters_flux[target][0],
     )
 
 

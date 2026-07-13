@@ -307,8 +307,11 @@ def _update(
 ):
     if target in results.cancellation_pulses:
         qubit, drive_line = target
-        platform.calibration.microwave_crosstalk_matrix[qubit, drive_line] = (
-            results.cancellation_pulses[target]["phase"]
+        platform.calibration.set_microwave_crosstalk(
+            qubit=qubit,
+            microwave_line=drive_line,
+            module=results.cancellation_pulses[target]["amplitude"],
+            phase=-results.cancellation_pulses[target]["phase"],
         )
 
 

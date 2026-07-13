@@ -4,7 +4,7 @@ from typing import Annotated
 
 import numpy as np
 import numpy.typing as npt
-from pydantic import PlainSerializer, PlainValidator
+from pydantic import BaseModel, PlainSerializer, PlainValidator
 from scipy.sparse import csr_matrix, lil_matrix
 
 
@@ -50,11 +50,8 @@ def ndarray_serialize(ar: npt.NDArray) -> str:
     return base64.standard_b64encode(buffer.read()).decode()
 
 
-def ndarray_deserialize(x: str | npt.NDArray) -> npt.NDArray:
+def ndarray_deserialize(x: str) -> npt.NDArray:
     """Deserialize array."""
-    if isinstance(x, np.ndarray):
-        return x
-
     buffer = io.BytesIO()
     buffer.write(base64.standard_b64decode(x))
     buffer.seek(0)
@@ -67,3 +64,24 @@ NdArray = Annotated[
     PlainSerializer(ndarray_serialize, return_type=str),
 ]
 """Pydantic-compatible array representation."""
+
+
+def eq(obj1: BaseModel, obj2: BaseModel) -> bool:
+    """Compare two models with non-default equality.
+
+    Currently, defines custom equality for NumPy arrays.
+    """
+    obj2d = obj2.model_dump()
+    comparisons = []
+    for field, value1 in obj1.model_dump().items():
+        value2 = obj2d[field]
+        if isinstance(value1, np.ndarray):
+            comparisons.append(
+                (value1.shape == value2.shape) and (value1 == value2).all()
+            )
+        elif isinstance(value1, BaseModel):
+            comparisons.append(eq(value1, value2))
+        else:
+            comparisons.append(value1 == value2)
+
+    return all(comparisons)

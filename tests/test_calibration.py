@@ -83,26 +83,31 @@ def test_serialization_crosstalk_matrices(tmp_path):
 
     cal = Calibration(single_qubits=single_qubits)
 
-    assert cal.flux_crosstalk_matrix["A0", "A1"] == 0
-    assert cal.microwave_crosstalk_matrix["A0", "A1"] == np.inf
+    assert cal.get_flux_crosstalk("A0", "A1") == 0
+    mw_abs, mw_phase = cal.get_microwave_crosstalk("A0", "A1")
+    assert (mw_abs * np.exp(1j * mw_phase)).real == np.inf
 
-    cal.flux_crosstalk_matrix["A0", "A1"] = 1
-    assert cal.flux_crosstalk_matrix["A0", "A1"] == 1
-    cal.microwave_crosstalk_matrix["A0", "A1"] = 1
-    assert cal.microwave_crosstalk_matrix["A0", "A1"] == 1
+    cal.set_flux_crosstalk("A0", "A1", 1)
+    assert cal.get_flux_crosstalk("A0", "A1") == 1
+    cal.set_microwave_crosstalk("A0", "A1", 1)
+    mw_abs, mw_phase = cal.get_microwave_crosstalk("A0", "A1")
+    assert mw_abs * np.exp(1j * mw_phase) == 1
 
-    cal.flux_crosstalk_matrix["A3", "A4"] = 99
+    cal.set_flux_crosstalk("A3", "A4", 99)
 
     cal.dump(tmp_path)
     new_cal = cal.model_validate_json((tmp_path / CALIBRATION).read_text())
 
-    cal.microwave_crosstalk_matrix["A3", "A4"] = 99
+    cal.set_microwave_crosstalk("A3", "A4", 99)
 
-    assert cal.flux_crosstalk_matrix["A3", "A4"] == 99
-    assert cal.microwave_crosstalk_matrix["A3", "A4"] == 99
+    assert cal.get_flux_crosstalk("A3", "A4") == 99
+    mw_abs, mw_phase = cal.get_microwave_crosstalk("A3", "A4")
+    assert mw_abs * np.exp(1j * mw_phase) == 99
 
-    assert cal.flux_crosstalk_matrix == new_cal.flux_crosstalk_matrix
-    assert cal.microwave_crosstalk_matrix != new_cal.microwave_crosstalk_matrix
+    assert np.allclose(cal.flux_crosstalk_matrix, new_cal.flux_crosstalk_matrix)
+    assert not np.allclose(
+        cal.microwave_crosstalk_matrix, new_cal.microwave_crosstalk_matrix
+    )
 
 
 def test_serialization_readout(tmp_path):

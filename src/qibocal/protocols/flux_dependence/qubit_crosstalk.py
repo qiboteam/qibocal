@@ -42,7 +42,7 @@ class QubitCrosstalkParameters(QubitFluxParameters):
 
     bias_point: dict[QubitId, float] | None = field(default_factory=dict)
     """Dictionary with {qubit_id: bias_point_qubit_id}."""
-    flux_qubits: list[QubitId] | None = None
+    flux_lines: list[QubitId] | None = None
     """IDs of the qubits that we will sweep the flux on.
     If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion.
     If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).
@@ -52,7 +52,7 @@ class QubitCrosstalkParameters(QubitFluxParameters):
 
 @dataclass
 class QubitCrosstalkData(QubitFluxData):
-    """Crosstalk acquisition outputs when ``flux_qubits`` are given."""
+    """Crosstalk acquisition outputs when ``flux_lines`` are given."""
 
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """Diagonal flux element."""
@@ -67,15 +67,15 @@ class QubitCrosstalkData(QubitFluxData):
     )
     """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
 
-    def register_qubit(self, qubit, flux_qubit, freq, bias, signal):
+    def register_qubit(self, qubit, flux_line, freq, bias, signal):
         """Store output for single qubit."""
         ar = utils.create_data_array(freq, bias, signal, dtype=QubitFluxType)
-        if (qubit, flux_qubit) in self.data:
-            self.data[qubit, flux_qubit] = np.rec.array(
-                np.concatenate((self.data[qubit, flux_qubit], ar))
+        if (qubit, flux_line) in self.data:
+            self.data[qubit, flux_line] = np.rec.array(
+                np.concatenate((self.data[qubit, flux_line], ar))
             )
         else:
-            self.data[qubit, flux_qubit] = ar
+            self.data[qubit, flux_line] = ar
 
 
 @dataclass
@@ -105,7 +105,7 @@ def _acquisition(
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
 
-    assert set(targets).isdisjoint(set(params.flux_qubits)), (
+    assert set(targets).isdisjoint(set(params.flux_lines)), (
         "Flux qubits must be different from targets."
     )
 
@@ -138,7 +138,9 @@ def _acquisition(
         maximum_frequency[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.maximum_frequency
-        matrix_element[qubit] = platform.calibration.flux_crosstalk_matrix[qubit, qubit]
+        matrix_element[qubit] = platform.calibration.get_flux_crosstalk(
+            qubit=qubit, flux_line=qubit
+        )
         charging_energy[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.charging_energy
@@ -159,7 +161,7 @@ def _acquisition(
             )
         )
 
-    for q in params.flux_qubits:
+    for q in params.flux_lines:
         flux_channel = platform.qubits[q].flux
         offset0 = platform.config(flux_channel).offset
         offset_sweepers.append(
@@ -197,7 +199,7 @@ def _acquisition(
         for q in targets
     ]
 
-    for flux_qubit, offset_sweeper in zip(params.flux_qubits, offset_sweepers):
+    for flux_line, offset_sweeper in zip(params.flux_lines, offset_sweepers):
         results = platform.execute(
             [sequence], [[offset_sweeper], freq_sweepers], **options, updates=updates
         )
@@ -207,7 +209,7 @@ def _acquisition(
             result = results[ro_pulses[qubit].id]
             data.register_qubit(
                 qubit,
-                flux_qubit,
+                flux_line,
                 signal=magnitude(result),
                 freq=freq_sweepers[i].values,
                 bias=offset_sweeper.values,
@@ -221,7 +223,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     qubit_frequency_bias_point = {}
     successful_fit = {}
 
-    for target_flux_qubit, qubit_data in data.data.items():
+    for target_flux_line, qubit_data in data.data.items():
         frequencies, biases = utils.flux_extract_feature(
             qubit_data.freq,
             qubit_data.bias,
@@ -229,7 +231,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             data.resonator_type == "2D",
         )
 
-        target_qubit, flux_qubit = target_flux_qubit
+        target_qubit, flux_line = target_flux_line
 
         if frequencies is None or biases is None:
             successful_fit[target_qubit] = False
@@ -269,7 +271,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                     bounds=((-np.inf, -1), (np.inf, 1)),
                     maxfev=100000,
                 )
-                fitted_parameters[target_qubit, flux_qubit] = dict(
+                fitted_parameters[target_qubit, flux_line] = dict(
                     xi=data.bias_point[target_qubit],
                     d=0,
                     w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
@@ -278,7 +280,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                     charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
                     crosstalk_element=float(popt[0]),
                 )
-                crosstalk_matrix[target_qubit][flux_qubit] = (
+                crosstalk_matrix[target_qubit][flux_line] = (
                     popt[0] * data.matrix_element[target_qubit]
                 )
                 successful_fit[target_qubit] = True
@@ -306,12 +308,12 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
         values = [
             np.round(fit.qubit_frequency_bias_point[target], 4),
         ]
-        for flux_qubit in fit.crosstalk_matrix[target]:
-            if flux_qubit != target:
-                labels.append(f"Crosstalk with qubit {flux_qubit} [V^-1]")
+        for flux_line in fit.crosstalk_matrix[target]:
+            if flux_line != target:
+                labels.append(f"Crosstalk with qubit {flux_line} [V^-1]")
             else:
                 labels.append("Flux dependence [V^-1]")
-            values.append(np.round(fit.crosstalk_matrix[target][flux_qubit], 4))
+            values.append(np.round(fit.crosstalk_matrix[target][flux_line], 4))
         fitting_report = table_html(
             table_dict(
                 target,
@@ -327,8 +329,12 @@ def _update(
 ):
     """Update crosstalk matrix."""
 
-    for flux_qubit, element in results.crosstalk_matrix[qubit].items():
-        platform.calibration.flux_crosstalk_matrix[qubit, flux_qubit] = element
+    for flux_line, element in results.crosstalk_matrix[qubit].items():
+        platform.calibration.set_flux_crosstalk(
+            qubit=qubit,
+            flux_line=flux_line,
+            value=element,
+        )
 
 
 qubit_crosstalk = Protocol(_acquisition, _fit, _plot, _update)

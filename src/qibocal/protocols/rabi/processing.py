@@ -71,8 +71,10 @@ def update_rabi_ampl_params(
     # drive line I want to pulse form.
     if target in results.amplitude:
         drive_line = results.drive_lines[target]
-        platform.calibration.microwave_crosstalk_matrix[target, drive_line] = (
-            results.amplitude[target][0]
+        platform.calibration.set_microwave_crosstalk(
+            qubit=target,
+            microwave_line=drive_line,
+            module=results.amplitude[target][0],
         )
 
 
