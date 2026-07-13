@@ -7,7 +7,7 @@ import plotly.express as px
 from qibo import gates
 from qibo.models import Circuit
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.auto.transpile import (
     build_native_gate_compiler,
     build_native_gate_transpiler,
@@ -178,5 +178,5 @@ def _update(
     )
 
 
-readout_mitigation_matrix = Routine(_acquisition, _fit, _plot, _update)
+readout_mitigation_matrix = Protocol(_acquisition, _fit, _plot, _update)
 """Readout mitigation matrix protocol."""

@@ -5,13 +5,13 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
-from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    lorentzian,
     lorentzian_fit,
+    lorentzian_with_linear_background,
     readout_frequency,
     table_dict,
     table_html,
@@ -257,7 +257,7 @@ def _plot(
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, *params),
+                    y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),
@@ -296,4 +296,4 @@ def _plot(
     return figures, fitting_report
 
 
-dispersive_shift_qutrit = Routine(_acquisition, fit=_fit, report=_plot)
+dispersive_shift_qutrit = Protocol(_acquisition, fit=_fit, report=_plot)

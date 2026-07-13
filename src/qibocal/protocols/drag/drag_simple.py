@@ -14,7 +14,7 @@ from qibolab import (
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
@@ -186,9 +186,16 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
                 sigma=qubit_data["error"],
             )
             fitted_parameters[qubit, setup] = popt.tolist()
-        betas_optimal[qubit] = -(
-            fitted_parameters[qubit, "YpX9"][1] - fitted_parameters[qubit, "XpY9"][1]
-        ) / (fitted_parameters[qubit, "YpX9"][0] - fitted_parameters[qubit, "XpY9"][0])
+        try:
+            betas_optimal[qubit] = -(
+                fitted_parameters[qubit, "YpX9"][1]
+                - fitted_parameters[qubit, "XpY9"][1]
+            ) / (
+                fitted_parameters[qubit, "YpX9"][0]
+                - fitted_parameters[qubit, "XpY9"][0]
+            )
+        except ZeroDivisionError:
+            pass
     return DragTuningSimpleResults(betas_optimal, fitted_parameters)
 
 
@@ -274,5 +281,5 @@ def _update(
     )
 
 
-drag_simple = Routine(_acquisition, _fit, _plot, _update)
-"""DragTuning Routine object."""
+drag_simple = Protocol(_acquisition, _fit, _plot, _update)
+"""DragTuning Protocol object."""

@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from qibolab import Platform, create_platform
+from qibolab import Platform
 
 import qibocal
 import qibocal.protocols
 from qibocal import Executor
-from qibocal.auto.history import History
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.auto.runcard import Action
 from qibocal.calibration.platform import (
+    CalibrationPlatform,
     create_calibration_platform,
 )
 from qibocal.protocols import flipping
@@ -33,32 +33,22 @@ ACTION = Action(**action)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-def test_anonymous_executor(params, platform):
+def test_executor(params: dict | Action, platform: Platform | str, tmp_path: Path):
     """Executor without any name."""
     platform = (
         platform
         if isinstance(platform, Platform)
         else create_calibration_platform(platform)
     )
-    executor = Executor(
-        history=History(),
+    executor = Executor.create(
         platform=platform,
         targets=list(platform.qubits),
         update=True,
+        path=tmp_path,
     )
     executor.run_protocol(
         flipping, Action.cast(params, "flipping"), mode=ExecutionMode.ACQUIRE
     )
-
-    assert executor.name is None
-
-
-@pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-def test_named_executor(params, platform):
-    """Create method of Executor."""
-    executor = Executor.create("myexec", platform=platform)
-    executor.run_protocol(flipping, Action.cast(params, "flipping"))
-    executor.unload()
 
 
 SCRIPTS = Path(__file__).parent / "scripts"
@@ -104,7 +94,7 @@ def fake_protocols(request):
 
     protocols = {}
     for name in marker.args:
-        routine = Routine(_acquisition, _fit, _plot, _update)
+        routine = Protocol(_acquisition, _fit, _plot, _update)
         setattr(qibocal.protocols, name, routine)
         protocols[name] = routine
 
@@ -112,72 +102,44 @@ def fake_protocols(request):
 
 
 @pytest.fixture
-def executor(platform):
-    executor = Executor.create("my-exec")
-    yield executor
-    try:
-        executor.unload()
-    except KeyError:
-        # it has been explicitly unloaded, no need to do it again
-        pass
+def executor(tmp_path: Path, platform: CalibrationPlatform):
+    return Executor.create(tmp_path / "out", targets=[0])
 
 
-@pytest.mark.protocols("ciao", "come")
-def test_simple(fake_protocols, platform):
-    globals_ = {}
-    exec((SCRIPTS / "simple.py").read_text(), globals_)
-    assert globals_["res"]._results.par[0] == 42
-
-
-def test_init(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-init-folder"
-
+def test_init(executor: Executor):
     init = executor.init
 
-    init(path)
+    init()
     with pytest.raises(RuntimeError, match="Directory .* already exists"):
-        init(path)
+        init()
 
-    init(path, force=True)
+    init(force=True)
 
     assert executor.meta is not None
     assert executor.meta.start is not None
 
-    init(path, force=True, platform="mock")
-    assert executor.platform.name == "mock"
 
-    init(path, force=True, platform=create_platform("mock"))
-    assert executor.platform.name == "mock"
-
-
-def test_close(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-close-folder"
-
-    init = executor.init
-    close = executor.close
-
-    init(path)
-    close()
+def test_close(executor: Executor):
+    executor.init()
+    executor.close()
 
     assert executor.meta is not None
     assert executor.meta.start is not None
     assert executor.meta.end is not None
 
 
-def test_context_manager(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-ctx-folder"
-
-    executor.init(path)
+def test_context_manager(executor: Executor):
+    executor.init()
 
     with executor:
         assert executor.meta is not None
         assert executor.meta.start is not None
 
 
-def test_open(tmp_path: Path, platform):
+def test_open(tmp_path: Path, platform: CalibrationPlatform):
     path = tmp_path / "my-open-folder"
 
-    with Executor.open("myexec", path) as e:
+    with Executor.open(path, targets=[0]) as e:
         assert isinstance(e.t1, Callable)
         assert e.meta is not None
         assert e.meta.start is not None
@@ -185,11 +147,11 @@ def test_open(tmp_path: Path, platform):
     assert e.meta.end is not None
 
 
-def test_single_shot(tmp_path: Path, platform):
+def test_single_shot(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "targets": [0], "path": tmp_path}
     exec((CALIBRATION_SCRIPTS / "single_shot.py").read_text(), globals_)
 
 
-def test_rx_calibration(tmp_path: Path, platform):
+def test_rx_calibration(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "target": 0, "path": tmp_path}
     exec((CALIBRATION_SCRIPTS / "rx_calibration.py").read_text(), globals_)

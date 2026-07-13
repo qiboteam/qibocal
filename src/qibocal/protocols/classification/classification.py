@@ -14,9 +14,9 @@ from qibocal.auto.operation import (
     RESULTSFILE,
     Data,
     Parameters,
+    Protocol,
     QubitId,
     Results,
-    Routine,
 )
 from qibocal.auto.serialize import serialize
 from qibocal.calibration import CalibrationPlatform
@@ -432,5 +432,5 @@ def _update(
     ].readout.effective_temperature = results.effective_temperature[target][0]
 
 
-single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
+single_shot_classification = Protocol(_acquisition, _fit, _plot, _update)
 """Qubit classification routine object."""

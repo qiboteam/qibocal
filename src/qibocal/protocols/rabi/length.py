@@ -5,7 +5,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, QubitId, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
@@ -167,5 +167,5 @@ def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     return utils.plot_probabilities(data, target, fit, data.rx90)
 
 
-rabi_length = Routine(_acquisition, _fit, _plot, _update)
-"""RabiLength Routine object."""
+rabi_length = Protocol(_acquisition, _fit, _plot, _update)
+"""RabiLength Protocol object."""

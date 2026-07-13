@@ -23,14 +23,12 @@
     "0/drive": {
       "kind": "drive-emulator",
       "frequency": 5e9,
-      "rabi_frequency": 20e6,
-      "scale_factor": 10
+      "rabi_frequency": 200e6
     },
     "0/drive12": {
       "kind": "drive-emulator",
       "frequency": 4.8e9,
-      "rabi_frequency": 20e6,
-      "scale_factor": 10
+      "rabi_frequency": 200e6
     },
   "0/probe": {
     "kind": "iq",

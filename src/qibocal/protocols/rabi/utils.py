@@ -5,17 +5,15 @@ from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, QubitId
-from qibocal.update import replace
-
-from ..utils import (
+from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     angle_wrap,
-    fallback_period,
     guess_period,
     table_dict,
     table_html,
 )
+from qibocal.update import replace
 
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -53,7 +51,7 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
 
 
 def rabi_initial_guess(x, y, experiment: str, signal: bool):
-    period = fallback_period(guess_period(x, y))
+    period = guess_period(x, y)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
@@ -338,7 +336,7 @@ def sequence_length(
 
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
-):
+) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_length_function,
         x,
@@ -374,12 +372,12 @@ def fit_length_function(
         ]
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr, pi_pulse_parameter
+    return popt, perr.tolist(), pi_pulse_parameter
 
 
 def fit_amplitude_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
-):
+) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_amplitude_function,
         x,
@@ -404,5 +402,9 @@ def fit_amplitude_function(
                 - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2]
             ),
         ]
+    else:
+        popt = popt.tolist()
+
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr, pi_pulse_parameter
+
+    return popt, perr.tolist(), pi_pulse_parameter

@@ -10,10 +10,10 @@ from qibolab import Platform
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitId,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.auto.transpile import (
     build_native_gate_compiler,
@@ -160,6 +160,8 @@ def _acquisition(
         except AssertionError:
             mitigation_matrix = None
 
+        circuits = []
+        bases = []
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(
@@ -168,18 +170,23 @@ def _acquisition(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    [result] = execute_circuits(
-                        [circuit],
-                        [pair],
-                        platform,
-                        transpiler,
-                        compiler,
-                        nshots=params.nshots,
-                    )
-                    [state_counter] = result[pair]
-                    data.register_basis(pair, bell_state, basis, state_counter)
+                    circuits.append(circuit)
+                    bases.append([bell_state, basis])
 
-            data.frequencies[pair, bell_state] = freqs = merge_frequencies(
+        results = execute_circuits(
+            circuits,
+            [pair],
+            platform,
+            transpiler,
+            compiler,
+            nshots=params.nshots,
+        )
+
+        for result, (bell_state, basis) in zip(results, bases):
+            data.register_basis(pair, bell_state, basis, result)
+
+        for bell_state in params.bell_states:
+            data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
             )
             if mitigation_matrix is not None:
@@ -294,5 +301,5 @@ def _fit(data: CHSHData) -> CHSHResults:
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)
 
 
-chsh = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
+chsh = Protocol(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CHSH experiment using pulses."""

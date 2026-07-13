@@ -10,21 +10,21 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
 from ... import update
 from ...result import magnitude, phase
-from ..resonator_spectroscopies.resonator_spectroscopy import ResSpecType
-from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
 from ..utils import readout_frequency, table_dict, table_html
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
+    QubitSpecType,
     _fit,
 )
+from .qubit_spectroscopy import _plot as qubit_spectroscopy_plot
 
 __all__ = ["qubit_spectroscopy_ef"]
 
@@ -121,7 +121,6 @@ def _acquisition(
         )
 
     data = QubitSpectroscopyEFData(
-        resonator_type=platform.resonator_type,
         amplitudes=amplitudes,
         drive_frequencies=drive_frequencies,
     )
@@ -153,7 +152,7 @@ def _acquisition(
         _phase = phase(result)
 
         data.register_qubit(
-            ResSpecType,
+            QubitSpecType,
             (qubit),
             dict(
                 signal=signal,
@@ -168,7 +167,7 @@ def _plot(
     data: QubitSpectroscopyEFData, target: QubitId, fit: QubitSpectroscopyEFResults
 ):
     """Plotting function for QubitSpectroscopy."""
-    figures, report = spectroscopy_plot(data, target, fit)
+    figures, report = qubit_spectroscopy_plot(data, target, fit)
     if fit is not None:
         report = table_html(
             table_dict(
@@ -200,5 +199,5 @@ def _update(
     ]
 
 
-qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)
-"""QubitSpectroscopyEF Routine object."""
+qubit_spectroscopy_ef = Protocol(_acquisition, fit_ef, _plot, _update)
+"""QubitSpectroscopyEF Protocol object."""

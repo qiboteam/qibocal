@@ -1,7 +1,11 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
+import numpy.typing as npt
+import plotly.graph_objects as go
+import scipy.constants
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -11,21 +15,17 @@ from qibolab import (
     Sweeper,
 )
 from qibolab._core.components import IqChannel
+from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import (
+    lorentzian,
+    table_dict,
+    table_html,
+)
 from qibocal.result import magnitude, phase
-from qibocal.update import replace
-
-from ... import update
-from ..resonator_spectroscopies.resonator_spectroscopy import (
-    ResonatorSpectroscopyData,
-    ResSpecType,
-)
-from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
-from ..utils import (
-    lorentzian_fit,
-)
 
 __all__ = [
     "qubit_spectroscopy",
@@ -34,6 +34,16 @@ __all__ = [
     "QubitSpectroscopyData",
     "_fit",
 ]
+
+
+QubitSpecType = np.dtype(
+    [
+        ("freq", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
+    ]
+)
+"""Custom dtype for qubit spectroscopy."""
 
 
 @dataclass
@@ -62,8 +72,14 @@ class QubitSpectroscopyResults(Results):
     """Raw fitting output."""
 
 
-class QubitSpectroscopyData(ResonatorSpectroscopyData):
+@dataclass
+class QubitSpectroscopyData(Data):
     """QubitSpectroscopy acquisition outputs."""
+
+    amplitudes: dict[QubitId, float]
+    """Amplitudes provided by the user."""
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 def _calculate_batches(freq_width: int, max_if_bandwidth: int = 300_000_000):
@@ -108,7 +124,7 @@ def _acquisition(
 
     # Initialize storage for intermediate results
     values = {qubit: defaultdict(list) for qubit in targets}
-    amplitudes = {qubit: None for qubit in targets}
+    drive_amplitudes: dict[QubitId, float] = {}
 
     # Execute each batch
     for start, end, lo_offset in batches:
@@ -125,12 +141,14 @@ def _acquisition(
             _, qd_pulse = natives.RX()[0]
             ro_channel, ro_pulse = natives.MZ()[0]
 
-            qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+            qd_pulse = update.replace(qd_pulse, duration=params.drive_duration)
             if params.drive_amplitude is not None:
-                qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+                qd_pulse = update.replace(qd_pulse, amplitude=params.drive_amplitude)
 
-            if qubit not in amplitudes:
-                amplitudes[qubit] = qd_pulse.amplitude
+            if qubit not in drive_amplitudes:
+                # If already added, skip re-adding since the drive amplitude is
+                # unchanged across batches.
+                drive_amplitudes[qubit] = qd_pulse.amplitude
 
             ro_pulses[qubit] = ro_pulse
 
@@ -190,9 +208,7 @@ def _acquisition(
             values[qubit]["phase"].append(_phase)
 
     # Create data structure and aggregate results
-    data = QubitSpectroscopyData(
-        resonator_type=platform.resonator_type, amplitudes=amplitudes
-    )
+    data = QubitSpectroscopyData(amplitudes=drive_amplitudes)
 
     # Combine all batches for each qubit
     for qubit in targets:
@@ -202,7 +218,7 @@ def _acquisition(
         _phase = np.concatenate(values[qubit]["phase"])
 
         data.register_qubit(
-            ResSpecType,
+            QubitSpecType,
             (qubit),
             dict(
                 signal=signal,
@@ -214,15 +230,102 @@ def _acquisition(
     return data
 
 
+def _lorentzian_with_offset(frequency, amplitude, center, sigma, offset):
+    return lorentzian(frequency, amplitude, center, sigma) + offset
+
+
+def _guess_initial_parameters(signal, frequencies, is_peak):
+    k = max(1, int(0.1 * len(signal)))
+    guess_offset = np.mean(np.concatenate([signal[:k], signal[-k:]]))
+
+    guess_offset = (signal[0] + signal[-1]) / 2
+    signal_no_background = signal - guess_offset
+
+    sign = 1 if is_peak else -1
+    signal_flipped = signal_no_background * sign
+    guess_center = frequencies[np.argmax(signal_flipped)]
+    guess_peak_height = signal_flipped.max() * sign
+    indices_beyond_half = np.where(signal_flipped > signal_flipped.max() / 2)[0]
+
+    if len(indices_beyond_half) >= 1:
+        guess_sigma = (
+            frequencies[indices_beyond_half[-1]] - frequencies[indices_beyond_half[0]]
+        ) / 2
+    else:
+        # if there is no clear peak, we give a high flexibility
+        guess_sigma = frequencies[-1] - frequencies[0]
+
+    guess_amp = guess_peak_height * guess_sigma * np.pi
+
+    return [
+        guess_amp,
+        guess_center,
+        guess_sigma,
+        guess_offset,
+    ]
+
+
+def _lorentzian_fit(data):
+    frequencies = data.freq
+    signal = data.signal
+
+    freq_domain_size = frequencies[-1] - frequencies[0]
+
+    # Try to fit both peak and dip, and pick the best one
+    best_fit = None
+    for is_peak in [True, False]:
+        initial_parameters = _guess_initial_parameters(signal, frequencies, is_peak)
+        bounds = (
+            [0.0 if is_peak else -np.inf, frequencies[0], 0.0, -np.inf],
+            [np.inf if is_peak else 0.0, frequencies[-1], freq_domain_size, np.inf],
+        )
+
+        # fit the model with the data and guessed parameters
+        try:
+            fit_parameters, parameters_cov = curve_fit(
+                _lorentzian_with_offset,
+                frequencies,
+                signal,
+                p0=initial_parameters,
+                bounds=bounds,
+            )
+        except RuntimeError:
+            continue
+
+        sum_sq_residuals = float(
+            np.sum(
+                (signal - _lorentzian_with_offset(frequencies, *fit_parameters)) ** 2
+            )
+        )
+
+        if best_fit is None or sum_sq_residuals < best_fit["sum_sq_residuals"]:
+            best_fit = {
+                "fit_parameters": fit_parameters,
+                "parameters_cov": parameters_cov,
+                "sum_sq_residuals": sum_sq_residuals,
+            }
+
+    if best_fit is None:
+        raise RuntimeError("fit failed")
+
+    # The output results are stored in a json, but ndarray is not JSON serializable,
+    # so the parameters are converted to list.
+    parameter_errors = np.sqrt(np.diag(best_fit["parameters_cov"])).tolist()
+    model_parameters = best_fit["fit_parameters"].tolist()
+    return (
+        model_parameters[1],
+        model_parameters,
+        parameter_errors,
+    )
+
+
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
     qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        fit_result = lorentzian_fit(
-            data[qubit], resonator_type=data.resonator_type, fit="qubit"
-        )
+        fit_result = _lorentzian_fit(data[qubit])
         if fit_result is not None:
             frequency[qubit], fitted_parameters[qubit], _ = fit_result
     return QubitSpectroscopyResults(
@@ -233,8 +336,86 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 
 
 def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyResults):
-    """Plotting function for QubitSpectroscopy."""
-    return spectroscopy_plot(data, target, fit)
+    figures = []
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+    )
+    qubit_data = data[target]
+    fitting_report = ""
+    frequencies = qubit_data.freq
+    signal = qubit_data.signal
+
+    phase = qubit_data.phase
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies * scipy.constants.nano,
+            y=signal,
+            opacity=1,
+            name="Frequency",
+            showlegend=True,
+            legendgroup="Frequency",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies * scipy.constants.nano,
+            y=phase,
+            opacity=1,
+            name="Phase",
+            showlegend=True,
+            legendgroup="Phase",
+        ),
+        row=1,
+        col=2,
+    )
+
+    freqrange = np.linspace(
+        min(frequencies),
+        max(frequencies),
+        2 * len(frequencies),
+    )
+
+    if fit is not None:
+        params = fit.fitted_parameters[target]
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange * scipy.constants.nano,
+                y=_lorentzian_with_offset(freqrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
+
+        if data.amplitudes[target] is not None:
+            labels = ["Qubit Frequency [Hz]", "Drive Amplitude [a.u.]"]
+            values = [fit.frequency[target], data.amplitudes[target]]
+
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    labels,
+                    values,
+                )
+            )
+
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title="Frequency [GHz]",
+        yaxis_title="Signal [a.u.]",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
+    )
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
 def _update(
@@ -246,6 +427,6 @@ def _update(
     update.drive_frequency(results.frequency[target], platform, target)
 
 
-qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
+qubit_spectroscopy = Protocol(_acquisition, _fit, _plot, _update)
 """Qubit Spectroscopy routine.
 """

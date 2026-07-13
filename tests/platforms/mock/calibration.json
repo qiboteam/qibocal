@@ -8,12 +8,12 @@
       },
       "qubit": {
         "frequency_01": 4000000000.0,
-        "frequency_12": 3800000000.0,
+        "frequency_12": 3900000000.0,
         "maximum_frequency": 4000000000.0,
         "asymmetry": 0.0,
         "sweetspot": 0.0,
         "flux_coefficients": [
-          2.0,
+          -2.0,
           0.1,
           0.001
         ]
@@ -39,12 +39,12 @@
       },
       "qubit": {
         "frequency_01": 4200000000.0,
-        "frequency_12": 4000000000.0,
-        "maximum_frequency": 4000000000.0,
+        "frequency_12": 4100000000.0,
+        "maximum_frequency": 4200000000.0,
         "asymmetry": 0.0,
         "sweetspot": 0.0,
         "flux_coefficients": [
-          2.0,
+          -2.0,
           0.1,
           0.001
         ]

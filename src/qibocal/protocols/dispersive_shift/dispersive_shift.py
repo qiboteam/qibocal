@@ -3,22 +3,21 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.constants
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
-    HZ_TO_GHZ,
-    lorentzian,
     lorentzian_fit,
+    lorentzian_with_linear_background,
     readout_frequency,
     table_dict,
     table_html,
 )
-
-from ...result import magnitude, phase, unpack
+from qibocal.result import magnitude, phase, unpack
 
 __all__ = ["dispersive_shift", "DispersiveShiftData", "DispersiveShiftParameters"]
 
@@ -190,6 +189,10 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResults):
     """Plotting function for dispersive shift."""
     figures = []
+    color_map = {
+        0: "blue",
+        1: "red",
+    }
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -203,29 +206,29 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 
     for state in (0, 1):
         label = f"State {state}"
+        data_group = f"state{state}-data"
+        fit_group = f"state{state}-fit"
         q_data = data[target, state]
 
-        frequencies = q_data.freq * HZ_TO_GHZ
-        fig.add_trace(
-            go.Scatter(
-                x=frequencies,
-                y=q_data.signal,
-                name=f"{label} signal",
-                showlegend=True,
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=frequencies,
-                y=q_data.phase,
-                name=f"{label} phase",
-                showlegend=True,
-            ),
-            row=1,
-            col=2,
-        )
+        frequencies = q_data.freq * scipy.constants.nano
+        for col, y in enumerate([q_data.signal, q_data.phase], start=1):
+            fig.add_trace(
+                go.Scatter(
+                    x=frequencies,
+                    y=y,
+                    name=f"{label} data",
+                    showlegend=(col == 1),
+                    legendgroup=data_group,
+                    mode="markers",
+                    marker=dict(
+                        color=color_map[state],
+                        size=5,
+                        symbol="circle",
+                    ),
+                ),
+                row=1,
+                col=col,
+            )
         if fit is not None and fit.frequencies[target] is not None:
             freqrange = np.linspace(
                 min(frequencies),
@@ -236,10 +239,11 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, *params),
+                    y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} fit",
                     showlegend=True,
-                    line=go.scatter.Line(dash="dot"),
+                    legendgroup=fit_group,
+                    line=go.scatter.Line(color=color_map[state]),
                 ),
                 row=1,
                 col=1,
@@ -247,22 +251,35 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 
     fitting_report = ""
     if fit is not None:
+        bestfit_group = "bestfit"
         all_signals = np.concatenate((data[target, 0].signal, data[target, 1].signal))
         fig.add_trace(
             go.Scatter(
-                x=[fit.best_freq[target] * HZ_TO_GHZ] * 2,
-                y=[
-                    np.min(all_signals),
-                    np.max(all_signals),
-                ],
+                x=[fit.best_freq[target] * scipy.constants.nano] * 2,
+                y=[all_signals.min(), all_signals.max()],
                 mode="lines",
-                line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                line=go.scatter.Line(color="black", width=3, dash="dash"),
                 name="Best frequency",
+                legendgroup=bestfit_group,
                 showlegend=True,
             ),
             row=1,
             col=1,
         )
+        all_phases = np.concatenate((data[target, 0].phase, data[target, 1].phase))
+        fig.add_trace(
+            go.Scatter(
+                x=[fit.best_freq[target] * scipy.constants.nano] * 2,
+                y=[all_phases.min(), all_phases.max()],
+                mode="lines",
+                line=go.scatter.Line(color="black", width=3, dash="dash"),
+                legendgroup=bestfit_group,
+                showlegend=False,
+            ),
+            row=1,
+            col=2,
+        )
+
         if fit.frequencies[target] is not None:
             table_entries = [
                 "Ground state Frequency [Hz]",
@@ -316,5 +333,5 @@ def _update(
         )
 
 
-dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
-"""Dispersive shift Routine object."""
+dispersive_shift = Protocol(_acquisition, _fit, _plot, _update)
+"""Dispersive shift Protocol object."""

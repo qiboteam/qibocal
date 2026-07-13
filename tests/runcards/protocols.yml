@@ -475,12 +475,6 @@ actions:
     parameters:
       nshots: 10
 
-  - id: calibrate_state_discrimination unrolling
-    operation: calibrate_state_discrimination
-    parameters:
-      nshots: 10
-      unrolling: true
-
   - id: ramsey_detuned
     operation: ramsey
     parameters:
@@ -520,13 +514,6 @@ actions:
       beta_param: null
       nshots: 10
 
-  - id: allXY unrolling
-    operation: allxy
-    parameters:
-      beta_param: null
-      unrolling: True
-      nshots: 10
-
   - id: resonator_depletion_tuning
     operation: allxy_resonator_depletion_tuning
     parameters:
@@ -534,15 +521,6 @@ actions:
       delay_end: 3000.0
       delay_step: 1000.0
       nshots: 10
-
-  - id: resonator_depletion_tuning unrolling
-    operation: allxy_resonator_depletion_tuning
-    parameters:
-      delay_start: 1000.0
-      delay_end: 3000.0
-      delay_step: 1000.0
-      nshots: 10
-      unrolling: true
 
   - id: drag_pulse_tuning
     operation: drag_tuning
@@ -678,9 +656,9 @@ actions:
       amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
-      duration_step: 10
-      nshots: 10
+      duration_step: 1
       native: CZ
+      nshots: 1000
       parking: True
 
   - id: chevron cz signal
@@ -894,6 +872,7 @@ actions:
       theta_end: 1
       theta_step: 0.1
       t_idling: 1
+      tp: 10
 
   - id: snz_optimize_t_idle
     operation: snz_optimize_t_idle
@@ -909,6 +888,7 @@ actions:
       theta_end: 1
       theta_step: 0.1
       b_amplitude: 0.2
+      tp: 10
 
   - id: snz_optimize_t_idle_vs_t_tot
     operation: snz_optimize_t_idle_vs_t_tot
@@ -935,3 +915,29 @@ actions:
       twpa_pow_width: 10
       twpa_pow_step: 3
       nshots: 20000
+
+  - id: CR tomography amplitude
+    operation: cr_amplitude
+    targets: [[0, 1]]
+    parameters:
+      amplitude_range: [0.01, 0.1, 0.01]
+      echo: true
+      nshots: 2000
+      pulse_duration: 10
+
+  - id: CR tomography length
+    operation: cr_length
+    targets: [[0, 1]]
+    parameters:
+      duration_range: [10, 20, 1]
+      pulse_amplitude: 0.1
+      nshots: 2000
+
+  - id: CR tomography interpolated
+    operation: cr_length
+    targets: [[0, 1]]
+    parameters:
+      duration_range: [10, 20, 1]
+      nshots: 2000
+      pulse_amplitude: 0.1
+      interpolated_sweeper: true

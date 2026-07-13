@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
@@ -329,5 +329,5 @@ def _update(
     update.drive_frequency(results.frequency[target], platform, target)
 
 
-rabi_length_frequency_signal = Routine(_acquisition, _fit, _plot, _update)
+rabi_length_frequency_signal = Protocol(_acquisition, _fit, _plot, _update)
 """Rabi length with frequency tuning."""

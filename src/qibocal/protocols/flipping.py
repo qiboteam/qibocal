@@ -7,7 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
@@ -371,5 +371,5 @@ def _update(results: FlippingResults, platform: CalibrationPlatform, qubit: Qubi
     update.drive_amplitude(results.amplitude[qubit], results.rx90, platform, qubit)
 
 
-flipping = Routine(_acquisition, _fit, _plot, _update)
-"""Flipping Routine  object."""
+flipping = Protocol(_acquisition, _fit, _plot, _update)
+"""Flipping Protocol  object."""

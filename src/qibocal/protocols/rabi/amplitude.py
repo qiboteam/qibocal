@@ -5,7 +5,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.auto.operation import Data, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
@@ -118,7 +118,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 signal=False,
             )
             pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
-            fitted_parameters[qubit] = popt.tolist()
+            fitted_parameters[qubit] = popt
             durations = {key: [value, 0] for key, value in data.durations.items()}
             chi2[qubit] = [
                 chi2_reduced(
@@ -148,5 +148,5 @@ def _update(
     update.drive_duration(results.length[target], results.rx90, platform, target)
 
 
-rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)
-"""RabiAmplitude Routine object."""
+rabi_amplitude = Protocol(_acquisition, _fit, _plot, _update)
+"""RabiAmplitude Protocol object."""

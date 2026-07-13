@@ -17,7 +17,6 @@ The fastest way consists in using the `Executor` class in the following way
     from qibocal.auto.mode import ExecutionMode
 
     with Executor.open(
-        "myexec", # arbitrary name for executor
         path="test_t1_signal", # path where the data will be stored
         platform="my_platform", # platform to be used
         targets=[0], # qubits on which the experiment will be executed
@@ -171,7 +170,7 @@ In the acquisition function we are going to perform the experiment.
         from qibocal.auto.operation import QubitId, QubitPairId
         from typing import Union
 
-        def acquisition(params: RoutineParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> RoutineData
+        def acquisition(params: ProtocolParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> ProtocolData
         """A generic acquisition function."""
 
 
@@ -253,7 +252,7 @@ The following function performs a sinusoidal fit for each qubit.
 
       .. code-block:: python
 
-        def fit(data: RoutineData) -> RoutineResults
+        def fit(data: ProtocolData) -> ProtocolResults
         """ A generic fit."
 
     where `Qubits` is a `dict[QubitId, Qubit]`.
@@ -299,7 +298,7 @@ use `plotly <https://plotly.com/python/>`_ in order to properly generate the rep
 
         import plotly.graph_objects as go
 
-        def plot(data: RoutineData, fit: RoutineResults, target: QubitId) -> list[go.Figure(), str]
+        def plot(data: ProtocolData, fit: ProtocolResults, target: QubitId) -> list[go.Figure(), str]
         """ A generic plotting function."""
 
     The ``str`` in output can be used to create a table, which has 3 columns ``target``, ``Fitting Parameter``
@@ -368,13 +367,13 @@ Here is the plotting function for the protocol that we are coding:
         return figures, fitting_report
 
 
-Create ``Routine`` object
+Create ``Protocol`` object
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-    rotation = Routine(acquisition, fit, plot)
-    """Rotation Routine  object."""
+    rotation = Protocol(acquisition, fit, plot)
+    """Rotation Protocol  object."""
 
 
 Add routine to `Operation` Enum
@@ -422,3 +421,46 @@ Here is the expected output:
 
 
 .. image:: output.png
+
+Extend experiments' library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Qibocal built-in protocols' collection can be extended with bundles provided at runtime.
+
+In order to consume these extensions, the only requirement is to register them in the
+:class:`~qibocal.Executor` being used::
+
+
+    with Executor.open(
+        path="test_with_extension",
+        sources=[my_collection]
+    ) as e:
+        ...
+
+The chosen source (in this case ``my_collection``) will be additional to the internal
+library, but it will take priority on it.
+
+.. admonition:: Priority
+
+   Collections appearing later in the specified sources are shadowing the names in the
+   former ones.
+
+   At the moment, no scope mechanism is provided.
+
+:attr:`~qibocal.Executor.sources` is just a list of collections, of type
+:obj:`~qibocal.ProtocolsCollection`, which just consists of a mapping of protocols'
+names to :class:`~qibocal.Protocol` objects.
+
+E.g., the collection used in the previous example could consist of the protocol defined
+in the former section, and it could be defined as::
+
+    from qibocal import ProtocolsCollection  # just for typing, not required
+
+    my_collection: ProtocolsCollection = {"my_rotation": rotation}
+
+Once registered, the new protocols can be accessed through the :class:`~qibocal.Executor`::
+
+    result = e.my_rotation(...)
+
+Notice that the name used is the one specified as the dictionary key. For this reason,
+the names are constrained to be valid Python identifiers.

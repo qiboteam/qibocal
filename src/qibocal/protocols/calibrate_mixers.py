@@ -10,7 +10,7 @@ from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
 from qibolab._core.instruments.qblox.identifiers import SequencerMap
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 __all__ = ["calibrate_mixers"]
@@ -487,5 +487,5 @@ def _update(
             )
 
 
-calibrate_mixers = Routine(_acquisition, _fit, _plot, _update)
-"""Calibrate mixers Routine object."""
+calibrate_mixers = Protocol(_acquisition, _fit, _plot, _update)
+"""Calibrate mixers Protocol object."""

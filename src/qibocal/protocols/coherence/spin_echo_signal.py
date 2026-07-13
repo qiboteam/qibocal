@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
@@ -205,5 +205,5 @@ def update_spin_echo(
     update.t2_spin_echo(results.t2[target], platform, target)
 
 
-spin_echo_signal = Routine(_acquisition, _fit, _plot, update_spin_echo)
-"""SpinEcho Routine object."""
+spin_echo_signal = Protocol(_acquisition, _fit, _plot, update_spin_echo)
+"""SpinEcho Protocol object."""

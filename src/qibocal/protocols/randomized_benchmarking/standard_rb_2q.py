@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.standard_rb import (
     StandardRBParameters,
@@ -54,4 +54,4 @@ def _update(
     )
 
 
-standard_rb_2q = Routine(_acquisition, _fit, _plot, _update)
+standard_rb_2q = Protocol(_acquisition, _fit, _plot, _update)

@@ -8,9 +8,11 @@ from qibocal.protocols.rabi.utils import (
     fit_amplitude_function as rabi_fit_amplitude_function,
 )
 from qibocal.protocols.rabi.utils import fit_length_function as rabi_fit_length_function
+from qibocal.protocols.rabi.utils import (
+    rabi_initial_guess,
+)
 from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
 from qibocal.protocols.ramsey.processing import process_fit as ramsey_process_fit
-from qibocal.protocols.utils import fallback_period, guess_period
 
 
 def test_ramsey_fit():
@@ -80,28 +82,18 @@ def test_rabi_fit():
                 signal = (raw_signal - sig_min) / (sig_max - sig_min)
                 x_lims = (x_min, x_max)
                 signal_lims = (sig_min, sig_max)
-
+                signal_flag = True
             else:
                 signal = raw_signal
                 x = raw_x
                 x_lims = (None, None)
                 signal_lims = (None, None)
-
-            period = fallback_period(guess_period(x, signal))
-            median_sig = np.median(signal)
-            q80 = np.quantile(signal, 0.8)
-            q20 = np.quantile(signal, 0.2)
-            amplitude_guess = abs(q80 - q20)
+                signal_flag = False
 
             if "amp" in str_sub:
-                signal_flag = "signal" in str_sub
-                pguess = [
-                    median_sig,
-                    amplitude_guess,
-                    period,
-                    np.pi / 2 if signal_flag else np.pi,
-                ]
-                _, _, pi_pulse_parameter = rabi_fit_amplitude_function(
+                pguess = rabi_initial_guess(x, signal, "amplitude", signal_flag)
+
+                fit_params, _, pi_pulse_parameter = rabi_fit_amplitude_function(
                     x,
                     signal,
                     pguess,
@@ -121,15 +113,9 @@ def test_rabi_fit():
                 assert math.isclose(true_amplitude, new_amplitude, rel_tol=2.5e-2)
 
             if "length" in str_sub:
-                signal_flag = "signal" in str_sub
-                pguess = [
-                    median_sig,
-                    amplitude_guess,
-                    period,
-                    np.pi / 2 if signal_flag else np.pi,
-                    0,
-                ]
-                _, _, pi_pulse_parameter = rabi_fit_length_function(
+                pguess = rabi_initial_guess(x, signal, "length", signal_flag)
+
+                fit_params, _, pi_pulse_parameter = rabi_fit_length_function(
                     x,
                     signal,
                     pguess,

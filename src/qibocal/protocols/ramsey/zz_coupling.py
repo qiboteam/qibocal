@@ -16,7 +16,7 @@ from qibolab import (
 )
 
 from qibocal import update
-from qibocal.auto.operation import QubitId, QubitPairId, Routine
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
@@ -212,11 +212,7 @@ def _execute_ramsey_zz(
                 RamseyZZType,
                 (pair, setup),
                 dict(
-                    wait=np.arange(
-                        params.delay_between_pulses_start,
-                        params.delay_between_pulses_end,
-                        params.delay_between_pulses_step,
-                    ),
+                    wait=np.arange(*params.delay_range),
                     targ_prob=targ_probs,
                     spect_prob=spect_probs,
                 ),
@@ -499,12 +495,11 @@ def _update(
     results: RamseyZZResults, platform: CalibrationPlatform, target: QubitPairId
 ) -> None:
     """Update the platform calibration with the results of the Ramsey ZZ experiment."""
-
     update.pair_coupling(results.coupling[target], platform, target)
 
 
-ramsey_zz = Routine(_acquisition, _fit, _plot, _update)
-"""Ramsey ZZ Routine object.
+ramsey_zz = Protocol(_acquisition, _fit, _plot, _update)
+"""Ramsey ZZ Protocol object.
 
 This protocol measures the state-dependent frequency shift (ZZ interaction)
 between a selected target qubit and one spectator qubit. It

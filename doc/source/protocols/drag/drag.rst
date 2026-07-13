@@ -47,7 +47,6 @@ Example
             beta_end: 1
             beta_step: 0.1
             nflips: 5
-            unrolling: true
 
 
 Running this protocol you should get something like this:
@@ -83,7 +82,6 @@ Example
             beta_start: -1
             beta_end: 1
             beta_step: 0.1
-            unrolling: true
 
 .. image:: drag_simple.png
 

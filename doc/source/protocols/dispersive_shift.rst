@@ -31,7 +31,7 @@ where we introduced the dispersive shift
 Equation :eq:`eq_1` shows that the resonator frequency is :math:`\omega_{r,0} = \omega_r - \chi` (:math:`\omega_{r,1} = \omega_r + \chi`) when the
 qubit is in the ground (excited) state. The separation between the two freqiencies is :math:`\lvert 2 \chi \rvert`.
 
-Routine description
+Protocol description
 ^^^^^^^^^^^^^^^^^^^
 After collecting the data from the two spectroscopies, for each readout frequency the distance of the centers of the blobs for
 :math:`\ket{0}` and :math:`\ket{1}` states are evaluated. The best readout frequency is the one maximizing the distance between the two blobs.

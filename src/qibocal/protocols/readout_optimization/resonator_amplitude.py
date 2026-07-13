@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
@@ -207,5 +207,5 @@ def _update(
     update.threshold(results.best_threshold[target], platform, target)
 
 
-resonator_amplitude = Routine(_acquisition, _fit, _plot, _update)
-"""Resonator Amplitude Routine  object."""
+resonator_amplitude = Protocol(_acquisition, _fit, _plot, _update)
+"""Resonator Amplitude Protocol  object."""

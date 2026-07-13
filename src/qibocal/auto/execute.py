@@ -2,14 +2,19 @@
 
 import importlib
 import importlib.util
+import operator
 import os
 import sys
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass, fields
+from dataclasses import fields
+from functools import cached_property, reduce
 from pathlib import Path
+from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from qibo.backends import construct_backend
+from qibolab import Platform
 
 from qibocal import protocols
 from qibocal.config import log
@@ -17,7 +22,7 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import Routine
+from .operation import Protocol, ProtocolsCollection
 from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
@@ -25,60 +30,10 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def _validate_targets(targets):
-    if not isinstance(targets, list):
-        raise TypeError(
-            f"targets must be a list, got {type(targets).__name__} with value: {targets}"
-        )
-
-    invalid_targets = [t for t in targets if not isinstance(t, (tuple, int, str))]
-    if invalid_targets:
-        raise TypeError(
-            "targets must contain only qubit IDs (int/str) or qubit pairs (tuple), "
-            f"got invalid entries: {invalid_targets}"
-        )
-
-
-def _register(name: str, obj):
-    """Register object as module.
-
-    With a small abuse of the Python module system, the object is registered as a
-    module, with the given `name`.
-    `name` may contain dots, cf. :attr:`Executor.name` for clarifications about their
-    meaning.
-
-    .. note::
-
-        This is mainly used to register executors, such that the protocols can be
-        bound to it through the `import` keyword, in order to construct an intuitive
-        syntax, apparently purely functional, maintaining the context in a single
-        `Executor` "global" object.
-    """
-    # prevent overwriting existing modules
-    if name in sys.modules:
-        raise ValueError(
-            f"Module '{name}' already present. "
-            "Choose a different one to avoid overwriting it."
-        )
-
-    # allow relative paths, where relative is intended respect to package root
-    root = __name__.split(".")[0]
-    qualified = importlib.util.resolve_name(name, root)
-
-    # allow to nest module in arbitrary subpackage
-    if "." in qualified:
-        parent_name, _, child_name = qualified.rpartition(".")
-        parent_module = importlib.import_module(parent_name)
-        setattr(parent_module, child_name, obj)
-
-    sys.modules[qualified] = obj
-    obj.name = obj.__name__ = qualified
-    obj.__spec__ = None
-
-
-@dataclass
-class Executor:
+class Executor(BaseModel):
     """Execute a tasks' graph and tracks its history."""
+
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     history: History
     """The execution history, with results and exit states."""
@@ -88,49 +43,27 @@ class Executor:
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
-    name: str | None = None
-    """Symbol for the executor.
+    path: Path
+    meta: Metadata
 
-    This can be used generically to distinguish the executor, but its specific use is to
-    register a module with this name in `sys.modules`.
-    They can contain dots, `.`, that are interpreted as usual by the Python module
-    system.
+    sources: list[ProtocolsCollection] = Field(default_factory=list)
+    """Sources to extend core protocol set."""
 
-    .. note::
+    def model_post_init(self, context: Any) -> None:
+        """Register protocols for execution."""
+        # explicitly unused
+        _ = context
 
-        As a special case, mainly used for internal purposes, names starting with `.`
-        are also allowed, and they are interpreted relative to this package (in the top
-        scope).
-    """
-    path: Path | None = None
-    meta: Metadata | None = None
+        for name, protocol in self.protocols.items():
+            object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
 
-    def __post_init__(self):
-        """Register as a module, if a name is specified."""
-        if self.name is not None:
-            _register(self.name, self)
-
-    @classmethod
-    def create(cls, name: str, platform: CalibrationPlatform | str | None = None):
-        """Load list of protocols."""
-        platform = (
-            platform
-            if isinstance(platform, CalibrationPlatform)
-            else create_calibration_platform(
-                platform if isinstance(platform, str) else "mock"
-            )
-        )
-        return cls(
-            name=name,
-            history=History(),
-            platform=platform,
-            targets=list(platform.qubits),
-            update=True,
-        )
+    @cached_property
+    def protocols(self) -> ProtocolsCollection:
+        return reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
 
     def run_protocol(
         self,
-        protocol: Routine,
+        protocol: Protocol,
         parameters: Action,
         mode: ExecutionMode = AUTOCALIBRATION,
         output: Path | None = None,
@@ -156,30 +89,7 @@ class Executor:
 
         return completed
 
-    def __getattribute__(self, name: str):
-        """Provide access to routines through the executor.
-
-        This is done mainly to support the import mechanics: the routines retrieved
-        through the object will have it pre-registered.
-        """
-        modname = super().__getattribute__("name")
-        if modname is None:
-            # no module registration, immediately fall back
-            return super().__getattribute__(name)
-
-        try:
-            # routines look up
-            if name.startswith("_"):
-                # internal attributes should never be routines
-                raise AttributeError
-
-            protocol = getattr(protocols, name)
-            return self._wrapped_protocol(protocol, name)
-        except AttributeError:
-            # fall back on regular attributes
-            return super().__getattribute__(name)
-
-    def _wrapped_protocol(self, protocol: Routine, operation: str):
+    def _wrapped_protocol(self, protocol: Protocol, operation: str):
         """Create a bound protocol.
 
         Returns a closure, already wrapping the current `Executor` instance, but
@@ -219,14 +129,18 @@ class Executor:
         """
 
         def wrapper(
-            *args,
+            *args: Any,
             parameters: dict | None = None,
             id: str = operation,
             mode: ExecutionMode = AUTOCALIBRATION,
             update: bool = True,
             targets: Targets | None = None,
-            **kwargs,
+            **kwargs: Any,
         ):
+            # casting targest to be of type Targets if not None
+            if targets is not None:
+                targets = TypeAdapter(Targets).validate_python(targets)
+
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
             )
@@ -246,75 +160,59 @@ class Executor:
 
         return wrapper
 
-    def unload(self):
-        """Unlist the executor from available modules."""
-        if self.name is not None:
-            del sys.modules[self.name]
-
-    def __del__(self):
-        """Revert constructions side-effects.
-
-        .. note::
-
-            This is to make sure that the executor is properly unregistered from
-            `sys.modules`. However, it is not reliable to be called directly, since `del
-            executor` is not guaranteed to immediately invoke this method, cf. the note
-            for :meth:`object.__del__`.
-        """
-        try:
-            self.unload()
-        except KeyError:
-            # it has been explicitly unloaded, no need to do it again
-            pass
-
-    def init(
-        self,
+    @classmethod
+    def create(
+        cls,
         path: os.PathLike,
-        force: bool = False,
-        platform: CalibrationPlatform | str | None = None,
-        update: bool | None = None,
-        targets: Targets | None = None,
-    ):
-        """Initialize execution."""
-        if platform is None or isinstance(platform, CalibrationPlatform):
-            platform = self.platform
-        elif isinstance(platform, str):
-            platform = self.platform = create_calibration_platform(platform)
-        else:
-            platform = self.platform = CalibrationPlatform.from_platform(platform)
+        targets: Targets,
+        platform: CalibrationPlatform | Platform | str | None = None,
+        **kwargs: Any,
+    ) -> "Executor":
+        """Create protocols' executor.
 
-        assert isinstance(platform, CalibrationPlatform)
+        This is a wrapper of the default constructor, which is only handling different
+        platforms specification.
 
+        For the full set of arguments, cf. :class:`Executor`.
+        """
+        platform = (
+            platform
+            if isinstance(platform, CalibrationPlatform)
+            else CalibrationPlatform.from_platform(platform)
+            if isinstance(platform, Platform)
+            else create_calibration_platform(
+                platform if isinstance(platform, str) else "mock"
+            )
+        )
+        path_ = Path(path)
         backend = construct_backend(backend="qibolab", platform=platform)
+        return cls(
+            history=History(),
+            platform=platform,
+            path=path_,
+            targets=targets,
+            meta=Metadata.generate(backend),
+            **kwargs,
+        )
 
-        if update is not None:
-            self.update = update
-        if targets is not None:
-            _validate_targets(targets)
-            self.targets = targets
-
+    def init(self, force: bool = False):
+        """Initialize execution."""
         # generate output folder
-        path = Output.mkdir(Path(path), force)
+        path = Output.mkdir(self.path, force)
 
         # generate meta
-        meta = Metadata.generate(path.name, backend)
-        output = Output(History(), meta, platform)
+        output = Output(History(), self.meta, self.platform)
         output.dump(path)
 
-        # run
-        meta.start()
+        # start timer
+        self.meta.start()
 
         # connect and initialize platform
-        platform.connect()
+        self.platform.connect()
 
-        self.path = path
-        self.meta = meta
-
-    def close(self, path: os.PathLike | None = None):
+    def close(self):
         """Close execution."""
         assert self.meta is not None and self.path is not None
-
-        path = self.path if path is None else Path(path)
 
         # stop and disconnect platform
         self.platform.disconnect()
@@ -323,25 +221,29 @@ class Executor:
 
         # dump history, metadata, and updated platform
         output = Output(self.history, self.meta, self.platform)
-        output.dump(path)
-
-        # attempt unloading
-        self.__del__()
+        output.dump(self.path)
 
     @classmethod
     @contextmanager
     def open(
         cls,
-        name: str,
         path: os.PathLike,
+        targets: Targets,
         force: bool = False,
         platform: CalibrationPlatform | str | None = None,
         update: bool | None = None,
-        targets: Targets | None = None,
+        **kwargs: Any,
     ):
-        """Enter the execution context."""
-        ex = cls.create(name, platform)
-        ex.init(path, force, platform, update, targets)
+        """Enter the execution context.
+
+        For the full set of arguments, cf. :class:`Executor`.
+        """
+        if update is not None:
+            kwargs["update"] = update
+
+        ex = cls.create(path=path, platform=platform, targets=targets, **kwargs)
+        ex.init(force)
+
         try:
             yield ex
         finally:
@@ -366,3 +268,40 @@ class Executor:
         """
         self.close()
         return False
+
+
+def _register(name: str, obj: Any) -> None:
+    """Register object as module.
+
+    With a small abuse of the Python module system, the object is registered as a
+    module, with the given `name`.
+    `name` may contain dots, cf. :attr:`Executor.name` for clarifications about their
+    meaning.
+
+    .. note::
+
+        This is mainly used to register executors, such that the protocols can be
+        bound to it through the `import` keyword, in order to construct an intuitive
+        syntax, apparently purely functional, maintaining the context in a single
+        `Executor` "global" object.
+    """
+    # prevent overwriting existing modules
+    if name in sys.modules:
+        raise ValueError(
+            f"Module '{name}' already present. "
+            "Choose a different one to avoid overwriting it."
+        )
+
+    # allow relative paths, where relative is intended respect to package root
+    root = __name__.split(".")[0]
+    qualified = importlib.util.resolve_name(name, root)
+
+    # allow to nest module in arbitrary subpackage
+    if "." in qualified:
+        parent_name, _, child_name = qualified.rpartition(".")
+        parent_module = importlib.import_module(parent_name)
+        setattr(parent_module, child_name, obj)
+
+    sys.modules[qualified] = obj
+    obj.__name__ = qualified
+    obj.__spec__ = None

@@ -7,17 +7,20 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import (
+    PowerLevel,
+    Range,
+    RangeLike,
+    lorentzian_fit,
+    lorentzian_with_linear_background,
+    readout_frequency,
+    to_range,
+)
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
-from ..utils import (
-    PowerLevel,
-    lorentzian,
-    lorentzian_fit,
-    readout_frequency,
-)
 from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
 
 __all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
@@ -37,7 +40,7 @@ class ResonatorSpectroscopyFit:
     """ResonatorSpectroscopy fit."""
 
     function: Callable
-    """Routine function to fit data with a model."""
+    """Protocol function to fit data with a model."""
     fit: Callable
     """Fit function used for the resonance."""
     values: Callable
@@ -48,7 +51,7 @@ class ResonatorSpectroscopyFit:
 
 FITS = {
     "lorentzian": ResonatorSpectroscopyFit(
-        lorentzian,
+        lorentzian_with_linear_background,
         lorentzian_fit,
         lambda z: z.signal,
         spectroscopy_plot,
@@ -67,15 +70,25 @@ FITS = {
 class ResonatorSpectroscopyParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
-    freq_width: int
-    """Width for frequency sweep relative  to the readout frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    power_level: PowerLevel | str
+    frequency: RangeLike | None = None
+    """Frequency range for sweep [Hz]."""
+    freq_width: int | None = None
+    """Width for frequency sweep relative  to the readout frequency [Hz].
+
+    .. deprecated:: 0.2.6
+        Use :attr:`frequency` instead.
+    """
+    freq_step: int | None = None
+    """Frequency step for sweep [Hz].
+
+    .. deprecated:: 0.2.6
+        Use :attr:`frequency` instead.
+    """
+    power_level: PowerLevel | str = PowerLevel.low
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
-    """Routine function (lorentzian or s21) to fit data with a model."""
+    """Protocol function (lorentzian or s21) to fit data with a model."""
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
@@ -86,6 +99,21 @@ class ResonatorSpectroscopyParameters(Parameters):
     def __post_init__(self):
         if isinstance(self.power_level, str):
             self.power_level = PowerLevel(self.power_level)
+
+    def frequency_range(self, q: QubitId, platform: CalibrationPlatform) -> Range:
+        try:
+            center = readout_frequency(q, platform, self.power_level)
+        except KeyError:
+            center = 0.0
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
+        )
 
 
 @dataclass
@@ -160,16 +188,10 @@ def _acquisition(
         ro_pulses[q] = pulse
         sequence.append((channel, pulse))
 
-    # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=readout_frequency(q, platform, params.power_level)
-            + delta_frequency_range,
+            range=params.frequency_range(q, platform),
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -196,16 +218,15 @@ def _acquisition(
     for q in targets:
         result = results[ro_pulses[q].id]
         # store the results
-        ro_frequency = readout_frequency(q, platform, params.power_level)
         signal = magnitude(result)
         phase_ = phase(result)
         data.register_qubit(
             ResSpecType,
-            (q),
+            q,
             dict(
                 signal=signal,
                 phase=phase_,
-                freq=delta_frequency_range + ro_frequency,
+                freq=np.arange(*params.frequency_range(q, platform)).tolist(),
             ),
         )
     return data
@@ -236,13 +257,13 @@ def _fit(
         )
         if fit_result is not None:
             frequency[qubit], fitted_parameters[qubit], _ = fit_result
-            if data.power_level is PowerLevel.high:
+            if data.power_level == PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
-        bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
+        bare_frequency=bare_frequency if data.power_level == PowerLevel.high else {},
         amplitude=data.amplitudes,
     )
 
@@ -273,5 +294,5 @@ def _update(
         ].resonator.bare_frequency_amplitude = results.amplitude[target]
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""ResonatorSpectroscopy Routine object."""
+resonator_spectroscopy = Protocol(_acquisition, _fit, _plot, _update)
+"""ResonatorSpectroscopy Protocol object."""

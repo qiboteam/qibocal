@@ -5,7 +5,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, PulseSequence
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
 from qibocal.result import magnitude
@@ -15,7 +15,7 @@ from .utils import _get_lo_frequency
 
 __all__ = ["time_of_flight_readout"]
 
-MINIMUM_TOF = 24
+MINIMUM_TOF = 28
 """Minimum value for time of flight"""
 
 
@@ -213,5 +213,5 @@ def _update(
     platform.update({f"configs.{ro_channel}.delay": results.time_of_flights[qubit]})
 
 
-time_of_flight_readout = Routine(_acquisition, _fit, _plot, _update)
-"""TimeOfFlightReadout Routine object."""
+time_of_flight_readout = Protocol(_acquisition, _fit, _plot, _update)
+"""TimeOfFlightReadout Protocol object."""

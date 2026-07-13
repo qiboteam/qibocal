@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
 from qibocal.result import magnitude, phase
@@ -185,5 +185,5 @@ def update_t2(results: T2SignalResults, platform: CalibrationPlatform, target: Q
     update.t2(results.t2[target], platform, target)
 
 
-t2_signal = Routine(_acquisition, _fit, _plot, update_t2)
-"""T2Signal Routine object."""
+t2_signal = Protocol(_acquisition, _fit, _plot, update_t2)
+"""T2Signal Protocol object."""

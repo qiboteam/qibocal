@@ -9,7 +9,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
@@ -145,5 +145,5 @@ def _update(
     update.drive_12_duration(results.length[target], platform, target)
 
 
-rabi_amplitude_ef = Routine(_acquisition, _fit, _plot, _update)
-"""RabiAmplitudeEF Routine object."""
+rabi_amplitude_ef = Protocol(_acquisition, _fit, _plot, _update)
+"""RabiAmplitudeEF Protocol object."""

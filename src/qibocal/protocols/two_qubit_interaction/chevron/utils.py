@@ -89,6 +89,13 @@ def chevron_sequence(
     )
 
 
-# fitting function for single row in chevron plot (rabi-like curve)
-def chevron_fit(x, omega, phase, amplitude, offset):
-    return amplitude * np.cos(x * omega + phase) + offset
+def chevron_fit(x, detuning, alpha, g, phase):
+    """Eq. 14.80 of :cite:t:`Manenti:2023zzn`"""
+    delta = 2 * np.pi * (detuning + alpha * x[1] ** 2)
+    return (
+        delta**2 / (delta**2 + 4 * g**2)
+        + 4
+        * g**2
+        / (delta**2 + 4 * g**2)
+        * np.cos(np.sqrt(delta**2 + 4 * g**2) / 2 * x[0] + phase) ** 2
+    )

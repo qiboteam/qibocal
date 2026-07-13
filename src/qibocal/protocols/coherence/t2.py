@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
 from qibocal.result import probability
@@ -90,5 +90,5 @@ def _fit(data: T2Data) -> T2Results:
     return T2Results(t2s, fitted_parameters, pcovs, chi2)
 
 
-t2 = Routine(_acquisition, _fit, utils.plot, update_t2)
-"""T2 Routine object."""
+t2 = Protocol(_acquisition, _fit, utils.plot, update_t2)
+"""T2 Protocol object."""

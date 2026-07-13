@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
@@ -104,5 +104,5 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
     return SpinEchoResults(t2Echos, fitted_parameters, pcovs, chi2)
 
 
-spin_echo = Routine(_acquisition, _fit, plot, update_spin_echo)
-"""SpinEcho Routine object."""
+spin_echo = Protocol(_acquisition, _fit, plot, update_spin_echo)
+"""SpinEcho Protocol object."""

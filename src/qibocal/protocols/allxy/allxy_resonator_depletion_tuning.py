@@ -5,7 +5,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AveragingMode, PulseSequence
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from .allxy import AllXYType, allxy_sequence, gatelist
@@ -23,9 +23,6 @@ class AllXYResonatorParameters(Parameters):
     """Step delay parameter for resonator depletion."""
     readout_delay: int = 1000
     """Delay on readout."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     beta_param: float = None
     """Beta parameter for drag pulse."""
 
@@ -87,12 +84,7 @@ def _acquisition(
             sequences.append(sequence)
             all_ro_pulses.append(ro_pulses)
         options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
-        if params.unrolling:
-            results = platform.execute(sequences, **options)
-        else:
-            results = {}
-            for sequence in sequences:
-                results.update(platform.execute([sequence], **options))
+        results = platform.execute(sequences, **options)
 
         for gates, ro_pulses in zip(gatelist, all_ro_pulses):
             gate = "-".join(gates)
@@ -174,5 +166,5 @@ def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults 
     return figures, fitting_report
 
 
-allxy_resonator_depletion_tuning = Routine(_acquisition, _fit, _plot)
-"""AllXYDrag Routine object."""
+allxy_resonator_depletion_tuning = Protocol(_acquisition, _fit, _plot)
+"""AllXYDrag Protocol object."""

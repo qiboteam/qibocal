@@ -2,10 +2,10 @@ id: resonator_spectroscopy
 operation: resonator_spectroscopy
 parameters:
   freq_step: 10000.0
-  freq_width: 50000000.0
-  nshots: 10
+  freq_width: 10000000.0
+  nshots: 1000
   power_level: low
   relaxation_time: 1000.0
 targets:
-- 0
+- 3
 update: true

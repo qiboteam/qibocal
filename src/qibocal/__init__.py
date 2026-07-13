@@ -1,6 +1,7 @@
 """qibocal: Quantum Calibration Verification and Validation using Qibo."""
 
-from . import protocols
+from . import auto, protocols
+from .auto import *
 from .auto.execute import Executor
 from .calibration import create_calibration_platform
 from .cli import command
@@ -13,3 +14,4 @@ __all__ = [
     "__version__",
     "create_calibration_platform",
 ]
+__all__ += auto.__all__
