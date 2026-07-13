@@ -181,12 +181,12 @@ def _acquisition(
             compiler,
             nshots=params.nshots,
         )
-
         for result, (bell_state, basis) in zip(results, bases):
-            data.register_basis(pair, bell_state, basis, result)
+            [state_counter] = result[pair]
+            data.register_basis(pair, bell_state, basis, state_counter)
 
         for bell_state in params.bell_states:
-            data.frequencies[bell_state] = freqs = merge_frequencies(
+            data.frequencies[pair, bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
             )
             if mitigation_matrix is not None:
