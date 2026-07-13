@@ -100,17 +100,12 @@ def _acquisition(
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
         sequence_2 += (natives.RX() + natives.RX12()) | natives.MZ()
 
-    # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=readout_frequency(q, platform, state=1) + delta_frequency_range,
+            range=params.frequency_range(center=readout_frequency(q, platform)),
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -133,8 +128,9 @@ def _acquisition(
                 ResSpecType,
                 (qubit, state),
                 dict(
-                    freq=readout_frequency(qubit, platform, state=1)
-                    + delta_frequency_range,
+                    freq=params.frequency_range(
+                        center=readout_frequency(qubit, platform)
+                    ),
                     signal=magnitude(result),
                     phase=phase(result),
                 ),
