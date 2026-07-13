@@ -11,11 +11,14 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
+    Range,
+    RangeLike,
     lorentzian_fit,
     lorentzian_with_linear_background,
     readout_frequency,
     table_dict,
     table_html,
+    to_range,
 )
 from qibocal.result import magnitude, phase, unpack
 
@@ -26,10 +29,27 @@ __all__ = ["dispersive_shift", "DispersiveShiftData", "DispersiveShiftParameters
 class DispersiveShiftParameters(Parameters):
     """Dispersive shift inputs."""
 
-    freq_width: int
+    frequency: RangeLike | None = None
+    "Frequency range [Hz]."
+    freq_width: int | None = None
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
-    freq_step: int
+    freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
+
+    def frequency_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.freq_width is not None and self.freq_step is not None
+            return (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
+
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else legacy_range()
+        )
 
 
 @dataclass
@@ -97,16 +117,12 @@ def _acquisition(
         sequence_0 += natives.MZ()
         sequence_1 += natives.RX() | natives.MZ()
 
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
     data = DispersiveShiftData(resonator_type=platform.resonator_type)
 
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=readout_frequency(q, platform) + delta_frequency_range,
+            range=params.frequency_range(center=readout_frequency(q, platform)),
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -130,7 +146,11 @@ def _acquisition(
                 DispersiveShiftType,
                 (qubit, state),
                 dict(
-                    freq=readout_frequency(qubit, platform) + delta_frequency_range,
+                    freq=np.arange(
+                        *params.frequency_range(
+                            center=readout_frequency(qubit, platform)
+                        )
+                    ),
                     signal=magnitude(result),
                     phase=phase(result),
                     i=i,
