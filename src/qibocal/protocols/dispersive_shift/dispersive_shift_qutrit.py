@@ -100,17 +100,12 @@ def _acquisition(
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
         sequence_2 += (natives.RX() + natives.RX12()) | natives.MZ()
 
-    # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=readout_frequency(q, platform, state=1) + delta_frequency_range,
+            range=params.frequency_range(center=readout_frequency(q, platform)),
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -132,12 +127,13 @@ def _acquisition(
             data.register_qubit(
                 ResSpecType,
                 (qubit, state),
-                {
-                    "freq": readout_frequency(qubit, platform, state=1)
-                    + delta_frequency_range,
-                    "signal": magnitude(result),
-                    "phase": phase(result),
-                },
+                dict(
+                    freq=params.frequency_range(
+                        center=readout_frequency(qubit, platform)
+                    ),
+                    signal=magnitude(result),
+                    phase=phase(result),
+                ),
             )
 
     return data
@@ -221,7 +217,6 @@ def _plot(
                 name=f"{label}",
                 showlegend=True,
                 legendgroup=f"{label}",
-                mode="markers",
             ),
             row=1,
             col=1,
@@ -233,7 +228,6 @@ def _plot(
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"{label}",
-                mode="markers",
             ),
             row=1,
             col=2,
@@ -261,7 +255,7 @@ def _plot(
                     x=freqrange,
                     y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
-                    mode="lines",
+                    line=go.scatter.Line(dash="dot"),
                 ),
                 row=1,
                 col=1,
