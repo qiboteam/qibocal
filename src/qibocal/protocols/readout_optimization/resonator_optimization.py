@@ -401,6 +401,8 @@ def _plot(
                     ],
                 )
             )
+        else:
+            fitting_report = "An error occurred when performing the fit."
 
         figures.append(fig)
     return figures, fitting_report
