@@ -5,17 +5,17 @@ import pathlib
 import pytest
 import yaml
 from click.testing import CliRunner
+from qibocal.protocols.rabi.utils import (
+    extract_rabi,
+    rabi_amplitude_function,
+    rabi_length_function,
+)
 
 from qibocal.auto.output import UPDATED_PLATFORM
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeClassificationData
 from qibocal.protocols.rabi.ef import RabiEFSignalData
 from qibocal.protocols.rabi.length import RabiLengthClassificationData
-from qibocal.protocols.rabi.utils import (
-    extract_rabi,
-    rabi_amplitude_function,
-    rabi_length_function,
-)
 
 SINGLE_ACTION_RUNCARD = "action.yml"
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
