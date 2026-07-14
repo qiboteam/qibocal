@@ -59,7 +59,7 @@ class ResonatorOptimizationResults(Results):
     data: dict[tuple[QubitId, str], np.ndarray]
     """Dict storing fidelity, qnd and qnd-pi."""
     fidelity: dict[QubitId, float]
-    """Assignment fideilty at optimal readout point."""
+    """Assignment fidelity at optimal readout point."""
     qnd: dict[QubitId, float]
     """QND at optimal readout point."""
     qnd_pi: dict[QubitId, float]
