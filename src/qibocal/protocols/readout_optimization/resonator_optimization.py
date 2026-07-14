@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
@@ -13,7 +13,7 @@ from qibolab import (
 )
 
 from ... import update
-from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
+from ...auto.operation import Data, Parameters, Protocol, QubitId, QubitPairId, Results
 from ...calibration import CalibrationPlatform
 from ...config import log
 from ...fitting.classifier.qubit_fit import QubitFit
@@ -73,14 +73,10 @@ class ResonatorOptimizationResults(Results):
     threshold: dict[QubitId, float]
     """Threshold at optimal readout point."""
 
-    def __contains__(self, key: QubitId) -> bool:
-        """Check whether results are available for qubit."""
+    def __contains__(self, key: QubitId | QubitPairId | tuple[QubitId, ...]) -> bool:
+        """Check whether plotting data is available for qubit."""
         return all(
-            key in k
-            for k in map(
-                lambda f: getattr(self, f.name),
-                filter(lambda f: f.name != "data", fields(self)),
-            )
+            (key, metric) in self.data for metric in ["fidelity", "qnd", "qnd-pi"]
         )
 
 
@@ -324,6 +320,9 @@ def _plot(
         subplot_titles=("Fidelity", "QND", "QND Pi"),
     )
 
+    # use fit.frequency as proxy for having found a best point
+    has_best_point = target in fit.frequency
+
     if fit is not None:
         fig.add_trace(
             go.Heatmap(
@@ -357,19 +356,6 @@ def _plot(
             row=1,
             col=3,
         )
-        for col in range(1, ncols + 1):
-            fig.add_trace(
-                go.Scatter(
-                    x=[fit.frequency[target] * HZ_TO_GHZ],
-                    y=[fit.amplitude[target]],
-                    mode="markers",
-                    marker=dict(size=8, color="black", symbol="cross"),
-                    name="Best Readout Point",
-                    showlegend=True if col == 1 else False,
-                ),
-                row=1,
-                col=col,
-            )
 
         # Layout updates
         fig.update_layout(
@@ -381,25 +367,40 @@ def _plot(
             legend=dict(orientation="h"),
         )
 
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Assignment-Fidelity",
-                    "QND",
-                    "QND Pi",
-                    "Best Frequency [Hz]",
-                    "Best Amplitude",
-                ],
-                [
-                    np.round(fit.fidelity[target], 4),
-                    np.round(fit.qnd[target], 4),
-                    np.round(fit.qnd_pi[target], 4),
-                    np.round(fit.frequency[target], 4),
-                    np.round(fit.amplitude[target], 4),
-                ],
+        if has_best_point:
+            for col in range(1, ncols + 1):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.frequency[target] * HZ_TO_GHZ],
+                        y=[fit.amplitude[target]],
+                        mode="markers",
+                        marker=dict(size=8, color="black", symbol="cross"),
+                        name="Best Readout Point",
+                        showlegend=True if col == 1 else False,
+                    ),
+                    row=1,
+                    col=col,
+                )
+
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Assignment-Fidelity",
+                        "QND",
+                        "QND Pi",
+                        "Best Frequency [Hz]",
+                        "Best Amplitude",
+                    ],
+                    [
+                        np.round(fit.fidelity[target], 4),
+                        np.round(fit.qnd[target], 4),
+                        np.round(fit.qnd_pi[target], 4),
+                        np.round(fit.frequency[target], 4),
+                        np.round(fit.amplitude[target], 4),
+                    ],
+                )
             )
-        )
 
         figures.append(fig)
     return figures, fitting_report
