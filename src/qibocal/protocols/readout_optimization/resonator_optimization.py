@@ -104,7 +104,7 @@ def _acquisition(
     """Protocol to optimize readout frequency and readout amplitude.
 
     After preparing either state 0 or state 1 we perform two consecutive measurements to evaluate QND.
-    Additionaly we apply a pi pulse and we perform a third measurement to evaluate the QND-pi
+    Additionally we apply a pi pulse and we perform a third measurement to evaluate the QND-pi
     following https://arxiv.org/pdf/2110.04285"""
 
     freq_sweepers = {}
