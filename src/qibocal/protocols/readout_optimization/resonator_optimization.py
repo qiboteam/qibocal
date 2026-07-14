@@ -271,8 +271,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["qnd-pi"][j, k], _, _ = compute_qnd(
                 m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
             )
-            grids["angle"][j, k] = model.angle
-            grids["threshold"][j, k] = model.threshold
         arr[qubit, "fidelity"] = grids["fidelity"]
         arr[qubit, "qnd"] = grids["qnd"]
         arr[qubit, "qnd-pi"] = grids["qnd-pi"]
