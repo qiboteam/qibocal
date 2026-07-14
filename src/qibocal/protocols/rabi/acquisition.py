@@ -1,8 +1,11 @@
-from qibolab import Delay, PulseLike, PulseSequence
+from qibolab import Delay, IqChannel, PulseLike, PulseSequence
 from qibolab._core.identifier import ChannelId
 
 from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.two_qubit_interaction.cross_resonance.cr_parent_classes import (
+    check_qubit_overlap,
+)
 from qibocal.update import replace
 
 
@@ -11,13 +14,19 @@ def check_correct_drive_lines_setup(
 ) -> list[QubitId]:
     """Validate the drive lines assigned to target qubits."""
 
-    drive_lines = input_drivelines if input_drivelines is not None else targets
-    if len(drive_lines) != len(targets):
+    if input_drivelines is None:
+        return targets
+
+    if len(input_drivelines) != len(targets):
         raise ValueError(
             "Each qubit has to be assigned to a drive line; "
-            "If inserted, drive_lines must have the same length of targets list."
+            "If inserted, drive lines must have the same length of targets list."
         )
-    return drive_lines
+
+    # check if the pair overlap: not admitted if we want to execute in parallel
+    check_qubit_overlap([(q, d) for q, d in zip(targets, input_drivelines)])
+
+    return input_drivelines
 
 
 def single_qubit_rabi_sequence(
@@ -38,8 +47,24 @@ def single_qubit_rabi_sequence(
     if target != drive_line:
         # used when q is being driven with another line (cross rabi)
         cross_channel = platform.qubits[drive_line].drive
-        qubit_freq = platform.parameters.configs[qd_channel].frequency
-        update |= {cross_channel: {"frequency": qubit_freq}}
+        cross_channel_obj = platform.channels[cross_channel]
+        qubit_channel_obj = platform.channels[qd_channel]
+        update |= {
+            cross_channel: {
+                "frequency": platform.parameters.configs[qd_channel].frequency
+            }
+        }
+        if all(
+            [isinstance(ch, IqChannel) for ch in [qubit_channel_obj, cross_channel_obj]]
+        ):
+            q_lo_params = platform.parameters.configs[qubit_channel_obj.lo]
+            update |= {
+                cross_channel_obj.lo: {
+                    "frequency": q_lo_params.frequency,
+                    "power": q_lo_params.power,
+                }
+            }
+
         qd_channel = cross_channel
 
     if pulse_ampl is not None:
@@ -85,7 +110,7 @@ def sequence_amplitude(
         updates |= single_q_update
 
         # aligning readout pulses to single qubit sequence
-        single_q_seq |= PulseSequence([platform.natives.single_qubit[q].MZ()[0]])
+        single_q_seq |= PulseSequence(platform.natives.single_qubit[q].MZ())
 
         # adding the single qubit sequence to the complete one
         sequence += single_q_seq

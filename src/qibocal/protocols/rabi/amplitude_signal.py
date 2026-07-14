@@ -162,5 +162,16 @@ def _plot(
     return plot_signal(data, target, fit, data.rx90)
 
 
-rabi_amplitude_signal = Protocol(_acquisition, _fit, _plot, update_rabi_ampl_params)
+def _update(
+    results: RabiResults, platform: CalibrationPlatform, target: QubitId
+) -> None:
+    return update_rabi_ampl_params(
+        results=results,
+        platform=platform,
+        target=target,
+        label="signal",
+    )
+
+
+rabi_amplitude_signal = Protocol(_acquisition, _fit, _plot, _update)
 """RabiAmplitude Protocol object."""

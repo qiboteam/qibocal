@@ -266,5 +266,16 @@ def _plot(
     return figures, fitting_report
 
 
-rabi_amplitude_frequency = Protocol(_acquisition, _fit, _plot, update_rabi_ampl_params)
+def _update(
+    results: RabiFreqResults, platform: CalibrationPlatform, target: QubitId
+) -> None:
+    return update_rabi_ampl_params(
+        results=results,
+        platform=platform,
+        target=target,
+        label="classification",
+    )
+
+
+rabi_amplitude_frequency = Protocol(_acquisition, _fit, _plot, _update)
 """Rabi amplitude with frequency tuning."""

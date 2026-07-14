@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Optional, Union
+from typing import Annotated, Literal, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -146,6 +146,10 @@ class QubitCalibration(Model):
     """T2 hanh echo [ns]."""
     rb_fidelity: Measure | None = None
     """Standard rb pulse fidelity."""
+    rabi_ampl_oscillation: dict[Literal["signal", "classification"], float] = Field(
+        default_factory=dict
+    )
+    """Calibrated rabi oscillations used as reference for mw crosstalk."""
 
 
 class TwoQubitCalibration(Model):

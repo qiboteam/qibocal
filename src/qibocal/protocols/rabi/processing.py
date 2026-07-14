@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import Literal
 
 import numpy as np
 import plotly.graph_objects as go
@@ -59,7 +60,8 @@ def update_rabi_ampl_params(
     results: RabiResults,
     platform: CalibrationPlatform,
     target: QubitId,
-):
+    label: Literal["signal", "classification"],
+) -> None:
     """Update the platform with the results of the RabiAmplitude experiments."""
 
     # updating rabi parameters in the platform
@@ -69,13 +71,40 @@ def update_rabi_ampl_params(
     # from https://arxiv.org/pdf/2112.03708
     # here the first index is the qubit I want to drive and the second is the
     # drive line I want to pulse form.
-    if target in results.amplitude:
-        drive_line = results.drive_lines[target]
-        platform.calibration.set_microwave_crosstalk(
-            qubit=target,
-            microwave_line=drive_line,
-            module=results.amplitude[target][0],
+    if target not in results.amplitude:
+        return
+
+    drive_line = results.drive_lines[target]
+
+    exp_rabi_osc = sum(results.fitted_parameters[target][:2])
+
+    if drive_line == target:
+        platform.calibration.single_qubits[target].rabi_ampl_oscillation[label] = (
+            exp_rabi_osc
         )
+    else:
+        rtol = 0.5 if results.amplitude[target][0] <= 2 else 0.1
+        try:
+            condition = np.isclose(
+                exp_rabi_osc,
+                platform.calibration.single_qubits[target].rabi_ampl_oscillation[label],
+                rtol=rtol,
+            )
+        except TypeError:
+            ValueError("Pi pulse calibration is needed for crosstalk calibration.")
+
+        if not condition:
+            print(
+                "Crosstalk drive line did not excite enough the qubit, "
+                "microwave crosstalk matrix is not updated."
+            )
+            return
+
+    platform.calibration.set_microwave_crosstalk(
+        qubit=target,
+        microwave_line=drive_line,
+        module=results.amplitude[target][0],
+    )
 
 
 def rabi_amplitude_function(
