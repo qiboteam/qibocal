@@ -321,7 +321,7 @@ def _plot(
     )
 
     # use fit.frequency as proxy for having found a best point
-    has_best_point = target in fit.frequency
+    has_best_point = fit is not None and target in fit.frequency
 
     if fit is not None:
         fig.add_trace(
