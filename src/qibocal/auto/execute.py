@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import fields
 from functools import cached_property, reduce
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
@@ -22,12 +23,18 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import Protocol, ProtocolsCollection
+from .operation import Protocol, ProtocolsCollection, QubitPairId, QubitTupleId
 from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
 PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
+
+
+def check_qubit_tuples_overlap(targets: list[QubitPairId] | list[QubitTupleId]) -> None:
+    """This function checks if the input qubit tuples are independent, i.e. they don't share any qubit."""
+    if any(set(t1) & set(t2) for t1, t2 in combinations(targets, 2)):
+        raise ValueError("Target tuples must be independent, but are overlapping.")
 
 
 class Executor(BaseModel):
@@ -140,6 +147,10 @@ class Executor(BaseModel):
             # casting targest to be of type Targets if not None
             if targets is not None:
                 targets = TypeAdapter(Targets).validate_python(targets)
+
+            if all(isinstance(t, tuple) for t in targets):
+                # check if input was given correctly
+                check_qubit_tuples_overlap(targets)
 
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
