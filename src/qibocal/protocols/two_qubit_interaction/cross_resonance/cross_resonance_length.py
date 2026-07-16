@@ -31,7 +31,6 @@ from .cr_parent_classes import (
     HamiltonianTomographyResults,
     HamiltonianTomographyType,
     SetControl,
-    check_qubit_overlap,
 )
 from .cross_resonance_processing import (
     extract_hamiltonian_terms,
@@ -104,9 +103,6 @@ def _acquisition(
         target_amplitude=params.target_amplitude,
         target_phase=params.target_phase,
     )
-
-    # check validity of input
-    check_qubit_overlap(targets)
 
     # update the CR channel with the target qubit frequency.
     updates = [
