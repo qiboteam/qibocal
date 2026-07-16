@@ -104,31 +104,27 @@ def _acquisition(
 ) -> ResonatorOptimizationData:
     """Protocol to optimize readout frequency and readout amplitude.
 
-    After preparing either state 0 or state 1 we perform two consecutive measurements to evaluate QND.
-    Additionally we apply a pi pulse and we perform a third measurement to evaluate the QND-pi
-    following https://arxiv.org/pdf/2110.04285"""
+    After preparing either state 0 or state 1 we perform two consecutive measurements to
+    evaluate QND. Additionally we apply a pi pulse and we perform a third measurement to
+    evaluate the QND-pi following https://arxiv.org/pdf/2110.04285"""
 
-    freq_sweepers = {}
-    ro_pulses_m1 = {}
-    ro_pulses_m2 = {}
-    ro_pulses_m3 = {}
+    ro_pulses = {}
     sequences = []
-    all_ro_pulses = []
-
-    data = ResonatorOptimizationData()
-
     for state in [0, 1]:
         sequence = PulseSequence()
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
             ro_channel = platform.qubits[qubit].acquisition
             drive_channel = platform.qubits[qubit].drive
-            _, ro_pulse_m1 = natives.MZ()[0]
-            _, ro_pulse_m2 = natives.MZ()[0]
-            _, ro_pulse_m3 = natives.MZ()[0]
+            mz_pulses = [natives.MZ()[0][1] for _ in range(3)]
+            for m, pulse in enumerate(mz_pulses):
+                ro_pulses[qubit, state, m] = pulse
+            ro_pulse_m1, ro_pulse_m2, ro_pulse_m3 = mz_pulses
+            rx_duration = natives.RX().duration
+
             if state == 1:
                 sequence += natives.RX()
-                sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
+                sequence.append((ro_channel, Delay(duration=rx_duration)))
             sequence.append((ro_channel, ro_pulse_m1))
             sequence.append((ro_channel, Delay(duration=params.delay)))
             sequence.append((ro_channel, ro_pulse_m2))
@@ -143,17 +139,13 @@ def _acquisition(
                 )
             )
             sequence += natives.RX()
-            sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
-            sequence.append((ro_channel, Delay(duration=params.delay)))
+            sequence.append((ro_channel, Delay(duration=rx_duration + params.delay)))
             sequence.append((ro_channel, ro_pulse_m3))
-
-            ro_pulses_m1[qubit, state] = ro_pulse_m1
-            ro_pulses_m2[qubit, state] = ro_pulse_m2
-            ro_pulses_m3[qubit, state] = ro_pulse_m3
-            all_ro_pulses += [ro_pulse_m1, ro_pulse_m2, ro_pulse_m3]
-
         sequences.append(sequence)
 
+    data = ResonatorOptimizationData()
+
+    freq_sweepers = {}
     for qubit in targets:
         freqs = readout_frequency(qubit, platform) + params.frequency_span
         freq_sweepers[qubit] = Sweeper(
@@ -170,9 +162,8 @@ def _acquisition(
             params.amplitude_max,
             params.amplitude_step,
         ),
-        pulses=all_ro_pulses,
+        pulses=list(ro_pulses.values()),
     )
-
     data.amplitudes_swept = amp_sweeper.values.tolist()
 
     results = platform.execute(
@@ -186,14 +177,8 @@ def _acquisition(
 
     for state in [0, 1]:
         for target in targets:
-            for m, pulse_id in enumerate(
-                [
-                    ro_pulses_m1[target, state].id,
-                    ro_pulses_m2[target, state].id,
-                    ro_pulses_m3[target, state].id,
-                ]
-            ):
-                data.data[target, state, m] = results[pulse_id]
+            for m in range(3):
+                data.data[target, state, m] = results[ro_pulses[target, state, m].id]
 
     return data
 
