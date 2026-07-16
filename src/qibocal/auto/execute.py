@@ -18,12 +18,13 @@ from qibo.backends import construct_backend
 from qibolab import Platform
 
 from qibocal import protocols
+from qibocal.calibration.calibration import QubitPairId, QubitTupleId
 from qibocal.config import log
 
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import Protocol, ProtocolsCollection, QubitPairId, QubitTupleId
+from .operation import Protocol, ProtocolsCollection
 from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
@@ -148,9 +149,9 @@ class Executor(BaseModel):
             if targets is not None:
                 targets = TypeAdapter(Targets).validate_python(targets)
 
-            if all(isinstance(t, tuple) for t in targets):
-                # check if input was given correctly
-                check_qubit_tuples_overlap(targets)
+                if all(isinstance(t, tuple) for t in targets):
+                    # check if input was given correctly
+                    check_qubit_tuples_overlap(targets)
 
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)

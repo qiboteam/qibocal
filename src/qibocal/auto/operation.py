@@ -12,9 +12,9 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import Platform, Qubit
 
+from qibocal.calibration.calibration import QubitId, QubitPairId
 from qibocal.config import log
 
-from ..calibration.calibration import QubitId, QubitPairId
 from .serialize import deserialize, load, serialize
 
 __all__ = ["ProtocolsCollection", "Protocol"]
