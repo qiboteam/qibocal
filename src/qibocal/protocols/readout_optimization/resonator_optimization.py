@@ -201,12 +201,13 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         grid_keys = ["fidelity", "angle", "threshold", "qnd", "qnd-pi"]
         grids = {key: np.zeros(shape) for key in grid_keys}
         for j, k in product(range(len(amp_vals)), range(len(freq_vals))):
-            iq_values = np.concatenate(
-                (
-                    data.data[qubit, 0, 0][:, j, k, :],
-                    data.data[qubit, 1, 0][:, j, k, :],
-                )
-            )
+            measurements = {
+                (m, state): data.data[qubit, state, m][:, j, k, :]
+                for state in (0, 1)
+                for m in range(3)
+            }
+
+            iq_values = np.concatenate((measurements[0, 0], measurements[0, 1]))
             nshots = iq_values.shape[0] // 2
             states = [0] * nshots + [1] * nshots
 
@@ -215,54 +216,27 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["angle"][j, k] = model.angle
             grids["threshold"][j, k] = model.threshold
 
-            m1_state_0 = classify(
-                data.data[qubit, 0, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m1_state_1 = classify(
-                data.data[qubit, 1, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m2_state_0 = classify(
-                data.data[qubit, 0, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m2_state_1 = classify(
-                data.data[qubit, 1, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m3_state_0 = classify(
-                data.data[qubit, 0, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m3_state_1 = classify(
-                data.data[qubit, 1, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
+            classified_states = {
+                key: classify(val, model.angle, model.threshold)
+                for key, val in measurements.items()
+            }
 
             grids["fidelity"][j, k] = compute_assignment_fidelity(
-                m1_state_1, m1_state_0
+                classified_states[0, 1], classified_states[0, 0]
             )
             grids["qnd"][j, k], _, _ = compute_qnd(
-                m1_state_1,
-                m1_state_0,
-                m2_state_1,
-                m2_state_0,
+                classified_states[0, 1],
+                classified_states[0, 0],
+                classified_states[1, 1],
+                classified_states[1, 0],
             )
             # for m3 we swap them because we apply a pi pulse
             grids["qnd-pi"][j, k], _, _ = compute_qnd(
-                m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
+                classified_states[1, 1],
+                classified_states[1, 0],
+                classified_states[2, 0],
+                classified_states[2, 1],
+                pi=True,
             )
         arr[qubit, "fidelity"] = grids["fidelity"]
         arr[qubit, "qnd"] = grids["qnd"]
