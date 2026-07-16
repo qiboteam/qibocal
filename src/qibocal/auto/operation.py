@@ -13,6 +13,7 @@ import numpy.typing as npt
 from qibolab import Platform, Qubit
 
 from qibocal.calibration.calibration import QubitId, QubitPairId
+from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
@@ -186,7 +187,7 @@ class Data(AbstractData):
         return [q for q in self.data]
 
     @property
-    def pairs(self):
+    def pairs(self) -> list[QubitPairId]:
         """Access qubit pairs from data structure."""
         return list({tuple(q[:2]) for q in self.data})
 
@@ -259,11 +260,11 @@ class Protocol(Generic[_ParametersT, _DataT, _ResultsT]):
 
     acquisition: Callable[[_ParametersT], _DataT]
     """Data acquisition function."""
-    fit: Callable[[_DataT], _ResultsT] = None
+    fit: Callable[[_DataT], _ResultsT] | None = None
     """Post-processing function."""
-    report: Callable[[_DataT, _ResultsT], None] = None
+    report: Callable[[_DataT, _ResultsT], None] | None = None
     """Plotting function."""
-    update: Callable[[_ResultsT, Platform], None] = None
+    update: Callable[[_ResultsT, CalibrationPlatform], None] | None = None
     """Update function platform."""
     two_qubit_gates: bool | None = False
     """Flag to determine whether to allocate list of Qubits or Pairs."""

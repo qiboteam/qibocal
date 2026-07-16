@@ -9,6 +9,7 @@ from qibocal import calibration, update
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    QubitId,
     QubitPairId,
     Results,
 )
@@ -45,12 +46,12 @@ ZZIntType = np.dtype(
 
 @dataclass
 class ZZInteractionData(Data):
-    qubit_freqs: dict[QubitPairId, float] = field(default_factory=dict)
+    """Data for ZZ-interaction experiments."""
+
+    qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
+    anharmonicity: dict[QubitId, float] = field(default_factory=dict)
     """Targets qubit anharmonicity."""
-    data: dict[QubitPairId, ZZIntType] = field(default_factory=dict)
-    """Raw data acquired."""
 
     @property
     def delays(self) -> npt.NDArray:
@@ -66,8 +67,9 @@ class ZZInteractionResults(Results):
     """Container for ZZ-interaction experiments results."""
 
     zz: dict[QubitPairId, list[float]] = field(default_factory=dict)
+    """Estimated ZZ coupling of a qubit pair."""
     coupling: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    fitted_parameters: dict[QubitPairId, list[float]] = field(default_factory=dict)
+    """Estimated coupling strenght of a qubit pair."""
 
 
 def coupling_strength(
@@ -105,7 +107,7 @@ def signal_plot(
     signal: npt.NDArray[ZZIntType],
     fit_params: list[float] | None = None,
     label: Literal["I", "X", ""] = "",
-) -> tuple[list[go.Figure], list[go.Figure]]:
+) -> tuple[list[go.Scatter], list[go.Scatter]]:
     """Plotting function for ZZ Interaction experiments."""
 
     target_scatters: list[go.Scatter] = []
