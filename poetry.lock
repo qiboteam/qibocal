@@ -3346,14 +3346,14 @@ qulacs = ["qulacs (>=0.6.4,<0.7.0) ; python_version < \"3.13\""]
 
 [[package]]
 name = "qibolab"
-version = "0.2.15"
+version = "0.2.16"
 description = "Quantum hardware module and drivers for Qibo"
 optional = false
 python-versions = "<3.14,>=3.10"
 groups = ["main", "tests"]
 files = [
-    {file = "qibolab-0.2.15-py3-none-any.whl", hash = "sha256:4dd4ae7355ab77b60a735d461c93335012570ebf8faa742e8278b97caa6c14d0"},
-    {file = "qibolab-0.2.15.tar.gz", hash = "sha256:a14816c12551354a8e75fe6187cfbdf14eff162b356c074f491cf34a75e32b17"},
+    {file = "qibolab-0.2.16-py3-none-any.whl", hash = "sha256:816b161e9d6cb6fc157cdbf3d6c7b745faeda8a98689cee3283118d67837597c"},
+    {file = "qibolab-0.2.16.tar.gz", hash = "sha256:c72c13cad2ce0582819ff73fc395e685dc64dfb5bec5f475c6cd244dc2265843"},
 ]
 
 [package.dependencies]
@@ -3363,7 +3363,7 @@ scipy = ">=1.13.0,<2.0.0"
 
 [package.extras]
 backend = ["qibo (>=0.3.0,<0.4.0)"]
-emulator = ["qutip (>=5.0.2,<6.0.0)"]
+emulator = ["dynamiqs (>=0.3.4,<0.4.0)", "qutip (>=5.0.2,<6.0.0)"]
 qrng = ["pyserial (>=3.5,<4.0)"]
 
 [[package]]
@@ -4524,4 +4524,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "1c0b808f59e7f171781c7b98c82b18844cc46bace9abee4bd8c7ba4d015e9744"
+content-hash = "34223cb678e7ca12111c261f6363a4e76a63786ca1a795ece708cad0c1f271fa"

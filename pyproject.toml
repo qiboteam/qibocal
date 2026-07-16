@@ -34,7 +34,7 @@ cma = "^3.3.0"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-qibolab = "^0.2.13"        # "bounds" are not defined in the test platform but required by earlier versions of qibolab
+qibolab = "^0.2.16"        # "qibolab._core.platform.load.PLATFORMS" is renamed to "PLATFORMS_PATH", and import path for Hardware is changed https://github.com/qiboteam/qibolab/pull/1515
 pytest = ">=7.1.2,<10.0.0"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
