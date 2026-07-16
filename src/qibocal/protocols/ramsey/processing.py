@@ -6,7 +6,7 @@ helpers for Ramsey experiments.
 
 import numpy as np
 import plotly.graph_objects as go
-from numpy.typing import ArrayLike, NDArray
+from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
 from qibocal import update
@@ -61,7 +61,7 @@ def ramsey_fit(x, offset, amplitude, delta, phase, decay) -> NDArray | float:
 
 
 def fitting(
-    x: ArrayLike, y: ArrayLike, y_err: ArrayLike | None = None
+    x: NDArray, y: NDArray, y_err: NDArray | None = None
 ) -> tuple[list[float], list[float]]:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
@@ -131,7 +131,7 @@ def fitting(
 
 
 def process_fit(
-    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
+    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float | None
 ) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
     """Processing Ramsey fitting results."""
 
