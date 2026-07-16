@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
+    AveragingMode,
     Delay,
     Parameter,
     PulseSequence,
@@ -111,6 +112,8 @@ def _acquisition(
     ro_pulses_m1 = {}
     ro_pulses_m2 = {}
     ro_pulses_m3 = {}
+    sequences = []
+    all_ro_pulses = []
 
     data = ResonatorOptimizationData()
 
@@ -144,45 +147,50 @@ def _acquisition(
             sequence.append((ro_channel, Delay(duration=params.delay)))
             sequence.append((ro_channel, ro_pulse_m3))
 
-            freq_sweepers[qubit] = Sweeper(
-                parameter=Parameter.frequency,
-                values=readout_frequency(qubit, platform) + params.frequency_span,
-                channels=[platform.qubits[qubit].probe],
-            )
-            data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
+            ro_pulses_m1[qubit, state] = ro_pulse_m1
+            ro_pulses_m2[qubit, state] = ro_pulse_m2
+            ro_pulses_m3[qubit, state] = ro_pulse_m3
+            all_ro_pulses += [ro_pulse_m1, ro_pulse_m2, ro_pulse_m3]
 
-            ro_pulses_m1[qubit] = ro_pulse_m1
-            ro_pulses_m2[qubit] = ro_pulse_m2
-            ro_pulses_m3[qubit] = ro_pulse_m3
+        sequences.append(sequence)
 
-        amp_sweeper = Sweeper(
-            parameter=Parameter.amplitude,
-            range=(
-                params.amplitude_min,
-                params.amplitude_max,
-                params.amplitude_step,
-            ),
-            pulses=[ro_pulses_m1[qubit] for qubit in targets]
-            + [ro_pulses_m2[qubit] for qubit in targets]
-            + [ro_pulses_m3[qubit] for qubit in targets],
+    for qubit in targets:
+        freqs = readout_frequency(qubit, platform) + params.frequency_span
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=freqs,
+            channels=[platform.qubits[qubit].probe],
         )
+        data.frequencies_swept[qubit] = freqs.tolist()
 
-        data.amplitudes_swept = amp_sweeper.values.tolist()
+    amp_sweeper = Sweeper(
+        parameter=Parameter.amplitude,
+        range=(
+            params.amplitude_min,
+            params.amplitude_max,
+            params.amplitude_step,
+        ),
+        pulses=all_ro_pulses,
+    )
 
-        results = platform.execute(
-            [sequence],
-            [[amp_sweeper], [freq_sweepers[q] for q in targets]],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        )
+    data.amplitudes_swept = amp_sweeper.values.tolist()
 
+    results = platform.execute(
+        sequences,
+        [[amp_sweeper], [freq_sweepers[qubit] for qubit in targets]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
+
+    for state in [0, 1]:
         for target in targets:
             for m, pulse_id in enumerate(
                 [
-                    ro_pulses_m1[target].id,
-                    ro_pulses_m2[target].id,
-                    ro_pulses_m3[target].id,
+                    ro_pulses_m1[target, state].id,
+                    ro_pulses_m2[target, state].id,
+                    ro_pulses_m3[target, state].id,
                 ]
             ):
                 data.data[target, state, m] = results[pulse_id]
