@@ -1,6 +1,7 @@
 from itertools import chain
 
 import numpy as np
+import numpy.typing as npt
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
@@ -11,6 +12,7 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import (
     Protocol,
@@ -19,8 +21,7 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
-from qibocal.protocols.utils import GHZ_TO_HZ
+from qibocal.protocols.utils import GHZ_TO_HZ, quinn_fernandes_algorithm
 
 from .utils import (
     ZZInteractionData,
@@ -33,7 +34,57 @@ from .utils import (
     zz_update,
 )
 
+DAMPED_CONSTANT = 1.5
+"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details."""
+
 __all__ = ["jazz"]
+
+
+def jazz_function(
+    t: npt.NDArray, offset: float, amplitude: float, omega: float, tau: float
+) -> npt.NDArray:
+    """Damped cosine model used for JAZZ (ZZ interaction) fitting.
+
+    Model: offset + amplitude * cos(omega * t) * exp(-t / tau).
+    """
+    return offset + amplitude * np.cos(t * omega) * np.exp(-t / tau)
+
+
+def jazz_fitting(
+    x: npt.ArrayLike, y: npt.ArrayLike, y_err: npt.ArrayLike
+) -> tuple[list, list]:
+    """Fit JAZZ data to a damped cosine model."""
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    omega = quinn_fernandes_algorithm(y, x, speedup_flag=True)
+    median_sig = np.median(y)
+    q80 = np.quantile(y, 0.8)
+    q20 = np.quantile(y, 0.2)
+    amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+
+    p0 = [
+        median_sig,
+        amplitude_guess,
+        omega,
+        1,
+    ]
+
+    popt, perr = curve_fit(
+        jazz_function,
+        x,
+        y,
+        p0=p0,
+        maxfev=5000,
+        bounds=(
+            [0, 0, -np.inf, 0],
+            [1, 1, np.inf, np.inf],
+        ),
+        sigma=y_err,
+    )
+
+    return popt.tolist(), np.sqrt(np.diag(perr)).tolist()
 
 
 def _acquisition(
@@ -165,7 +216,7 @@ def _fit(data: ZZInteractionData) -> ZZInteractionResults:
         target, spectator = pair
         pair_data = data[pair]
         try:
-            popt, perr = ramsey_fitting(
+            popt, perr = jazz_fitting(
                 delays, pair_data["targ_prob"], pair_data["targ_error"]
             )
 
