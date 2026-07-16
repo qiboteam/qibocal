@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from itertools import chain
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 import plotly.graph_objects as go
@@ -66,6 +66,7 @@ class RamseyZZResults(ZZInteractionResults):
     fitted_parameters: dict[QubitPairId, dict[Literal["I", "X"], list[float]]] = field(
         default_factory=dict
     )
+    """Parameters fitted during the execution."""
 
 
 def _acquisition(
@@ -102,7 +103,8 @@ def _acquisition(
 
     sequences: dict[Literal["I", "X"], PulseSequence] = {}
     parsweepers: dict[Literal["I", "X"], Sweeper] = {}
-    for setup in ["I", "X"]:
+
+    for setup in cast(tuple[Literal["I", "X"], ...], ("I", "X")):
         setup_sequence = PulseSequence()
         setup_delays: list[Delay] = []
         for pair in targets:
@@ -209,14 +211,14 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     delta_fitting_measure: dict[
         tuple[QubitId, QubitId, Literal["I", "X"]], list[float]
     ] = {}
-    zz: dict[QubitId, list[float]] = {}
-    coupling: dict[QubitId, list[float]] = {}
+    zz: dict[QubitPairId, list[float]] = {}
+    coupling: dict[QubitPairId, list[float]] = {}
     for pair in data.pairs:
         target, spectator = pair
         try:
             setup_param_dict = {}
-            for setup in ["I", "X"]:
-                setup_data = data[target, spectator, setup]
+            for setup in cast(tuple[Literal["I", "X"], ...], ("I", "X")):
+                setup_data = data.data[target, spectator, setup]
                 popt, perr = ramsey_fitting(
                     delays, setup_data["targ_prob"], setup_data["targ_error"]
                 )
@@ -252,9 +254,7 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
             )
 
         except Exception as e:
-            log.warning(
-                f"Ramsey fitting failed for qubit pair {tuple(target, spectator)} due to {e}."
-            )
+            log.warning(f"Ramsey fitting failed for qubit pair {pair} due to {e}.")
 
     return RamseyZZResults(
         fitted_parameters=popts,
@@ -285,7 +285,7 @@ def _plot(
     ):
         for s in ("I", "X"):
             target_traces, spectator_trace = signal_plot(
-                signal=data[targ, spect, s],
+                signal=data.data[targ, spect, s],
                 fit_params=fit.fitted_parameters[target][s],
                 label=s,
             )
