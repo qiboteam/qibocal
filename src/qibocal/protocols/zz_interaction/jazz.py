@@ -170,7 +170,10 @@ def _fit(data: ZZInteractionData) -> ZZInteractionResults:
             )
 
             fit_params |= {pair: popt}
-            zz_zeta = [popt[2] * GHZ_TO_HZ, perr[2] * GHZ_TO_HZ]
+            zz_zeta = [
+                popt[2] * GHZ_TO_HZ / (2 * np.pi),
+                perr[2] * GHZ_TO_HZ / (2 * np.pi),
+            ]
             zz |= {pair: zz_zeta}
 
             # here we compute coupling as a frequency
