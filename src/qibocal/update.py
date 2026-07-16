@@ -8,6 +8,7 @@ from pydantic import BaseModel, TypeAdapter
 from qibolab import Platform, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitId, QubitPairId
+from qibocal.calibration.platform import CalibrationPlatform
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -37,12 +38,16 @@ def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{ro_channel}.frequency": freq})
 
 
-def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
+def bare_resonator_frequency(
+    freq: float, platform: CalibrationPlatform, qubit: QubitId
+):
     """Update rbare frequency value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].resonator.bare_frequency = freq
 
 
-def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
+def dressed_resonator_frequency(
+    freq: float, platform: CalibrationPlatform, qubit: QubitId
+):
     """Update rbare frequency value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].resonator.dressed_frequency = freq
 
@@ -113,7 +118,10 @@ def lo_attenuation(
 
 
 def crosstalk_matrix(
-    matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
+    matrix_element: float,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+    flux_qubit: QubitId,
 ):
     """Update crosstalk_matrix element."""
     if platform.calibration.flux_crosstalk_matrix is None:
@@ -134,17 +142,17 @@ def threshold(threshold: float, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{ro_channel}.threshold": threshold})
 
 
-def mean_gnd_states(ground_state: list, platform: Platform, qubit: QubitId):
+def mean_gnd_states(ground_state: list, platform: CalibrationPlatform, qubit: QubitId):
     """Update mean ground state value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].readout.ground_state = ground_state
 
 
-def mean_exc_states(excited_state: list, platform: Platform, qubit: QubitId):
+def mean_exc_states(excited_state: list, platform: CalibrationPlatform, qubit: QubitId):
     """Update mean excited state value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].readout.excited_state = excited_state
 
 
-def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
+def readout_fidelity(fidelity: float, platform: CalibrationPlatform, qubit: QubitId):
     """Update fidelity of single shot classification."""
     platform.calibration.single_qubits[qubit].readout.fidelity = fidelity
 
@@ -198,17 +206,17 @@ def cnot_sequence(cr_sequence: PulseSequence, platform: Platform, pair: QubitPai
     platform.update({f"native_gates.two_qubit.{_dump_pair(pair)}.CNOT": cr_sequence})
 
 
-def t1(t1: int, platform: Platform, qubit: QubitId):
+def t1(t1: int, platform: CalibrationPlatform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].t1 = tuple(t1)
 
 
-def t2(t2: float, platform: Platform, qubit: QubitId):
+def t2(t2: float, platform: CalibrationPlatform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].t2 = tuple(t2)
 
 
-def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
+def t2_spin_echo(t2_spin_echo: float, platform: CalibrationPlatform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].t2_spin_echo = tuple(t2_spin_echo)
 
@@ -223,7 +231,7 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
     )
 
 
-def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
+def sweetspot(sweetspot: float, platform: CalibrationPlatform, qubit: QubitId):
     """Update sweetspot parameter in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].qubit.sweetspot = sweetspot
 
@@ -233,7 +241,9 @@ def flux_offset(offset: float, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})
 
 
-def frequency_12_transition(frequency: float, platform: Platform, qubit: QubitId):
+def frequency_12_transition(
+    frequency: float, platform: CalibrationPlatform, qubit: QubitId
+):
     channel = platform.qubits[qubit].drive_extra[1, 2]
     platform.update({f"configs.{channel}.frequency": frequency})
     platform.calibration.single_qubits[qubit].qubit.frequency_12 = frequency
@@ -250,11 +260,11 @@ def drive_12_duration(duration: int | tuple | list, platform: Platform, qubit: Q
     platform.update({f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": duration})
 
 
-def readout_coupling(g: float, platform: Platform, qubit: QubitId):
+def readout_coupling(g: float, platform: CalibrationPlatform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].readout.coupling = g
 
 
-def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
+def pair_coupling(g: list[float], platform: CalibrationPlatform, pair: QubitPairId):
     platform.calibration.two_qubits[pair].coupling = g
 
 
