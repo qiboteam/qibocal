@@ -305,8 +305,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
             if model_name == "qubit_fit":
                 threshold[qubit] = models[i].threshold
                 rotation_angle[qubit] = models[i].angle
-                mean_gnd_states[qubit] = models[i].iq_mean0.tolist()
-                mean_exc_states[qubit] = models[i].iq_mean1.tolist()
+                mean_gnd_states[qubit] = models[i].iq_mean0
+                mean_exc_states[qubit] = models[i].iq_mean1
                 fidelity[qubit] = models[i].fidelity
                 snr[qubit] = evaluate_snr(data.state_zero(qubit), data.state_one(qubit))
                 assignment_fidelity[qubit] = models[i].assignment_fidelity

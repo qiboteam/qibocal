@@ -66,8 +66,8 @@ class QubitFit:
         angle (float): Rotational angle.
     """  # TODO: add references
 
-    iq_mean0: np.ndarray = field(default_factory=lambda: np.array([]))
-    iq_mean1: np.ndarray = field(default_factory=lambda: np.array([]))
+    iq_mean0: list = field(default_factory=list)
+    iq_mean1: list = field(default_factory=list)
     threshold: float = 0.0
     angle: float = 0.0
     fidelity: float | None = None
@@ -85,10 +85,12 @@ class QubitFit:
 
         iq_state1 = iq_coordinates[(states == 1)]
         iq_state0 = iq_coordinates[(states == 0)]
-        self.iq_mean0 = np.mean(iq_state0, axis=0)
-        self.iq_mean1 = np.mean(iq_state1, axis=0)
+        iq_mean0 = np.mean(iq_state0, axis=0)
+        iq_mean1 = np.mean(iq_state1, axis=0)
+        self.iq_mean0 = iq_mean0.tolist()
+        self.iq_mean1 = iq_mean1.tolist()
 
-        vector01 = self.iq_mean1 - self.iq_mean0
+        vector01 = iq_mean1 - iq_mean0
         self.angle = -1 * atan2(vector01[1], vector01[0])
 
         # rotate
