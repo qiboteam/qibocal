@@ -9,16 +9,15 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import fields
 from functools import cached_property, reduce
-from itertools import combinations
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from qibo.backends import construct_backend
 from qibolab import Platform
 
 from qibocal import protocols
-from qibocal.calibration.calibration import QubitPairId, QubitTupleId
 from qibocal.config import log
 
 from ..calibration import CalibrationPlatform, create_calibration_platform
@@ -30,12 +29,6 @@ from .task import Action, Completed, Targets, Task
 
 PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
-
-
-def check_qubit_tuples_overlap(targets: list[QubitPairId] | list[QubitTupleId]) -> None:
-    """This function checks if the input qubit tuples are independent, i.e. they don't share any qubit."""
-    if any(set(t1) & set(t2) for t1, t2 in combinations(targets, 2)):
-        raise ValueError("Target tuples must be independent, but are overlapping.")
 
 
 class Executor(BaseModel):
@@ -77,6 +70,13 @@ class Executor(BaseModel):
         output: Path | None = None,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
+
+        # check if input was given correctly
+        targ = np.asarray(self.targets)
+        assert np.unique(targ).size == targ.size, (
+            "One or more target qubits were repeated"
+        )
+
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
         completed = task.run(
@@ -148,10 +148,6 @@ class Executor(BaseModel):
             # casting targest to be of type Targets if not None
             if targets is not None:
                 targets = TypeAdapter(Targets).validate_python(targets)
-
-                if all(isinstance(t, tuple) for t in targets):
-                    # check if input was given correctly
-                    check_qubit_tuples_overlap(targets)
 
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
