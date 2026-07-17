@@ -18,9 +18,6 @@ QubitPairId = Annotated[
 ]
 """Qubit pair name."""
 
-QubitTupleId = tuple[QubitId, ...]
-"""Qubit tuple name."""
-
 CALIBRATION = "calibration.json"
 """Calibration file."""
 

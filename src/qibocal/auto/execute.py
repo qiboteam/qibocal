@@ -31,6 +31,12 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
+def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
+    # check if input was given correctly
+    targ = np.asarray(targets)
+    assert np.unique(targ).size == targ.size, "One or more target qubits were repeated"
+
+
 class Executor(BaseModel):
     """Execute a tasks' graph and tracks its history."""
 
@@ -58,6 +64,8 @@ class Executor(BaseModel):
         for name, protocol in self.protocols.items():
             object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
 
+        check_overlap_in_input_qubits(self.targets)
+
     @cached_property
     def protocols(self) -> ProtocolsCollection:
         return reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
@@ -70,12 +78,6 @@ class Executor(BaseModel):
         output: Path | None = None,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
-
-        # check if input was given correctly
-        targ = np.asarray(self.targets)
-        assert np.unique(targ).size == targ.size, (
-            "One or more target qubits were repeated"
-        )
 
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
@@ -148,6 +150,8 @@ class Executor(BaseModel):
             # casting targest to be of type Targets if not None
             if targets is not None:
                 targets = TypeAdapter(Targets).validate_python(targets)
+                # check if input is correct
+                check_overlap_in_input_qubits(targets)
 
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
