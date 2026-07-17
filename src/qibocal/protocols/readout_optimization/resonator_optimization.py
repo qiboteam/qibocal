@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
+    AveragingMode,
     Delay,
     Parameter,
     PulseSequence,
@@ -13,7 +14,7 @@ from qibolab import (
 )
 
 from ... import update
-from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
+from ...auto.operation import Data, Parameters, Protocol, QubitId, QubitPairId, Results
 from ...calibration import CalibrationPlatform
 from ...config import log
 from ...fitting.classifier.qubit_fit import QubitFit
@@ -59,7 +60,7 @@ class ResonatorOptimizationResults(Results):
     data: dict[tuple[QubitId, str], np.ndarray]
     """Dict storing fidelity, qnd and qnd-pi."""
     fidelity: dict[QubitId, float]
-    """Assignment fideilty at optimal readout point."""
+    """Assignment fidelity at optimal readout point."""
     qnd: dict[QubitId, float]
     """QND at optimal readout point."""
     qnd_pi: dict[QubitId, float]
@@ -73,14 +74,10 @@ class ResonatorOptimizationResults(Results):
     threshold: dict[QubitId, float]
     """Threshold at optimal readout point."""
 
-    def __contains__(self, key: QubitId) -> bool:
-        """Check whether results are available for qubit."""
+    def __contains__(self, key: QubitId | QubitPairId | tuple[QubitId, ...]) -> bool:
+        """Check whether plotting data is available for qubit."""
         return all(
-            key in k
-            for k in map(
-                lambda f: getattr(self, f.name),
-                filter(lambda f: f.name != "data", fields(self)),
-            )
+            (key, metric) in self.data for metric in ["fidelity", "qnd", "qnd-pi"]
         )
 
 
@@ -107,29 +104,27 @@ def _acquisition(
 ) -> ResonatorOptimizationData:
     """Protocol to optimize readout frequency and readout amplitude.
 
-    After preparing either state 0 or state 1 we perform two consecutive measurements to evaluate QND.
-    Additionaly we apply a pi pulse and we perform a third measurement to evaluate the QND-pi
-    following https://arxiv.org/pdf/2110.04285"""
+    After preparing either state 0 or state 1 we perform two consecutive measurements to
+    evaluate QND. Additionally we apply a pi pulse and we perform a third measurement to
+    evaluate the QND-pi following https://arxiv.org/pdf/2110.04285"""
 
-    freq_sweepers = {}
-    ro_pulses_m1 = {}
-    ro_pulses_m2 = {}
-    ro_pulses_m3 = {}
-
-    data = ResonatorOptimizationData()
-
+    ro_pulses = {}
+    sequences = []
     for state in [0, 1]:
         sequence = PulseSequence()
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
             ro_channel = platform.qubits[qubit].acquisition
             drive_channel = platform.qubits[qubit].drive
-            _, ro_pulse_m1 = natives.MZ()[0]
-            _, ro_pulse_m2 = natives.MZ()[0]
-            _, ro_pulse_m3 = natives.MZ()[0]
+            mz_pulses = [natives.MZ()[0][1] for _ in range(3)]
+            for m, pulse in enumerate(mz_pulses):
+                ro_pulses[qubit, state, m] = pulse
+            ro_pulse_m1, ro_pulse_m2, ro_pulse_m3 = mz_pulses
+            rx_duration = natives.RX().duration
+
             if state == 1:
                 sequence += natives.RX()
-                sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
+                sequence.append((ro_channel, Delay(duration=rx_duration)))
             sequence.append((ro_channel, ro_pulse_m1))
             sequence.append((ro_channel, Delay(duration=params.delay)))
             sequence.append((ro_channel, ro_pulse_m2))
@@ -144,52 +139,46 @@ def _acquisition(
                 )
             )
             sequence += natives.RX()
-            sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
-            sequence.append((ro_channel, Delay(duration=params.delay)))
+            sequence.append((ro_channel, Delay(duration=rx_duration + params.delay)))
             sequence.append((ro_channel, ro_pulse_m3))
+        sequences.append(sequence)
 
-            freq_sweepers[qubit] = Sweeper(
-                parameter=Parameter.frequency,
-                values=readout_frequency(qubit, platform) + params.frequency_span,
-                channels=[platform.qubits[qubit].probe],
-            )
-            data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
+    data = ResonatorOptimizationData()
 
-            ro_pulses_m1[qubit] = ro_pulse_m1
-            ro_pulses_m2[qubit] = ro_pulse_m2
-            ro_pulses_m3[qubit] = ro_pulse_m3
-
-        amp_sweeper = Sweeper(
-            parameter=Parameter.amplitude,
-            range=(
-                params.amplitude_min,
-                params.amplitude_max,
-                params.amplitude_step,
-            ),
-            pulses=[ro_pulses_m1[qubit] for qubit in targets]
-            + [ro_pulses_m2[qubit] for qubit in targets]
-            + [ro_pulses_m3[qubit] for qubit in targets],
+    freq_sweepers = {}
+    for qubit in targets:
+        freqs = readout_frequency(qubit, platform) + params.frequency_span
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=freqs,
+            channels=[platform.qubits[qubit].probe],
         )
+        data.frequencies_swept[qubit] = freqs.tolist()
 
-        data.amplitudes_swept = amp_sweeper.values.tolist()
+    amp_sweeper = Sweeper(
+        parameter=Parameter.amplitude,
+        range=(
+            params.amplitude_min,
+            params.amplitude_max,
+            params.amplitude_step,
+        ),
+        pulses=list(ro_pulses.values()),
+    )
+    data.amplitudes_swept = amp_sweeper.values.tolist()
 
-        results = platform.execute(
-            [sequence],
-            [[amp_sweeper], [freq_sweepers[q] for q in targets]],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        )
+    results = platform.execute(
+        sequences,
+        [[amp_sweeper], [freq_sweepers[qubit] for qubit in targets]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
 
+    for state in [0, 1]:
         for target in targets:
-            for m, pulse_id in enumerate(
-                [
-                    ro_pulses_m1[target].id,
-                    ro_pulses_m2[target].id,
-                    ro_pulses_m3[target].id,
-                ]
-            ):
-                data.data[target, state, m] = results[pulse_id]
+            for m in range(3):
+                data.data[target, state, m] = results[ro_pulses[target, state, m].id]
 
     return data
 
@@ -212,12 +201,13 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         grid_keys = ["fidelity", "angle", "threshold", "qnd", "qnd-pi"]
         grids = {key: np.zeros(shape) for key in grid_keys}
         for j, k in product(range(len(amp_vals)), range(len(freq_vals))):
-            iq_values = np.concatenate(
-                (
-                    data.data[qubit, 0, 0][:, j, k, :],
-                    data.data[qubit, 1, 0][:, j, k, :],
-                )
-            )
+            measurements = {
+                (m, state): data.data[qubit, state, m][:, j, k, :]
+                for state in (0, 1)
+                for m in range(3)
+            }
+
+            iq_values = np.concatenate((measurements[0, 0], measurements[0, 1]))
             nshots = iq_values.shape[0] // 2
             states = [0] * nshots + [1] * nshots
 
@@ -226,57 +216,28 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["angle"][j, k] = model.angle
             grids["threshold"][j, k] = model.threshold
 
-            m1_state_0 = classify(
-                data.data[qubit, 0, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m1_state_1 = classify(
-                data.data[qubit, 1, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m2_state_0 = classify(
-                data.data[qubit, 0, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m2_state_1 = classify(
-                data.data[qubit, 1, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m3_state_0 = classify(
-                data.data[qubit, 0, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
-
-            m3_state_1 = classify(
-                data.data[qubit, 1, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
-            )
+            classified_states = {
+                key: classify(val, model.angle, model.threshold)
+                for key, val in measurements.items()
+            }
 
             grids["fidelity"][j, k] = compute_assignment_fidelity(
-                m1_state_1, m1_state_0
+                classified_states[0, 1], classified_states[0, 0]
             )
             grids["qnd"][j, k], _, _ = compute_qnd(
-                m1_state_1,
-                m1_state_0,
-                m2_state_1,
-                m2_state_0,
+                classified_states[0, 1],
+                classified_states[0, 0],
+                classified_states[1, 1],
+                classified_states[1, 0],
             )
             # for m3 we swap them because we apply a pi pulse
             grids["qnd-pi"][j, k], _, _ = compute_qnd(
-                m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
+                classified_states[1, 1],
+                classified_states[1, 0],
+                classified_states[2, 0],
+                classified_states[2, 1],
+                pi=True,
             )
-            grids["angle"][j, k] = model.angle
-            grids["threshold"][j, k] = model.threshold
         arr[qubit, "fidelity"] = grids["fidelity"]
         arr[qubit, "qnd"] = grids["qnd"]
         arr[qubit, "qnd-pi"] = grids["qnd-pi"]
@@ -324,6 +285,9 @@ def _plot(
         subplot_titles=("Fidelity", "QND", "QND Pi"),
     )
 
+    # use fit.frequency as proxy for having found a best point
+    has_best_point = fit is not None and target in fit.frequency
+
     if fit is not None:
         fig.add_trace(
             go.Heatmap(
@@ -357,19 +321,6 @@ def _plot(
             row=1,
             col=3,
         )
-        for col in range(1, ncols + 1):
-            fig.add_trace(
-                go.Scatter(
-                    x=[fit.frequency[target] * HZ_TO_GHZ],
-                    y=[fit.amplitude[target]],
-                    mode="markers",
-                    marker=dict(size=8, color="black", symbol="cross"),
-                    name="Best Readout Point",
-                    showlegend=True if col == 1 else False,
-                ),
-                row=1,
-                col=col,
-            )
 
         # Layout updates
         fig.update_layout(
@@ -381,25 +332,42 @@ def _plot(
             legend=dict(orientation="h"),
         )
 
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Assignment-Fidelity",
-                    "QND",
-                    "QND Pi",
-                    "Best Frequency [Hz]",
-                    "Best Amplitude",
-                ],
-                [
-                    np.round(fit.fidelity[target], 4),
-                    np.round(fit.qnd[target], 4),
-                    np.round(fit.qnd_pi[target], 4),
-                    np.round(fit.frequency[target], 4),
-                    np.round(fit.amplitude[target], 4),
-                ],
+        if has_best_point:
+            for col in range(1, ncols + 1):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.frequency[target] * HZ_TO_GHZ],
+                        y=[fit.amplitude[target]],
+                        mode="markers",
+                        marker=dict(size=8, color="black", symbol="cross"),
+                        name="Best Readout Point",
+                        showlegend=True if col == 1 else False,
+                    ),
+                    row=1,
+                    col=col,
+                )
+
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Assignment-Fidelity",
+                        "QND",
+                        "QND Pi",
+                        "Best Frequency [Hz]",
+                        "Best Amplitude",
+                    ],
+                    [
+                        np.round(fit.fidelity[target], 4),
+                        np.round(fit.qnd[target], 4),
+                        np.round(fit.qnd_pi[target], 4),
+                        np.round(fit.frequency[target], 4),
+                        np.round(fit.amplitude[target], 4),
+                    ],
+                )
             )
-        )
+        else:
+            fitting_report = "An error occurred when performing the fit."
 
         figures.append(fig)
     return figures, fitting_report

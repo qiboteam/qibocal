@@ -18,7 +18,7 @@ from qibocal.web.report import (
     report_script,
 )
 
-ReportOutcome = tuple[str, list[go.Figure]]
+ReportOutcome = tuple[list[go.Figure], str]
 """Report produced by protocol."""
 
 

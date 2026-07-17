@@ -70,22 +70,27 @@ class QubitFit:
     iq_mean1: list = field(default_factory=list)
     threshold: float = 0.0
     angle: float = 0.0
-    fidelity: float = None
-    assignment_fidelity: float = None
-    probability_error: float = None
-    effective_qubit_temperature: float = None
+    fidelity: float | None = None
+    assignment_fidelity: float | None = None
+    probability_error: float | None = None
+    effective_qubit_temperature: float | None = None
 
-    def fit(self, iq_coordinates: list, states: list):
+    def fit(self, iq_coordinates: npt.ArrayLike, states: npt.ArrayLike):
         r"""Evaluate the model's parameters given the
         `iq_coordinates` and their relative ``states`
         (reference: <https://arxiv.org/abs/1004.4323>).
         """
+        iq_coordinates = np.asarray(iq_coordinates)
+        states = np.asarray(states)
+
         iq_state1 = iq_coordinates[(states == 1)]
         iq_state0 = iq_coordinates[(states == 0)]
-        self.iq_mean0 = np.mean(iq_state0, axis=0)
-        self.iq_mean1 = np.mean(iq_state1, axis=0)
+        iq_mean0 = np.mean(iq_state0, axis=0)
+        iq_mean1 = np.mean(iq_state1, axis=0)
+        self.iq_mean0 = iq_mean0.tolist()
+        self.iq_mean1 = iq_mean1.tolist()
 
-        vector01 = self.iq_mean1 - self.iq_mean0
+        vector01 = iq_mean1 - iq_mean0
         self.angle = -1 * atan2(vector01[1], vector01[0])
 
         # rotate
