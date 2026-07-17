@@ -44,11 +44,11 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass::
-	qibocal.protocols.rabi.amplitude.RabiAmplitudeParameters
+	qibocal.protocols.rabi.parent_classes.RabiAmplitudeParameters
 	:noindex:
 
 .. autoclass::
-	qibocal.protocols.rabi.length.RabiLengthParameters
+	qibocal.protocols.rabi.parent_classes.RabiLengthParameters
 	:noindex:
 
 Example
@@ -136,6 +136,13 @@ In the following we show an example runcard for the amplitude calibration of the
         rx90: True
 
 .. image:: rabi_amplitude_rx90.png
+
+
+Alternatively, all Rabi protocols can be configured with a list of qubit pairs instead of a list of individual qubits.
+Each pair must consist of two distinct qubits, enabling microwave crosstalk calibration and characterization.
+For a pair (Q1, Q2), the protocol measures the Rabi oscillation of Q1 while driving the microwave line associated with Q2.
+
+Currently, the two input configurations are mutually exclusive: the protocol accepts either a list of qubits or a list of qubit pairs.
 
 Requirements
 ^^^^^^^^^^^^
