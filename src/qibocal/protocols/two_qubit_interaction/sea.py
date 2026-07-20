@@ -167,7 +167,7 @@ def sea_fit(x, offset, amplitude, omega, phase, gamma):
 
 def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResults:
     r"""Post-processing function for the CZ conditional-phase SEA experiment."""
-    pairs = data.qubits
+    pairs = data.pairs
     phase_error = {}
     fitted_parameters = {}
     chi2 = {}
