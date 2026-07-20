@@ -21,10 +21,6 @@ EPS = 1  # Hz
 """we add 1Hz when computing Delta frequency between the two qubit frequencies in order to avoid numerical error."""
 
 
-class AnharmonicityError(Exception):
-    pass
-
-
 @dataclass
 class ZZInteractionParameters(Parameters):
     """Parameters for ZZ-interaction experiments."""
@@ -89,7 +85,7 @@ def coupling_strength(
     """
 
     if anharmonicity1 == 0 or anharmonicity2 == 0:
-        raise AnharmonicityError(
+        raise ValueError(
             "Anhamronicities are not estimated: cannot compute coupling strength."
         )
 
