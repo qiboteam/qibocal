@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -13,7 +14,7 @@ from qibocal.auto.operation import (
     QubitPairId,
     Results,
 )
-from qibocal.protocols.ramsey.processing import MAXIMUM_FIT_POINTS, ramsey_fit
+from qibocal.protocols.ramsey.processing import MAXIMUM_FIT_POINTS
 from qibocal.protocols.utils import table_dict, table_html
 
 EPS = 1  # Hz
@@ -105,6 +106,7 @@ def coupling_strength(
 
 def signal_plot(
     signal: npt.NDArray[ZZIntType],
+    module: Callable,
     fit_params: list[float] | None = None,
     label: Literal["I", "X", ""] = "",
 ) -> tuple[list[go.Scatter], list[go.Scatter]]:
@@ -158,7 +160,7 @@ def signal_plot(
         target_scatters.append(
             go.Scatter(
                 x=fit_delays,
-                y=ramsey_fit(fit_delays, *fit_params),
+                y=module(fit_delays, *fit_params),
                 name=f"Fit {label}",
                 mode="lines",
                 line=signal_style,
