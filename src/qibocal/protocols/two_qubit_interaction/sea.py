@@ -81,11 +81,6 @@ class CZAmplitudeSEAParameters(Parameters):
     """Repetitions step."""
     delta_amplitude: float = 0
     """CZ amplitude detuning applied during acquisition."""
-    phase_amplitude_slope: float = None
-    """d(phase)/d(amplitude) [rad / a.u.] of the CZ conditional phase near the
-    operating point, e.g. obtained from a chevron / virtual-Z scan. Required
-    to convert the measured phase error into a corrected CZ amplitude"""
-    # TODO: I didn't implement the protocol for the slope
 
 
 @dataclass
@@ -119,8 +114,6 @@ class CZAmplitudeSEAData(Data):
     """CZ amplitude detuning used during acquisition."""
     cz_amplitudes: dict[QubitPairId, float]
     """Nominal (undetuned) CZ amplitude for each pair."""
-    phase_amplitude_slope: float | None = None
-    """d(phase)/d(amplitude) used for the amplitude correction, if provided."""
     data: dict[QubitPairId, npt.NDArray[CZAmplitudeSEAType]] = field(
         default_factory=dict
     )
@@ -148,7 +141,6 @@ def _acquisition(
             pair: platform.natives.two_qubit[pair].CZ()[0][1].amplitude
             for pair in targets
         },
-        phase_amplitude_slope=params.phase_amplitude_slope,
     )
 
     sequences: list[PulseSequence] = []
@@ -205,7 +197,6 @@ def _fit(data: CZAmplitudeSEAData) -> CZAmplitudeSEAResults:
     chi2 = {}
     for pair in pairs:
         pair_data = data[pair]
-        nominal_amplitude = data.cz_amplitudes[pair] + data.delta_amplitude
         y = pair_data["prob"]
         x = pair_data["repetitions"]
 
@@ -231,22 +222,6 @@ def _fit(data: CZAmplitudeSEAData) -> CZAmplitudeSEAResults:
             delta = popt[2]
             fitted_parameters[pair] = popt
             phase_error[pair] = [delta, perr[2]]
-
-            if data.phase_amplitude_slope:
-                slope = data.phase_amplitude_slope
-                amp_correction = -delta / slope
-                amp_correction_error = np.abs(perr[2] / slope)
-
-                delta_amplitude[pair] = [amp_correction, amp_correction_error]
-                corrected_amplitudes[pair] = [
-                    float(nominal_amplitude + amp_correction),
-                    float(amp_correction_error),
-                ]
-            else:
-                log.warning(
-                    f"No phase_amplitude_slope provided for pair {pair}: "
-                    "reporting phase error only, no amplitude correction computed."
-                )
 
             chi2[pair] = [
                 chi2_reduced(
