@@ -9,6 +9,7 @@ from qibolab import Platform
 import qibocal
 import qibocal.protocols
 from qibocal import Executor
+from qibocal.auto.execute import check_overlap_in_input_qubits
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.auto.runcard import Action
@@ -155,3 +156,35 @@ def test_single_shot(tmp_path: Path, platform: CalibrationPlatform):
 def test_rx_calibration(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "target": 0, "path": tmp_path}
     exec((CALIBRATION_SCRIPTS / "rx_calibration.py").read_text(), globals_)
+
+
+def test_check_input_qubit_overlap():
+    """Verify input qubit overlap validation for single qubits and qubit pairs."""
+
+    # list of unrepeated qubit, check passes
+    inputs = ["B0", 1, "B2", 3]
+    check_overlap_in_input_qubits(inputs)
+
+    # list of repeated qubits, check raises a ValuError
+    inputs = ["B0", 1, "B0", 3]
+    with pytest.raises(ValueError, match="One or more target qubits were repeated."):
+        check_overlap_in_input_qubits(inputs)
+
+    # list of unrepeated qubit pairs and unrepeated qubits, check passes
+    inputs = [(0, 1), (2, 3), (4, 5), (6, 7)]
+    check_overlap_in_input_qubits(inputs)
+
+    # list of repeated pairs, check raises ValueError
+    inputs = [(0, 1), (2, 3), (0, 1)]
+    with pytest.raises(ValueError, match="One or more target qubits were repeated."):
+        check_overlap_in_input_qubits(inputs)
+
+    # list of unrepeated pairs but repeated qubit, check raises ValueError
+    inputs = [(0, 1), (1, 2)]
+    with pytest.raises(ValueError, match="One or more target qubits were repeated."):
+        check_overlap_in_input_qubits(inputs)
+
+    # list of unrepeated pair but same qubit in one pair, check raises ValueError
+    inputs = [(0, 1), (2, 2)]
+    with pytest.raises(ValueError, match="One or more target qubits were repeated."):
+        check_overlap_in_input_qubits(inputs)

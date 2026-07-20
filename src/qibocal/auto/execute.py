@@ -32,9 +32,11 @@ PLATFORM_DIR = "platform"
 
 
 def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
-    # check if input was given correctly
+    """Check that target qubits do not contain duplicates."""
+
     targ = np.asarray(targets)
-    assert np.unique(targ).size == targ.size, "One or more target qubits were repeated"
+    if np.unique(targ).size != targ.size:
+        raise ValueError("One or more target qubits were repeated.")
 
 
 class Executor(BaseModel):
