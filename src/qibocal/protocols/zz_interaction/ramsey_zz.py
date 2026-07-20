@@ -19,6 +19,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.ramsey.acquisition import single_qubit_ramsey_sequence
 from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
+from qibocal.protocols.ramsey.processing import ramsey_fit
 from qibocal.protocols.utils import GHZ_TO_HZ
 
 from .utils import (
@@ -286,6 +287,7 @@ def _plot(
         for s in ("I", "X"):
             target_traces, spectator_trace = signal_plot(
                 signal=data.data[targ, spect, s],
+                module=ramsey_fit,
                 fit_params=fit.fitted_parameters[target][s],
                 label=s,
             )
