@@ -1,0 +1,33 @@
+Standard Error Amplification
+============================
+
+The Standard Error Amplification experiment is used to
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass::
+	qibocal.protocols.two_qubit_interaction.sea.StandardErrorAmplificationParameters
+	:noindex:
+
+Example
+^^^^^^^
+It follows a runcard example of this experiment.
+
+.. code-block:: yaml
+
+    - id: standard_error_amplification
+      operation: standard_error_amplification
+      targets: [[0, 1]]
+      parameters:
+        nshots: 2000
+        repetitions_max: 10
+        repetitions_step: 1
+
+The expected output is the following:
+
+.. image::
+
+.. note::
+      The mitigated line will appear if the readout mitigation matrix is available in the platform calibration.
+      This can be obtained using the :ref:`readout-mitigation-matrix` routine.
