@@ -12,6 +12,7 @@ from functools import cached_property, reduce
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from qibo.backends import construct_backend
 from qibolab import Platform
@@ -28,6 +29,14 @@ from .task import Action, Completed, Targets, Task
 
 PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
+
+
+def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
+    """Check that target qubits do not contain duplicates."""
+
+    targ = np.asarray(targets)
+    if np.unique(targ).size != targ.size:
+        raise ValueError("One or more target qubits were repeated.")
 
 
 class Executor(BaseModel):
@@ -57,6 +66,8 @@ class Executor(BaseModel):
         for name, protocol in self.protocols.items():
             object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
 
+        check_overlap_in_input_qubits(self.targets)
+
     @cached_property
     def protocols(self) -> ProtocolsCollection:
         return reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
@@ -69,6 +80,7 @@ class Executor(BaseModel):
         output: Path | None = None,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
+
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
         completed = task.run(
@@ -140,6 +152,8 @@ class Executor(BaseModel):
             # casting targest to be of type Targets if not None
             if targets is not None:
                 targets = TypeAdapter(Targets).validate_python(targets)
+                # check if input is correct
+                check_overlap_in_input_qubits(targets)
 
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)

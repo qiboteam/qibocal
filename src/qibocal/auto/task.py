@@ -10,8 +10,8 @@ import yaml
 from qibo import Circuit
 from qibolab import Platform
 
-from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.auto.serialize import _nested_list_to_tuples
+from qibocal.calibration.calibration import QubitId, QubitPairId
 
 from .. import protocols
 from ..config import log
