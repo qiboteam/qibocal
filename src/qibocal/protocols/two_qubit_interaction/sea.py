@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -20,24 +19,24 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-__all__ = ["cz_amplitude_sea"]
+__all__ = ["standard_error_amplification"]
 
 
 def cz_sea_sequence(
     platform: CalibrationPlatform,
     pair: QubitPairId,
-    delta_amplitude: float,
     repetitions: int,
 ):
-    """Pulse sequence for the CZ amplitude standard error amplification (SEA) experiment.
+    """Pulse sequence for the CZ conditional-phase standard error amplification
+    (SEA) experiment.
 
     Args:
         platform: CalibrationPlatform
         pair: QubitPairId
-        delta_amplitude: CZ amplitude detuning applied during acquisition.
         repetitions: Number of repetitions n of the CZ gate (2n CZs in total)
 
-    For ``repetitions`` = n, 2n CZs are applied in total.
+    For ``repetitions`` = n, 2n CZs are applied in total, at the platform's
+    current (uncorrected) CZ amplitude.
     """
 
     qubit_a, qubit_b = pair
@@ -49,16 +48,13 @@ def cz_sea_sequence(
     sequence = natives_a.R(theta=np.pi / 2)
 
     cz_channel, cz_pulse = natives_pair.CZ()[0]
-    cz_detuned = update.replace(
-        cz_pulse, amplitude=cz_pulse.amplitude + delta_amplitude
-    )
 
     qa_channel, x_pulse_a = natives_a.RX()[0]
     qb_channel, y_pulse_b = natives_b.R(theta=np.pi, phi=np.pi / 2)[0]
 
     n_cz = 2 * repetitions
     for i in range(n_cz):
-        sequence.extend([(cz_channel, cz_detuned)])
+        sequence.extend([(cz_channel, cz_pulse)])
         if i < n_cz - 1:
             sequence.extend([(qa_channel, x_pulse_a), (qb_channel, y_pulse_b)])
 
@@ -71,77 +67,60 @@ def cz_sea_sequence(
 
 
 @dataclass
-class CZAmplitudeSEAParameters(Parameters):
-    """CZ amplitude SEA runcard inputs."""
+class StandardErrorAmplificationParameters(Parameters):
+    """CZ conditional-phase SEA runcard inputs."""
 
     # NOTE: missing guardrail for maximum number of repetitions vs relaxation time and nshots
     repetitions_max: int
     """Maximum number of repetitions n (2n CZs, n of them active)."""
     repetitions_step: int
     """Repetitions step."""
-    delta_amplitude: float = 0
-    """CZ amplitude detuning applied during acquisition."""
 
 
 @dataclass
-class CZAmplitudeSEAResults(Results):
-    """CZ amplitude SEA outputs."""
+class StandardErrorAmplificationResults(Results):
+    """CZ conditional-phase SEA outputs."""
 
-    amplitude: dict[QubitPairId, float | list[float]]
-    """Corrected CZ amplitude for each pair (only if phase_amplitude_slope given)."""
     phase_error: dict[QubitPairId, float | list[float]]
     """Fitted phase error delta per active CZ [rad]."""
-    delta_amplitude: dict[QubitPairId, float | list[float]]
-    """Amplitude correction implied by phase_error / phase_amplitude_slope."""
     fitted_parameters: dict[QubitPairId, list[float]]
     """Raw fitting output."""
     chi2: dict[QubitPairId, list[float]] = field(default_factory=dict)
     """Chi squared estimate mean value and error."""
 
 
-CZAmplitudeSEAType = np.dtype(
+StandardErrorAmplificationType = np.dtype(
     [("repetitions", np.float64), ("prob", np.float64), ("error", np.float64)]
 )
 
 
 @dataclass
-class CZAmplitudeSEAData(Data):
-    """CZ amplitude SEA acquisition outputs."""
+class StandardErrorAmplificationData(Data):
+    """CZ conditional-phase SEA acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
-    delta_amplitude: float
-    """CZ amplitude detuning used during acquisition."""
-    cz_amplitudes: dict[QubitPairId, float]
-    """Nominal (undetuned) CZ amplitude for each pair."""
-    data: dict[QubitPairId, npt.NDArray[CZAmplitudeSEAType]] = field(
+    data: dict[QubitPairId, npt.NDArray[StandardErrorAmplificationType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: CZAmplitudeSEAParameters,
+    params: StandardErrorAmplificationParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> CZAmplitudeSEAData:
+) -> StandardErrorAmplificationData:
     r"""
-    Data acquisition for the CZ amplitude SEA experiment.
+    Data acquisition for the CZ conditional-phase SEA experiment.
 
     Args:
-        params: CZAmplitudeSEAParameters
+        params: StandardErrorAmplificationParameters
         platform: CalibrationPlatform
         targets: list of QubitPairId
     """
 
-    data = CZAmplitudeSEAData(
-        resonator_type=platform.resonator_type,
-        delta_amplitude=params.delta_amplitude,
-        cz_amplitudes={
-            pair: platform.natives.two_qubit[pair].CZ()[0][1].amplitude
-            for pair in targets
-        },
-    )
+    data = StandardErrorAmplificationData(resonator_type=platform.resonator_type)
 
     sequences: list[PulseSequence] = []
     repetitions_sweep = range(0, params.repetitions_max, params.repetitions_step)
@@ -151,7 +130,6 @@ def _acquisition(
             sequence += cz_sea_sequence(
                 platform=platform,
                 pair=pair,
-                delta_amplitude=params.delta_amplitude,
                 repetitions=repetitions,
             )
         sequences.append(sequence)
@@ -172,7 +150,7 @@ def _acquisition(
             prob = results[ro_pulse.id]
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
-                CZAmplitudeSEAType,
+                StandardErrorAmplificationType,
                 pair,
                 {
                     "repetitions": np.array([repetitions]),
@@ -187,13 +165,11 @@ def sea_fit(x, offset, amplitude, omega, phase, gamma):
     return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
-def _fit(data: CZAmplitudeSEAData) -> CZAmplitudeSEAResults:
-    r"""Post-processing function for the CZ amplitude SEA experiment."""
+def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResults:
+    r"""Post-processing function for the CZ conditional-phase SEA experiment."""
     pairs = data.qubits
-    corrected_amplitudes = {}
     phase_error = {}
     fitted_parameters = {}
-    delta_amplitude = {}
     chi2 = {}
     for pair in pairs:
         pair_data = data[pair]
@@ -219,9 +195,8 @@ def _fit(data: CZAmplitudeSEAData) -> CZAmplitudeSEAResults:
             perr = np.sqrt(np.diag(perr)).tolist()
             popt = popt.tolist()
 
-            delta = popt[2]
             fitted_parameters[pair] = popt
-            phase_error[pair] = [delta, perr[2]]
+            phase_error[pair] = [popt[2], perr[2]]
 
             chi2[pair] = [
                 chi2_reduced(
@@ -232,23 +207,19 @@ def _fit(data: CZAmplitudeSEAData) -> CZAmplitudeSEAResults:
                 np.sqrt(2 / len(x)),
             ]
         except Exception as e:
-            log.warning(f"Error in CZ amplitude SEA fit for pair {pair} due to {e}.")
+            log.warning(
+                f"Error in CZ conditional-phase SEA fit for pair {pair} due to {e}."
+            )
 
-    return CZAmplitudeSEAResults(
-        corrected_amplitudes,
-        phase_error,
-        delta_amplitude,
-        fitted_parameters,
-        chi2,
-    )
+    return StandardErrorAmplificationResults(phase_error, fitted_parameters, chi2)
 
 
 def _plot(
-    data: CZAmplitudeSEAData,
+    data: StandardErrorAmplificationData,
     target: QubitPairId,
-    fit: CZAmplitudeSEAResults | None = None,
+    fit: StandardErrorAmplificationResults | None = None,
 ):
-    """Plotting function for the CZ amplitude SEA experiment."""
+    """Plotting function for the CZ conditional-phase SEA experiment."""
 
     figures = []
     fig = go.Figure()
@@ -305,27 +276,11 @@ def _plot(
             ),
         )
 
-        columns = ["Phase error delta [rad]", "chi2 reduced"]
-        values = [fit.phase_error[target], fit.chi2[target]]
-        if target in fit.amplitude:
-            columns = [
-                "Phase error delta [rad]",
-                "Delta amplitude [a.u.]",
-                "Corrected CZ amplitude [a.u.]",
-                "chi2 reduced",
-            ]
-            values = [
-                fit.phase_error[target],
-                fit.delta_amplitude[target],
-                fit.amplitude[target],
-                fit.chi2[target],
-            ]
-
         fitting_report = table_html(
             table_dict(
                 target,
-                columns,
-                values,
+                ["Phase error delta [rad]", "chi2 reduced"],
+                [fit.phase_error[target], fit.chi2[target]],
                 display_error=True,
             )
         )
@@ -342,14 +297,15 @@ def _plot(
 
 
 def _update(
-    results: CZAmplitudeSEAResults, platform: CalibrationPlatform, pair: QubitPairId
+    results: StandardErrorAmplificationResults,
+    platform: CalibrationPlatform,
+    pair: QubitPairId,
 ):
-    """Write CZ amplitude correction in calibration."""
+    """Store the estimated conditional-phase error in calibration."""
     target = tuple(pair)
     platform.calibration.two_qubits[target].conditional_phase = results.phase_error[
         target
     ][0]
 
 
-cz_amplitude_sea = Protocol(_acquisition, _fit, _plot, _update)
-"""CZ amplitude SEA Protocol object."""
+standard_error_amplification = Protocol(_acquisition, _fit, _plot, _update)
