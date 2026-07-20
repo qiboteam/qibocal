@@ -233,7 +233,7 @@ def signal_plot(
         ]
     )
 
-    if fit is not None:
+    if fit is not None and target in fit.fitted_parameters:
         fitting_report = fit_plot(
             target=target,
             fit=fit,
