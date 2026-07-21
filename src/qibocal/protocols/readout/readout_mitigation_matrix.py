@@ -85,8 +85,7 @@ def _acquisition(
             for q, bit in enumerate(state):
                 if bit == "1":
                     circuit.add(gates.X(q))
-            for i in range(nqubits):
-                circuit.add(gates.M(i))
+            circuit.add(gates.M(*range(nqubits)))
             [result] = execute_circuits(
                 [circuit],
                 [qubits],
@@ -96,6 +95,7 @@ def _acquisition(
                 nshots=params.nshots,
             )
             frequencies = np.zeros(2 ** len(qubits))
+            [result] = result[qubits]
             for i, freq in result.items():
                 frequencies[int(i, 2)] = freq
             for freq in frequencies:
