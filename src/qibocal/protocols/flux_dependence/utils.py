@@ -69,19 +69,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         ),
     )
 
-    filtered_freq, filtered_bias = data.filtered_data(qubit)
-
-    if filtered_freq is not None and filtered_bias is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=filtered_freq * HZ_TO_GHZ,
-                y=filtered_bias,
-                name="Estimated points",
-                mode="markers",
-                marker=dict(color="rgb(248, 248, 248)"),
-            )
-        )
-
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
         fit is not None

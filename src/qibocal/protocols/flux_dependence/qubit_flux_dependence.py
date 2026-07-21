@@ -10,7 +10,10 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
+from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
+from scipy.special import erfinv
 
 from qibocal.auto.operation import Data, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -27,6 +30,16 @@ from ..utils import (
     table_html,
 )
 from . import utils
+
+GAUSSIAN_FILTER1D_SIGMA = 2
+INLIER_THRESHOLD = (
+    0.6e6 * HZ_TO_GHZ
+)  # approximate width of a peak in the qubit spectroscopy in GHz
+RANSAC_P_SUCCESS = (
+    0.999  # desired probability of finding a sample containing only inliers
+)
+RANSAC_MIN_ITERATIONS = 100
+RANSAC_MAX_ITERATIONS = 5000
 
 __all__ = [
     "QubitFluxData",
@@ -187,6 +200,124 @@ def _acquisition(
     return data
 
 
+@dataclass
+class PeakCoordinates:
+    bias: np.ndarray
+    frequency: np.ndarray
+
+
+def _extract_peak_coordinates(
+    freq: np.ndarray,
+    bias: np.ndarray,
+    signal: np.ndarray,
+) -> PeakCoordinates:
+    """Extract the most prominent peaks per bias (if one is dominant enough)."""
+
+    bias_points, frequency_points = [], []
+    for bias_val, signal_val in zip(bias, signal):
+        # The Gaussian filter not only reduces noise in the background far away from the
+        # arc, but also reduces noise within the arc, which may result in peaks being
+        # detected correctly that otherwise would have been missed (see e.g
+        # qubit_data_3.npz).
+        smoothed_row = gaussian_filter1d(signal_val, sigma=GAUSSIAN_FILTER1D_SIGMA)
+        # The standard deviation is computed from the median absolute deviation instead of
+        # the standard deviation itself to avoid the peaks in the arc from affecting the
+        # estimate of the background noise. While this prominence threshold is somewhat
+        # motivated, it is still a choice and it has been observed that the result is not
+        # very sensitive to it and probably it is even fine to set the threshold to 0.
+        row_mad = np.median(np.abs(smoothed_row - np.median(smoothed_row)))
+        row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
+        # Use find_peaks instead of argmax because there may be nothing in a row.
+        # Try both peak and dip per row, since this may differ per row due to moving
+        # of the resonator frequency.
+        peaks, peak_props = find_peaks(smoothed_row, prominence=row_std)
+        dips, dip_props = find_peaks(-smoothed_row, prominence=row_std)
+
+        if len(peaks) == 0 and len(dips) == 0:
+            continue
+
+        # Keep only the feature with the largest prominence per bias.
+        if len(dips) == 0 or (
+            len(peaks) > 0
+            and peak_props["prominences"].max() >= dip_props["prominences"].max()
+        ):
+            best = peaks[np.argmax(peak_props["prominences"])]
+        else:
+            best = dips[np.argmax(dip_props["prominences"])]
+
+        bias_points.append(bias_val)
+        frequency_points.append(freq[best])
+
+    return PeakCoordinates(
+        bias=np.asarray(bias_points),
+        frequency=np.asarray(frequency_points),
+    )
+
+
+def _ransac_fit(
+    freq_ghz: np.ndarray,
+    bias_pts: np.ndarray,
+    fit_function,
+):
+    """perform fit using RANSAC"""
+
+    # The number of iterations is determined following the standard for RANSAC
+    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
+    N_needed = np.inf
+    ransac_iterations = 0
+    best_inliers = np.array([])
+    best_params = np.array([])
+    tried_subsets = set()
+    while (
+        ransac_iterations < min(N_needed, RANSAC_MAX_ITERATIONS)
+        or ransac_iterations < RANSAC_MIN_ITERATIONS
+    ):
+        ransac_iterations += 1
+
+        # randomly sample 3 points, because that's the dof of the parametrization
+        subset = np.random.choice(len(bias_pts), 3, replace=False)
+        subset_ = tuple(sorted(subset))
+        if subset_ in tried_subsets:
+            continue
+        tried_subsets.add(subset_)
+
+        try:
+            popt, _ = curve_fit(
+                fit_function,
+                bias_pts[subset],
+                freq_ghz[subset],
+                method="lm",  # lm is a fast option
+            )
+        except RuntimeError:
+            continue
+
+        residuals_all = np.abs(freq_ghz - fit_function(bias_pts, *popt))
+        inliers = residuals_all < INLIER_THRESHOLD
+        if inliers.sum() == len(bias_pts):
+            # all points are inliers, so we can proceed
+            best_inliers = inliers
+            best_params = popt
+            break
+
+        if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
+            best_inliers = inliers
+            best_params = popt
+            denom = np.log(1 - (best_inliers.sum() / len(bias_pts)) ** len(subset))
+            N_needed = np.log(1 - RANSAC_P_SUCCESS) / denom
+
+    # Finally optimize by doing a least-squares fit to the best set of inliers
+    popt, _ = curve_fit(
+        fit_function,
+        bias_pts[best_inliers],
+        freq_ghz[best_inliers],
+        p0=best_params,
+        method="lm",
+        maxfev=100000,
+    )
+
+    return popt
+
+
 def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
     Post-processing for QubitFlux Experiment. See `arXiv:0703002 <https://arxiv.org/abs/cond-mat/0703002>`_.
@@ -209,54 +340,55 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        # extract signal from 2D plot based on SNR mask
-        frequencies, biases = data.filtered_data(qubit)
+        freq, freq_idx = np.unique(qubit_data.freq, return_inverse=True)
+        bias, bias_idx = np.unique(qubit_data.bias, return_inverse=True)
+        signal = np.full((len(bias), len(freq)), np.nan)
+        signal[bias_idx, freq_idx] = qubit_data.signal
 
-        if frequencies is None or biases is None:
+        peak_coordinates = _extract_peak_coordinates(
+            freq=freq,
+            bias=bias,
+            signal=signal,
+        )
+
+        def _fit_function(x, w_max, normalization, offset):
+            return utils.transmon_frequency(
+                xi=x,
+                w_max=w_max,
+                xj=0,
+                d=0,
+                normalization=normalization,
+                offset=offset,
+                crosstalk_element=1,
+                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+            )
+
+        try:
+            popt = _ransac_fit(
+                peak_coordinates.frequency * HZ_TO_GHZ,
+                peak_coordinates.bias,
+                fit_function=_fit_function,
+            )
+
+            fitted_parameters[qubit] = {
+                "w_max": popt[0],
+                "xj": 0,
+                "d": 0,
+                "normalization": popt[1],
+                "offset": popt[2],
+                "crosstalk_element": 1,
+                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+            }
+            frequency[qubit] = popt[0] * GHZ_TO_HZ
+            middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
+            sweetspot[qubit] = (
+                np.round(popt[1] * middle_bias + popt[2]) - popt[2]
+            ) / popt[1]
+            matrix_element[qubit] = popt[1]
+            successful_fit[qubit] = True
+        except (ValueError, RuntimeError) as e:
             successful_fit[qubit] = False
-        else:
-
-            def fit_function(x, w_max, normalization, offset):
-                return utils.transmon_frequency(
-                    xi=x,
-                    w_max=w_max,
-                    xj=0,
-                    d=0,
-                    normalization=normalization,
-                    offset=offset,
-                    crosstalk_element=1,
-                    charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-                )
-
-            try:
-                popt = curve_fit(
-                    fit_function,
-                    biases,
-                    frequencies * HZ_TO_GHZ,
-                    bounds=utils.qubit_flux_dependence_fit_bounds(
-                        data.qubit_frequency[qubit],
-                    ),
-                    maxfev=100000,
-                )[0]
-                fitted_parameters[qubit] = {
-                    "w_max": popt[0],
-                    "xj": 0,
-                    "d": 0,
-                    "normalization": popt[1],
-                    "offset": popt[2],
-                    "crosstalk_element": 1,
-                    "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-                }
-                frequency[qubit] = popt[0] * GHZ_TO_HZ
-                middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
-                sweetspot[qubit] = (
-                    np.round(popt[1] * middle_bias + popt[2]) - popt[2]
-                ) / popt[1]
-                matrix_element[qubit] = popt[1]
-                successful_fit[qubit] = True
-            except ValueError as e:
-                successful_fit[qubit] = False
-                log.error(f"Error in qubit_flux protocol fit: {e}.")
+            log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
         frequency=frequency,
