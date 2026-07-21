@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Any
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results
 
@@ -173,5 +172,3 @@ class RabiData(Data):
     """Pulse duration for each target qubit."""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse amplitude for each target qubit."""
-    data: dict[QubitId, Any] = field(default_factory=dict)
-    """Raw data acquired."""
