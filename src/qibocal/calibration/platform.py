@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from qibolab import Parameters, Platform, create_platform, locate_platform
-from qibolab._core.dummy.platform import create_dummy
-from qibolab._core.platform.platform import PARAMETERS
+from qibolab import Platform, create_platform, locate_platform
 
 from .calibration import CALIBRATION, Calibration
 
@@ -66,47 +64,11 @@ class CalibrationPlatform(Platform):
         # TODO: this is loading twice a platform
         return cls(**vars(platform), calibration=calibration)
 
-    @classmethod
-    def from_datafolder(
-        cls, folder_path: Path, platform_name: str, dummy_hardware: bool
-    ):
-        """Create a calibration platform from a serialized data folder.
-
-        The platform is rebuilt from the configuration saved in the experiment history,
-        using the ``parameters.json`` and ``calibration.json`` files stored in the data folder
-        rather than the platform definition. If a ``platform_name`` is provided, the hardware
-        configuration is loaded from that platform; otherwise, a dummy hardware
-        configuration is used so that acquisition-related fields are still present
-        without requiring a live instrument setup.
-        """
-
-        parameters = Parameters.model_validate_json(
-            (folder_path / PARAMETERS).read_text()
-        )
-
-        calibration = Calibration.model_validate_json(
-            (folder_path / CALIBRATION).read_text()
-        )
-
-        platform = (
-            create_dummy() if dummy_hardware is None else create_platform(platform_name)
-        )
-        platform.parameters = parameters
-        platform.name = platform_name
-
-        return cls(
-            calibration=calibration,
-            **vars(platform),
-        )
-
     def dump(self, path: Path):
         super().dump(path)
         self.calibration.dump(path)
 
 
 def create_calibration_platform(name: str) -> CalibrationPlatform:
-    """This function builds a ``CalibrationPlatform`` object which is sentitive of the hardware,
-    so it needs information about the clusters and its connection. Has to be used for acquisition.
-    """
     platform = create_platform(name)
     return CalibrationPlatform.from_platform(platform)

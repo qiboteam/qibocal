@@ -115,12 +115,14 @@ class History:
         self._order.append(task_id)
         return task_id
 
-    def task_path(self, task_id: TaskId, folder: Path) -> Path:
+    def task_path(self, task_id: TaskId, folder: Path | None) -> Path | None:
         """Determine the path related to a completed task given TaskId.
 
         `folder` should be usually the general output folder, used by Qibocal to store
         all the execution results. Cf. :class:`qibocal.auto.output.Output`.
         """
+        if folder is None:
+            return None
         return folder / "data" / f"{task_id}"
 
     def dump(self, output: Path):

@@ -41,7 +41,7 @@ def mock_output(tmp_path: Path, platform: CalibrationPlatform) -> tuple[Output, 
         path=tmp_path,
         meta=meta,
     )
-    executor.run_protocol(flipping, ACTION, mode=ExecutionMode.ACQUIRE)
+    executor.run_protocol(flipping, ACTION, mode=ExecutionMode.ACQUIRE, output=tmp_path)
     meta.end()
     platform.disconnect()
     output.history = executor.history
