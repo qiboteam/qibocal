@@ -107,6 +107,9 @@ class CalibrateMixersData(Data):
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
+    target_modules: dict[str, list[str]] = field(default_factory=dict)
+    """Module short names associated to each target's channels."""
+
 
 def _cluster(platform: CalibrationPlatform) -> Cluster:
     """Return the Qblox cluster available in the platform."""
@@ -208,6 +211,63 @@ def _perform_calibration(cluster: Cluster, seq_map: SequencerMap):
             sequencer.sideband_cal()
 
 
+def _target_channels(platform: CalibrationPlatform, targets: list[str]) -> set[str]:
+    """Drive and readout channels for the given target qubits.
+
+    All targets are combined into one set so channels sharing a module are configured
+    together, preserving cross-channel intermodulation products.
+    """
+    channels: set[str] = set()
+    for target in targets:
+        qubit = platform.qubits[target]
+        channels.update(
+            ch for ch in (qubit.drive, qubit.probe, qubit.acquisition) if ch is not None
+        )
+        channels.update(qubit.drive_extra.values())
+    return channels
+
+
+def _configure(cluster: Cluster, configs: dict, channels: set[str]) -> SequencerMap:
+    """Preconfigure sequencers, restricted to the given channels.
+
+    ``Cluster.configure`` always configures every channel in
+    ``Cluster._channels_by_module`` (the whole platform, by default), so the map is
+    narrowed temporarily and restored right after, to avoid touching unrelated modules
+    or leaking the restriction into later experiments.
+    """
+    cluster._channels_by_module = {
+        slot: filtered
+        for slot, chs in cluster._channels_by_module.items()
+        if (filtered := [(ch, address) for ch, address in chs if ch in channels])
+    }
+    try:
+        seq_map, _ = cluster.configure(configs=configs)
+    finally:
+        del cluster._channels_by_module
+    return seq_map
+
+
+def _target_modules(
+    cluster: Cluster,
+    platform: CalibrationPlatform,
+    seq_map: SequencerMap,
+    targets: list[str],
+) -> dict[str, list[str]]:
+    """Module short names touched by each individual target's channels."""
+    mapping = {}
+    for target in targets:
+        target_channels = _target_channels(platform, [target])
+        mapping[target] = sorted(
+            {
+                cluster._modules[slot].short_name
+                for slot, channels in seq_map.items()
+                for ch_name in channels
+                if ch_name in target_channels
+            }
+        )
+    return mapping
+
+
 def _acquisition(
     params: CalibrateMixersParameters,
     platform: CalibrationPlatform,
@@ -216,13 +276,16 @@ def _acquisition(
     """Data acquisition for mixer calibration.
 
     This routine calibrates the IQ mixer offsets, gain ratios, and phase offsets
-    for all Qblox RF modules in the platform. This is currently done specifically for
-    Qblox electronics but could be included as part of qibolab to make it more general.
+    for the Qblox RF modules associated to the drive and readout channels of
+    ``targets``. This is currently done specifically for Qblox electronics but could
+    be included as part of qibolab to make it more general.
 
     Args:
         params: Input parameters (currently empty)
         platform: Qibolab's calibration platform
-        targets: List of target qubits (not used, calibrates all mixers)
+        targets: List of target qubits. Only the drive and readout channels of these
+            qubits are calibrated; all of them are configured together so that
+            intermodulation products across their channels are accounted for.
 
     Returns:
         CalibrateMixersData with initial and final calibration values
@@ -232,14 +295,10 @@ def _acquisition(
 
     cluster = _cluster(platform)
     configs = platform.parameters.configs.copy()
+    channels = _target_channels(platform, targets)
 
-    # Setup one sequencer per channel with a dummy sequence
-    # TODO: Optimize by directly using Cluster._channels_by_module to assign
-    # one sequencer per output port instead of calling configure(). This would
-    # allow sequential calibration of individual channel mixers.
-    seq_map, _ = cluster.configure(
-        configs=configs,
-    )
+    # Setup one sequencer per target channel with a dummy sequence
+    seq_map = _configure(cluster, configs, channels)
 
     # Read current hardware calibration values.
     initial_calibration = _get_hardware_calibration(cluster, seq_map)
@@ -254,6 +313,7 @@ def _acquisition(
         sequencer_map=dict(seq_map),  # outer defaultdict -> dict for JSON serialization
         initial_calibration=initial_calibration,
         final_calibration=final_calibration,
+        target_modules=_target_modules(cluster, platform, seq_map, targets),
     )
 
     return data
@@ -279,11 +339,12 @@ def _fit(data: CalibrateMixersData) -> CalibrateMixersResults:
 def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResults):
     """Plotting function for mixer calibration.
 
-    Creates a table showing initial and final calibration values for all modules.
+    Creates a table showing initial and final calibration values for the module(s)
+    associated to ``target``.
 
     Args:
         data: Acquisition data with calibration values
-        target: Target qubit (not used, shows all modules)
+        target: Target qubit, used to select which module(s) are shown
         fit: Fit results (not used)
 
     Returns:
@@ -297,7 +358,9 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
         data.initial_calibration,
         data.final_calibration,
     )
-    for module_key in sorted(initial_calibration):
+    # Fall back to showing everything for reports predating `target_modules`.
+    target_modules = data.target_modules.get(target, sorted(initial_calibration))
+    for module_key in sorted(target_modules):
         initial = initial_calibration[module_key]
         final = final_calibration[module_key]
 
@@ -426,7 +489,7 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
         figures.append(fig)
 
     fitting_report = "<h3>Mixer Calibration Complete</h3>"
-    fitting_report += f"<p>Calibrated {len(data.initial_calibration)} module(s)</p>"
+    fitting_report += f"<p>Calibrated {len(target_modules)} module(s)</p>"
 
     return figures, fitting_report
 
@@ -452,39 +515,57 @@ def _update(
 
     cluster = _cluster(platform)
 
-    channels_by_module: dict = (
-        cluster._channels_by_module
-    )  # _channels_by_module is not intended as public
-    for slot, channels in channels_by_module.items():
+    def channel_mixer(ch_id) -> IqChannel:
+        # NOTE: _modules require a connection with the cluster. Also it is not
+        # intended as public, but that's mainly because it's Qblox-specific, but
+        # so is this whole routine for the time being.
+        ch = cluster.channels[ch_id]
+        if isinstance(ch, AcquisitionChannel):
+            # The mixer relevant for an acquisition channel is the one associated to
+            # the corresponding probe channel
+            probe_channel_id = ch.probe
+            assert probe_channel_id is not None
+            ch = cluster.channels[probe_channel_id]
+        assert isinstance(ch, IqChannel)
+        return ch
+
+    updates = {}
+
+    # round1
+    # Per-sequencer values, for channels actually calibrated. Use `results.sequencer_map`
+    # rather than the platform-wide `cluster._channels_by_module`, since only calibrated
+    # channels have matching `final_cal` entries.
+    calibrated_ports: set[tuple[int, int]] = set()
+    for slot, channels in results.sequencer_map.items():
+        mod_name = cluster._modules[slot].short_name
+        if mod_name not in final_cal:
+            continue  # Skip if no calibration data for this module
+        cal = final_cal[mod_name]
+        for ch_id, seq_id in channels.items():
+            ch = channel_mixer(ch_id)
+            port = PortAddress.from_path(cluster.channels[ch_id].path).ports[0] - 1
+            updates[f"configs.{ch.mixer}.scale_q"] = cal.gain_ratio[port][seq_id]
+            updates[f"configs.{ch.mixer}.phase_q"] = cal.phase_offset[port][seq_id]
+            calibrated_ports.add((slot, port))
+
+    # round2
+    # offset_i/offset_q are per physical port, shared by every qubit multiplexed on it
+    # Calibrating one recalibrates all of them in hardware, so propagate the update to
+    # update to every channel on a sahred calibrated port, not just the targets.
+    for slot, channels in cluster._channels_by_module.items():
+        mod_name = cluster._modules[slot].short_name
+        if mod_name not in final_cal:
+            continue
+        cal = final_cal[mod_name]
         for ch_id, address in channels:
-            # NOTE: _modules require a connection with the cluster. Also it is not
-            # intended as public, but that's mainly because it's Qblox-specific, but
-            # so is this whole routine for the time being.
-            mod_name = cluster._modules[slot].short_name
-            if mod_name not in final_cal:
-                continue  # Skip if no calibration data for this module
-
-            ch = cluster.channels[ch_id]
-            if isinstance(ch, AcquisitionChannel):
-                # The mixer relevant for an acquisition channel is the one associated to
-                # the corresponding probe channel
-                probe_channel_id = ch.probe
-                assert probe_channel_id is not None
-                ch = cluster.channels[probe_channel_id]
-            cal = final_cal[mod_name]
-
-            # Update platform parameters with new calibration values
             port = address.ports[0] - 1
-            seq_id = results.sequencer_map[slot][ch_id]
-            assert isinstance(ch, IqChannel)
-            platform.update(
-                {
-                    f"configs.{ch.mixer}.offset_i": cal.offset_i[port],
-                    f"configs.{ch.mixer}.offset_q": cal.offset_q[port],
-                    f"configs.{ch.mixer}.scale_q": cal.gain_ratio[port][seq_id],
-                    f"configs.{ch.mixer}.phase_q": cal.phase_offset[port][seq_id],
-                }
-            )
+            if (slot, port) not in calibrated_ports:
+                continue
+            ch = channel_mixer(ch_id)
+            updates[f"configs.{ch.mixer}.offset_i"] = cal.offset_i[port]
+            updates[f"configs.{ch.mixer}.offset_q"] = cal.offset_q[port]
+
+    platform.update(updates)
 
 
 calibrate_mixers = Protocol(_acquisition, _fit, _plot, _update)
