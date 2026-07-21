@@ -25,7 +25,9 @@ from .processing import (
 __all__ = ["ramsey"]
 
 
-RamseyProbType = np.dtype([("wait", np.float64), ("prob", np.float64)])
+RamseyProbType = np.dtype(
+    [("wait", np.float64), ("prob", np.float64), ("error", np.float64)]
+)
 """Custom dtype for coherence routines."""
 
 
@@ -65,12 +67,15 @@ def _acquisition(
 
     for qubit in targets:
         ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        prob = results[ro_pulse.id]
+        error = np.sqrt(prob * (1 - prob) / params.nshots)
         data.register_qubit(
             RamseyProbType,
             (qubit),
             dict(
                 wait=np.arange(*params.delay_range),
-                prob=results[ro_pulse.id],
+                prob=np.array(prob),
+                error=error,
             ),
         )
 
@@ -94,8 +99,9 @@ def _fit(data: RamseyData) -> RamseyResults:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
         probs = qubit_data["prob"]
+        errors = qubit_data["error"]
         try:
-            popt, perr = fitting(waits, probs)
+            popt, perr = fitting(waits, probs, errors)
             (
                 freq_measure[qubit],
                 t2_measure[qubit],
@@ -127,6 +133,7 @@ def _plot(
         target=target,
         fit=fit,
         yaxis_title="Excited state probability",
+        error_bar=data.data[target]["error"],
     )
 
 

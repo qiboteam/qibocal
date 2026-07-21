@@ -258,4 +258,4 @@ class Completed:
             try:
                 self.task.operation.update(self.results, platform, qubit)
             except KeyError:
-                log.warning(f"Skipping update of qubit {qubit} due to error in fit.")
+                log.warning(f"Skipping update of qubit {qubit}.")

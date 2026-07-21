@@ -85,8 +85,6 @@ class RamseyData(Data):
     """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
 
     @property
     def waits(self) -> npt.NDArray:
