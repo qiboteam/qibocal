@@ -131,10 +131,10 @@ class Task:
 
     def run(
         self,
+        mode: ExecutionMode,
+        folder: Path,
         platform: Platform | None = None,
         targets: Targets | None = None,
-        mode: ExecutionMode | None = None,
-        folder: Path | None = None,
     ) -> "Completed":
         if self.targets is None:
             self.action.targets = targets
@@ -158,7 +158,6 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
-
         completed.dump_parameters()
 
         if ExecutionMode.ACQUIRE in mode:
@@ -174,6 +173,8 @@ class Task:
                 )
             completed.dump_data()
         if ExecutionMode.FIT in mode:
+            if completed.data is None:
+                raise ValueError("Experiment folder does not contain data to fit.")
             completed.results, completed.results_time = operation.fit(completed.data)
             completed.dump_results()
         return completed
@@ -191,7 +192,7 @@ class Completed:
         once tasks will be immutable, a separate `iteration` attribute should
         be added
     """
-    path: Path | None = None
+    path: Path
     """Folder contaning data and results files for task."""
     _data: Data | None = None
     """Protocol data."""
@@ -231,18 +232,15 @@ class Completed:
 
     def dump_parameters(self):
         """Dump parameters."""
-        if self.path is not None:
-            self.task.dump(self.path)
+        self.task.dump(self.path)
 
     def dump_data(self):
         """Dumping data."""
-        if self.path is not None:
-            self._data.save(self.path)
+        self._data.save(self.path)
 
     def dump_results(self):
         """Dumping results."""
-        if self.path is not None:
-            self._results.save(self.path)
+        self._results.save(self.path)
 
     @classmethod
     def load(cls, path: Path):
