@@ -5,7 +5,9 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
+    Pulse,
     PulseSequence,
+    Rectangular,
     Sweeper,
 )
 
@@ -13,7 +15,6 @@ from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
-from ... import update
 from ...result import magnitude, phase
 from ..utils import readout_frequency
 from . import utils
@@ -65,11 +66,17 @@ def _acquisition(
     for q in targets:
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
-        qd12_channel, qd12_pulse = natives.RX12()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
-
-        if params.pulse_length is not None:
-            qd12_pulse = replace(qd_pulse, duration=params.pulse_length)
+        qd12_channel = platform.qubits[q].drive_extra[1, 2]
+        if natives.RX12 is not None:
+            _, qd12_pulse = natives.RX12()[0]
+            if params.pulse_length is not None:
+                qd12_pulse = replace(qd_pulse, duration=params.pulse_length)
+        else:
+            assert params.pulse_length is not None
+            qd12_pulse = Pulse(
+                amplitude=1.0, duration=params.pulse_length, envelope=Rectangular()
+            )
 
         durations[q] = qd12_pulse.duration
         qd_pulses[q] = qd12_pulse
@@ -141,8 +148,33 @@ def _update(
     results: RabiAmplitudeEFResults, platform: CalibrationPlatform, target: QubitId
 ):
     """Update RX2 amplitude_signal"""
-    update.drive_12_amplitude(results.amplitude[target], platform, target)
-    update.drive_12_duration(results.length[target], platform, target)
+    if results.amplitude[target] is None:
+        return
+
+    rx12 = platform.natives.single_qubit[target].RX12
+    if rx12 is not None:
+        rx12_seq = [
+            (
+                rx12[0][0],
+                replace(
+                    rx12[0][1],
+                    amplitude=results.amplitude[target],
+                    duration=results.length[target],
+                ),
+            )
+        ]
+    else:
+        rx12_seq = [
+            (
+                platform.qubits[target].drive_extra[1, 2],
+                Pulse(
+                    amplitude=results.amplitude[target],
+                    duration=results.length[target],
+                    envelope=Rectangular(),
+                ),
+            )
+        ]
+    platform.update({f"native_gates.single_qubit.{target}.RX12": rx12_seq})
 
 
 rabi_amplitude_ef = Protocol(_acquisition, _fit, _plot, _update)

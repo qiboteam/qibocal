@@ -103,8 +103,11 @@ def _acquisition(
         sequence += readout
 
         frequency = platform.calibration.single_qubits[q].qubit.frequency_01
+        frequency12 = platform.calibration.single_qubits[q].qubit.frequency_12
         drive1[q] = to_range(params.drive1, center=frequency)
-        drive2[q] = to_range(params.drive2, center=frequency)
+        drive2[q] = to_range(
+            params.drive2, center=frequency12 if frequency12 is not None else frequency
+        )
         sweep1.append(
             Sweeper(
                 parameter=Parameter.frequency, range=drive1[q], channels=[qubit.drive]
