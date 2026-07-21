@@ -231,12 +231,37 @@ class Output:
         update: bool = True,
         force: bool = False,
     ):
-        """Process existing output."""
-        backend = construct_backend(
-            backend=self.meta.backend, platform=self.meta.platform
-        )
-        assert backend.platform is not None
-        self.platform = CalibrationPlatform.from_platform(backend.platform)
+        """Process an existing output directory.
+
+        Reconstruct the calibration platform from the live backend during
+        acquisition or from the saved datafolder during fitting, then rerun each
+        completed task using the requested execution mode and output folder.
+        If ``update`` is enabled and the task supports platform updates, the
+        platform is refreshed accordingly. When ``force`` is ``False``, tasks
+        that already contain fitting results raise an error to avoid
+        overwriting them.
+        """
+        # NOTE: this function in principle takes also ``ExecutionMode.ACQUIRE`` as ``mode``
+        # value, but if we want this function to be used only for offline post-processing
+        # this input is completely unnecessary (we cannot acquire offline), so we might
+        # think of removing it.
+
+        # during acquisition we need the information of the hardware
+        if ExecutionMode.ACQUIRE in mode:
+            backend = construct_backend(
+                backend=self.meta.backend, platform=self.meta.platform
+            )
+            assert backend.platform is not None
+            self.platform = CalibrationPlatform.from_platform(backend.platform)
+        else:
+            # while performing a fitting task we do not need hardware information
+            # but also we need the params saved in the datafolder, since in the
+            # platform folder might been changed.
+            self.platform = CalibrationPlatform.from_datafolder(
+                folder_path=output / "platform",
+                platform_name=self.meta.platform,
+                dummy_hardware=True,
+            )
 
         for task_id, completed in self.history.items():
             # TODO: should we drop this check as well, and just allow overwriting?
