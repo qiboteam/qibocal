@@ -25,9 +25,7 @@ def update(path: pathlib.Path, skip_qubits: list[QubitId] | None):
     platform_name = json.loads((path / META).read_text())["platform"]
 
     platform_path = locate_platform(platform_name)
-    # we define here the old platform, before editing the files
     old_platform = create_calibration_platform(platform_name)
-    # copying the results files in the platform folder
     for filename in os.listdir(new_platform_path):
         shutil.copy(
             new_platform_path / filename,
@@ -35,11 +33,7 @@ def update(path: pathlib.Path, skip_qubits: list[QubitId] | None):
         )
 
     if skip_qubits is not None:
-        new_platform = CalibrationPlatform.from_datafolder(
-            folder_path=new_platform_path,
-            platform_name=platform_name,
-            dummy_hardware=False,
-        )
+        new_platform = create_calibration_platform(platform_name)
         updated_platform = merge_with_skipped_qubits(
             old_platform, new_platform, skip_qubits
         )
