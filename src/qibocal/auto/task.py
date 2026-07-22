@@ -4,9 +4,10 @@ import copy
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, NewType, Union
+from typing import Annotated, Any, NewType, Union
 
 import yaml
+from pydantic import Field
 from qibo import Circuit
 from qibolab import Platform
 
@@ -21,7 +22,11 @@ from .operation import Data, DummyPars, OperationId, Protocol, Results, dummy_op
 Id = NewType("Id", str)
 """Action identifiers type."""
 
-Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+Targets = (
+    Annotated[list[QubitId], Field(min_length=1)]
+    | Annotated[list[QubitPairId], Field(min_length=1)]
+    | Annotated[list[tuple[QubitId, ...]], Field(min_length=1)]
+)
 """Elements to be calibrated by a single protocol."""
 
 SINGLE_ACTION = "action.yml"
