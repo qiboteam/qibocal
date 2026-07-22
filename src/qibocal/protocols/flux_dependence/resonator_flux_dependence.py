@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import partial
 
 import numpy as np
 import numpy.typing as npt
@@ -300,6 +301,53 @@ def _ransac_fit(
     return popt
 
 
+def _fit_function(
+    x: float,
+    g: float,
+    d: float,
+    offset: float,
+    normalization: float,
+    freq: float,
+    charging_energy: float,
+    w_max: float,
+):
+    """Fit function for resonator flux dependence."""
+    return utils.transmon_readout_frequency(
+        xi=x,
+        w_max=w_max,
+        xj=0,
+        d=d,
+        normalization=normalization,
+        offset=offset,
+        crosstalk_element=1,
+        charging_energy=charging_energy,
+        resonator_freq=freq,
+        g=g,
+    )
+
+
+def _maximum_in_data_window(bias, params, fit_function):
+    bias_min, bias_max = np.min(bias), np.max(bias)
+
+    dense_bias = np.linspace(bias_min, bias_max, 2000)
+    freqs = fit_function(dense_bias, *params)
+
+    # Find indices where local maxima occur in the fitted curve inside the window. A
+    # point is a local maximum if it's strictly greater than its neighbors
+    peaks_mask = (freqs[1:-1] > freqs[:-2]) & (freqs[1:-1] > freqs[2:])
+    local_max_biases = dense_bias[1:-1][peaks_mask]
+
+    # Also check endpoints in case a maximum sits right on the boundary
+    if len(local_max_biases) == 0:
+        # If no internal local peak exists, the peak is at one of the window boundaries
+        # or the curve is strictly monotonic in the window
+        return dense_bias[np.argmax(freqs)]
+
+    # Among all local maxima inside the window, return the one closest to 0 bias
+    closest_to_zero_idx = np.argmin(np.abs(local_max_biases))
+    return local_max_biases[closest_to_zero_idx]
+
+
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """PostProcessing for resonator_flux protocol.
 
@@ -334,37 +382,19 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             signal=signal,
         )
 
-        def _fit_function(
-            x: float,
-            g: float,
-            d: float,
-            offset: float,
-            normalization: float,
-            freq: float,
-            charging_energy: float,
-        ):
-            """Fit function for resonator flux dependence."""
-            return utils.transmon_readout_frequency(
-                xi=x,
-                w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
-                xj=0,
-                d=d,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=1,
-                charging_energy=charging_energy,
-                resonator_freq=freq,
-                g=g,
-            )
-
         try:
+            w_max = data.qubit_frequency[qubit] * HZ_TO_GHZ
+            fit_function = partial(
+                _fit_function,
+                w_max=w_max,
+            )
             popt = _ransac_fit(
                 peak_coordinates.frequency * HZ_TO_GHZ,
                 peak_coordinates.bias,
-                fit_function=_fit_function,
+                fit_function=fit_function,
             )
             fitted_parameters[qubit] = {
-                "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
+                "w_max": w_max,
                 "xj": 0,
                 "d": popt[1],
                 "normalization": popt[3],
@@ -375,8 +405,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "g": popt[0],
             }
             matrix_element[qubit] = popt[3]
-            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
-            resonator_freq[qubit] = _fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
+            sweetspot[qubit] = _maximum_in_data_window(bias, popt, fit_function)
+            resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
             successful_fit[qubit] = True
