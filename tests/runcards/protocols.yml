@@ -77,16 +77,6 @@ actions:
       freq_step: 500_000
       nshots: 10
 
-  - id: resonator flux dependence bias
-    operation: resonator_flux
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      bias_width: 0.8
-      bias_step:  0.1
-      nshots: 10
-
-
   - id: qubit flux dependence
     operation: qubit_flux
     parameters:
