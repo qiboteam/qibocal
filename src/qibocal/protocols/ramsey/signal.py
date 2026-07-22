@@ -116,7 +116,7 @@ def _fit(data: RamseySignalData) -> RamseyResults:
                 delta_fitting_measure[qubit],
                 popts[qubit],
             ) = process_fit(popt, perr, qubit_freq, data.detuning)
-        except Exception as e:
+        except RuntimeError as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
 
     return RamseyResults(
