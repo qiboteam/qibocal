@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass, field
 from functools import partial
 
@@ -27,8 +28,9 @@ from scipy.ndimage import median_filter
 from scipy.signal import find_peaks
 from scipy.special import erfinv
 
-GAUSSIAN_FILTER1D_SIGMA = 2
-INLIER_THRESHOLD = 0.5e6  # approximate width of a peak in the qubit spectroscopy in Hz
+INLIER_THRESHOLD = (
+    0.0002e9  # approximate width of a peak in the qubit spectroscopy in Hz
+)
 RANSAC_P_SUCCESS = (
     0.999  # desired probability of finding a sample containing only inliers
 )
@@ -237,19 +239,37 @@ def _extract_peak_coordinates(
     )
 
 
+def function_dof(fit_function) -> int:
+    sig = inspect.signature(fit_function)
+
+    # Filter for positional parameters without defaults
+    params = [
+        p
+        for p in sig.parameters.values()
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        and p.default is inspect.Parameter.empty
+    ]
+
+    # Subtract 1 for the independent variable
+    return len(params) - 1
+
+
 def _ransac_fit(
-    freq_ghz: np.ndarray,
-    bias_pts: np.ndarray,
+    xvals: np.ndarray,
+    yvals: np.ndarray,
     fit_function,
 ):
     """perform fit using RANSAC"""
+
+    dof = function_dof(fit_function)
 
     # The number of iterations is determined following the standard for RANSAC
     # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
     N_needed = np.inf
     ransac_iterations = 0
-    best_inliers = np.array([])
-    best_params = np.array([])
+    best_inliers = None
+    best_params = None
     tried_subsets = set()
     while (
         ransac_iterations < min(N_needed, RANSAC_MAX_ITERATIONS)
@@ -258,7 +278,7 @@ def _ransac_fit(
         ransac_iterations += 1
 
         # randomly sample 6 points, because that's the dof of the parametrization
-        subset = np.random.choice(len(bias_pts), 6, replace=False)
+        subset = np.random.choice(len(yvals), dof, replace=False)
         subset_ = tuple(sorted(subset))
         if subset_ in tried_subsets:
             continue
@@ -267,16 +287,16 @@ def _ransac_fit(
         try:
             popt, _ = curve_fit(
                 fit_function,
-                bias_pts[subset],
-                freq_ghz[subset],
+                yvals[subset],
+                xvals[subset],
                 method="lm",  # lm is a fast option
             )
         except RuntimeError:
             continue
 
-        residuals_all = np.abs(freq_ghz - fit_function(bias_pts, *popt))
+        residuals_all = np.abs(xvals - fit_function(yvals, *popt))
         inliers = residuals_all < INLIER_THRESHOLD * HZ_TO_GHZ
-        if inliers.sum() == len(bias_pts):
+        if inliers.sum() == len(yvals):
             # all points are inliers, so we can proceed
             best_inliers = inliers
             best_params = popt
@@ -285,14 +305,14 @@ def _ransac_fit(
         if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
             best_inliers = inliers
             best_params = popt
-            denom = np.log(1 - (best_inliers.sum() / len(bias_pts)) ** len(subset))
+            denom = np.log(1 - (best_inliers.sum() / len(yvals)) ** len(subset))
             N_needed = np.log(1 - RANSAC_P_SUCCESS) / denom
 
     # Finally optimize by doing a least-squares fit to the best set of inliers
     popt, _ = curve_fit(
         fit_function,
-        bias_pts[best_inliers],
-        freq_ghz[best_inliers],
+        yvals[best_inliers],
+        xvals[best_inliers],
         p0=best_params,
         method="lm",
         maxfev=100000,
