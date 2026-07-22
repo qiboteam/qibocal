@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from plotly.subplots import make_subplots
 from pydantic import TypeAdapter
 from scipy import constants, sparse
@@ -1085,13 +1085,13 @@ def fallback_frequency(frequency: NDArray) -> NDArray:
 
 
 def quinn_fernandes_algorithm(
-    signal: Any,
-    x: Any,
+    signal: ArrayLike,
+    x: ArrayLike,
     axis: int = -1,
     speedup_flag: bool = False,
     iterations: int = 100,
-    tol: int = 1e-8,
-) -> NDArray:
+    tol: float = 1e-8,
+) -> np.floating[Any]:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
     We compute the signal sampling rate from :param:x, hence this function assumes x to be
     ordered.
@@ -1153,8 +1153,8 @@ def quinn_fernandes_algorithm(
 
 
 def guess_period(
-    x: NDArray, y: NDArray, axis: int = -1, speedup_flag: bool = True
-) -> NDArray:
+    x: ArrayLike, y: ArrayLike, axis: int = -1, speedup_flag: bool = True
+) -> np.floating[Any]:
     """Estimate the period(s) of a (set of) sinusoidal signal(s).
 
     This is a thin wrapper around :func:`guess_frequency` that returns the

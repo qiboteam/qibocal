@@ -22,37 +22,36 @@ def assert_close_lil_sparse(a, b, atol=1e-8, rtol=1e-5):
 def test_serialization_single_qubits(tmp_path):
     """Testing serialization forn single qubits."""
 
-    cal = Calibration()
-
+    single_qubits = {}
     for i in range(2):
-        cal.single_qubits[i] = QubitCalibration()
+        single_qubits[i] = QubitCalibration()
 
-        cal.single_qubits[i].resonator.bare_frequency = 7e9
-        cal.single_qubits[i].resonator.dressed_frequency = 7.001e9
-        assert cal.single_qubits[i].resonator.dispersive_shift == -0.001e9
-        cal.single_qubits[i].qubit.frequency_01 = 5e9
-        assert cal.single_qubits[i].qubit.anharmonicity == 0.0
-        cal.single_qubits[i].qubit.frequency_12 = 4.8e9
-        cal.single_qubits[i].qubit.maximum_frequency = cal.single_qubits[
-            0
-        ].qubit.frequency_01
-        cal.single_qubits[i].t1 = (10e6, 1e6)
+        single_qubits[i].resonator.bare_frequency = 7e9
+        single_qubits[i].resonator.dressed_frequency = 7.001e9
+        assert single_qubits[i].resonator.dispersive_shift == -0.001e9
+        single_qubits[i].qubit.frequency_01 = 5e9
+        assert single_qubits[i].qubit.anharmonicity == 0.0
+        single_qubits[i].qubit.frequency_12 = 4.8e9
+        single_qubits[i].qubit.maximum_frequency = single_qubits[0].qubit.frequency_01
+        single_qubits[i].t1 = (10e6, 1e6)
 
-        assert cal.single_qubits[i].qubit.anharmonicity == -0.2e9
-        assert cal.single_qubits[i].qubit.charging_energy == 0.2e9
+        assert single_qubits[i].qubit.anharmonicity == -0.2e9
+        assert single_qubits[i].qubit.charging_energy == 0.2e9
         assert (
-            cal.single_qubits[i].qubit.josephson_energy
+            single_qubits[i].qubit.josephson_energy
             == (
-                cal.single_qubits[i].qubit.maximum_frequency
-                + cal.single_qubits[i].qubit.charging_energy
+                single_qubits[i].qubit.maximum_frequency
+                + single_qubits[i].qubit.charging_energy
             )
             ** 2
             / 8
-            / cal.single_qubits[i].qubit.charging_energy
+            / single_qubits[i].qubit.charging_energy
         )
 
-        cal.single_qubits[i].readout.fidelity = 0.9
-        assert cal.single_qubits[i].readout.assignment_fidelity == 0.95
+        single_qubits[i].readout.fidelity = 0.9
+        assert single_qubits[i].readout.assignment_fidelity == 0.95
+
+    cal = Calibration(single_qubits=single_qubits)
     assert cal.nqubits == 2
     assert cal.qubits == list(range(2))
 
@@ -65,47 +64,60 @@ def test_serialization_single_qubits(tmp_path):
 def test_serialization_qubit_pairs(tmp_path):
     """Testing serialization for qubit pairs."""
 
-    cal = Calibration()
-    cal.two_qubits[0, 1] = TwoQubitCalibration(
-        rb_fidelity=[0.99, 0.1], coupling=[0.5, 0.01]
+    cal = Calibration(
+        two_qubits={
+            (0, 1): TwoQubitCalibration(rb_fidelity=[0.99, 0.1], coupling=[0.5, 0.01])
+        }
     )
     cal.dump(tmp_path)
     new_cal = cal.model_validate_json((tmp_path / CALIBRATION).read_text())
     assert new_cal == cal
 
 
-def test_serialization_crosstalk_matrix(tmp_path):
-    """Testing serialization from crosstalk matrix."""
+def test_serialization_crosstalk_matrices(tmp_path):
+    """Testing serialization from flux crosstalk matrix."""
 
-    cal = Calibration()
+    single_qubits = {}
     for i in range(5):
-        cal.single_qubits[f"A{i}"] = QubitCalibration()
+        single_qubits[f"A{i}"] = QubitCalibration()
 
-    nqubits = cal.nqubits
-    assert cal.get_crosstalk_element("A0", "A1") == 0
-    cal.flux_crosstalk_matrix = None
-    cal.set_crosstalk_element("A0", "A1", 1)
-    assert cal.get_crosstalk_element("A0", "A1") == 1
+    cal = Calibration(single_qubits=single_qubits)
 
-    cal.flux_crosstalk_matrix = np.random.rand(nqubits, nqubits)
-    assert cal.get_crosstalk_element("A0", "A1") == cal.flux_crosstalk_matrix[0, 1]
+    assert cal.get_flux_crosstalk("A0", "A1") == 0
+    mw_abs, mw_phase = cal.get_microwave_crosstalk("A0", "A1")
+    assert (mw_abs * np.exp(1j * mw_phase)).real == np.inf
 
-    cal.set_crosstalk_element("A3", "A4", 99)
+    cal.set_flux_crosstalk("A0", "A1", 1)
+    assert cal.get_flux_crosstalk("A0", "A1") == 1
+    cal.set_microwave_crosstalk("A0", "A1", 1)
+    mw_abs, mw_phase = cal.get_microwave_crosstalk("A0", "A1")
+    assert mw_abs * np.exp(1j * mw_phase) == 1
+
+    cal.set_flux_crosstalk("A3", "A4", 99)
 
     cal.dump(tmp_path)
     new_cal = cal.model_validate_json((tmp_path / CALIBRATION).read_text())
-    assert cal.get_crosstalk_element("A3", "A4") == 99
-    np.testing.assert_allclose(
-        new_cal.flux_crosstalk_matrix, new_cal.flux_crosstalk_matrix
+
+    cal.set_microwave_crosstalk("A3", "A4", 99)
+
+    assert cal.get_flux_crosstalk("A3", "A4") == 99
+    mw_abs, mw_phase = cal.get_microwave_crosstalk("A3", "A4")
+    assert mw_abs * np.exp(1j * mw_phase) == 99
+
+    assert np.allclose(cal.flux_crosstalk_matrix, new_cal.flux_crosstalk_matrix)
+    assert not np.allclose(
+        cal.microwave_crosstalk_matrix, new_cal.microwave_crosstalk_matrix
     )
 
 
 def test_serialization_readout(tmp_path):
     """Test serialization for readout mitigation matrix."""
 
-    cal = Calibration()
+    single_qubits = {}
     for i in range(5):
-        cal.single_qubits[f"A{i}"] = QubitCalibration()
+        single_qubits[f"A{i}"] = QubitCalibration()
+
+    cal = Calibration(single_qubits=single_qubits)
 
     cal.readout_mitigation_matrix = lil_matrix((2**cal.nqubits, 2**cal.nqubits))
 

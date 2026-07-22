@@ -8,10 +8,10 @@ from click.testing import CliRunner
 
 from qibocal.auto.output import UPDATED_PLATFORM
 from qibocal.cli._base import command
-from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
-from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
-from qibocal.protocols.rabi.length import RabiLengthData
-from qibocal.protocols.rabi.utils import (
+from qibocal.protocols.rabi.amplitude import RabiAmplitudeClassificationData
+from qibocal.protocols.rabi.ef import RabiEFSignalData
+from qibocal.protocols.rabi.length import RabiLengthClassificationData
+from qibocal.protocols.rabi.processing import (
     extract_rabi,
     rabi_amplitude_function,
     rabi_length_function,
@@ -154,33 +154,34 @@ def test_fit_command(runcard, update, tmp_path, platform):
 
 
 def test_extract_rabi():
-    assert extract_rabi(RabiAmplitudeData(rx90=False)) == (
+    assert extract_rabi(RabiAmplitudeClassificationData(rx90=False)) == (
         "amp",
-        "Amplitude [dimensionless]",
+        "Amplitude [a.u.]",
         rabi_amplitude_function,
     )
-    assert extract_rabi(RabiLengthData(rx90=False)) == (
+    assert extract_rabi(RabiLengthClassificationData(rx90=False)) == (
         "length",
         "Time [ns]",
         rabi_length_function,
     )
-    with pytest.raises(RuntimeError):
-        extract_rabi(RabiAmplitudeEFData)
+    assert extract_rabi(RabiEFSignalData(rx90=False)) == (
+        "amp",
+        "Amplitude [a.u.]",
+        rabi_amplitude_function,
+    )
 
 
 def test_extract_rabi_rx90():
-    assert extract_rabi(RabiAmplitudeData(rx90=True)) == (
+    assert extract_rabi(RabiAmplitudeClassificationData(rx90=True)) == (
         "amp",
-        "Amplitude [dimensionless]",
+        "Amplitude [a.u.]",
         rabi_amplitude_function,
     )
-    assert extract_rabi(RabiLengthData(rx90=True)) == (
+    assert extract_rabi(RabiLengthClassificationData(rx90=True)) == (
         "length",
         "Time [ns]",
         rabi_length_function,
     )
-    with pytest.raises(RuntimeError):
-        extract_rabi(RabiAmplitudeEFData)
 
 
 # TODO: compare report by calling qq report

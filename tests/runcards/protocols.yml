@@ -112,7 +112,7 @@ actions:
       bias_step:  0.005
       drive_amplitude: 0.5
       drive_duration: 2000
-      flux_qubits: [1]
+      flux_lines: [1]
       nshots: 1024
       relaxation_time: 2000
 

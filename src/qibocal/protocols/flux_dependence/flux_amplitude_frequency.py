@@ -19,7 +19,6 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
@@ -402,9 +401,11 @@ def _update(
         ].qubit.flux_coefficients = results.fitted_parameters_detuning[target]
 
     # TODO: needs to be inverted
-    flux_qubit = results.crosstalk if results.crosstalk is not None else target
-    update.crosstalk_matrix(
-        results.fitted_parameters_flux[target][0], platform, target, flux_qubit
+    flux_line = results.crosstalk if results.crosstalk is not None else target
+    platform.calibration.set_flux_crosstalk(
+        qubit=target,
+        flux_line=flux_line,
+        value=results.fitted_parameters_flux[target][0],
     )
 
 
