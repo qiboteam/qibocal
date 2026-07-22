@@ -41,8 +41,7 @@ def update_rabi_parameters(
     target: QubitId | QubitPairId,
 ) -> None:
     """Updating RX or RX90 parameters if the drive line is the physical line for qubit `target`"""
-    qubit = target[0] if isinstance(target, tuple) else target
-    drive_line = results.drive_lines[qubit]
+    qubit, drive_line = target if isinstance(target, tuple) else (target, target)
     # checking if the parameters have been saved
     if qubit == drive_line and qubit in results.length and qubit in results.amplitude:
         update.drive_duration(results.length[qubit], results.rx90, platform, qubit)
