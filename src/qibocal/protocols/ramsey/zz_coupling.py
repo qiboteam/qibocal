@@ -343,7 +343,7 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
                     zz=zz[pair],
                 )
 
-            except Exception as e:
+            except RuntimeError as e:
                 log.warning(f"Ramsey fitting failed for qubit pair {pair} due to {e}.")
 
     return RamseyZZResults(
