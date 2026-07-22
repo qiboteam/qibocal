@@ -4,13 +4,13 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ParallelSweepers, Parameter, Sweeper
 
-from qibocal.auto.operation import Protocol, QubitId
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
 from qibocal.result import collect, magnitude
 
-from .acquisition import check_correct_drive_lines_setup, sequence_length
+from .acquisition import define_qubits_and_drivelines, sequence_length
 from .parent_classes import (
     RabiData,
     RabiLengthParameters,
@@ -43,18 +43,16 @@ class RabiLengthSignalData(RabiData):
 def _acquisition(
     params: RabiLengthParameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    targets: list[QubitId] | list[QubitPairId],
 ) -> RabiLengthSignalData:
     r"""
     Data acquisition for RabiLength Signal Experiment.
     """
 
-    drive_lines = check_correct_drive_lines_setup(
-        targets=targets, input_drivelines=params.drive_lines
-    )
+    qubits_list, drive_lines = define_qubits_and_drivelines(targets)
 
     sequence, qd_pulses, delays, amplitudes, updates = sequence_length(
-        targets=targets,
+        targets=qubits_list,
         drive_lines=drive_lines,
         platform=platform,
         pulse_ampl=params.pulse_amplitude,
@@ -76,7 +74,6 @@ def _acquisition(
     )
 
     data = RabiLengthSignalData(
-        drive_lines={t: d for t, d in zip(targets, drive_lines)},
         rx90=params.rx90,
         amplitudes=amplitudes,
     )
@@ -84,7 +81,7 @@ def _acquisition(
     # for signal measurement we have to change readout
     updates |= {
         platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}
-        for q in targets
+        for q in qubits_list
     }
 
     results = platform.execute(
@@ -97,7 +94,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for q in targets:
+    for q in qubits_list:
         ro_pulse = list(sequence.channel(platform.qubits[q].acquisition))[-1]
         result = results[ro_pulse.id]
         data.register_qubit(
@@ -149,7 +146,6 @@ def _fit(data: RabiLengthSignalData) -> RabiResults:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiResults(
-        drive_lines=data.drive_lines,
         length=durations,
         amplitude={k: [v] for k, v in data.amplitudes.items()},
         fitted_parameters=fitted_parameters,
@@ -157,12 +153,7 @@ def _fit(data: RabiLengthSignalData) -> RabiResults:
     )
 
 
-def _plot(data: RabiLengthSignalData, target: QubitId, fit: RabiResults | None = None):
-    """Plotting function for RabiLength signal experiment."""
-    return plot_signal(data, target, fit, data.rx90)
-
-
-rabi_length_signal = Protocol(_acquisition, _fit, _plot, update_rabi_parameters)
+rabi_length_signal = Protocol(_acquisition, _fit, plot_signal, update_rabi_parameters)
 """RabiLength Protocol object.
 
 In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length

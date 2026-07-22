@@ -8,7 +8,7 @@ from plotly.subplots import make_subplots
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import QubitId
+from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     angle_wrap,
@@ -38,28 +38,23 @@ sinusoidal oscillation.
 def update_rabi_parameters(
     results: RabiResults | RabiFreqResults,
     platform: CalibrationPlatform,
-    target: QubitId,
+    target: QubitId | QubitPairId,
 ) -> None:
     """Updating RX or RX90 parameters if the drive line is the physical line for qubit `target`"""
-    drive_line = results.drive_lines[target]
+    qubit = target[0] if isinstance(target, tuple) else target
+    drive_line = results.drive_lines[qubit]
     # checking if the parameters have been saved
-    if (
-        target == drive_line
-        and target in results.length
-        and target in results.amplitude
-    ):
-        update.drive_duration(results.length[target], results.rx90, platform, target)
-        update.drive_amplitude(
-            results.amplitude[target], results.rx90, platform, target
-        )
-        if isinstance(results, RabiFreqResults) and target in results.frequency:
-            update.drive_frequency(results.frequency[target], platform, target)
+    if qubit == drive_line and qubit in results.length and qubit in results.amplitude:
+        update.drive_duration(results.length[qubit], results.rx90, platform, qubit)
+        update.drive_amplitude(results.amplitude[qubit], results.rx90, platform, qubit)
+        if isinstance(results, RabiFreqResults) and qubit in results.frequency:
+            update.drive_frequency(results.frequency[qubit], platform, qubit)
 
 
 def update_rabi_ampl_params(
     results: RabiResults,
     platform: CalibrationPlatform,
-    target: QubitId,
+    target: QubitId | QubitPairId,
     label: Literal["signal", "classification"],
 ) -> None:
     """Update the platform with the results of the RabiAmplitude experiments."""
@@ -67,31 +62,33 @@ def update_rabi_ampl_params(
     # updating rabi parameters in the platform
     update_rabi_parameters(results, platform, target)
 
+    qubit, drive_line = target if isinstance(target, tuple) else (target, target)
+
     # saving amplitudes in the crosstalk matrix
     # from https://arxiv.org/pdf/2112.03708
     # here the first index is the qubit I want to drive and the second is the
     # drive line I want to pulse form.
-    if target not in results.amplitude:
+    if qubit not in results.amplitude:
         return
 
-    drive_line = results.drive_lines[target]
+    exp_rabi_osc = sum(results.fitted_parameters[qubit][:2])
 
-    exp_rabi_osc = sum(results.fitted_parameters[target][:2])
-
-    if drive_line == target:
-        platform.calibration.single_qubits[target].rabi_ampl_oscillation[label] = (
+    if drive_line == qubit:
+        platform.calibration.single_qubits[qubit].rabi_ampl_oscillation[label] = (
             exp_rabi_osc
         )
     else:
-        rtol = 0.5 if results.amplitude[target][0] <= 2 else 0.1
+        rtol = 0.5 if results.amplitude[qubit][0] <= 2 else 0.1
         try:
             condition = np.isclose(
                 exp_rabi_osc,
-                platform.calibration.single_qubits[target].rabi_ampl_oscillation[label],
+                platform.calibration.single_qubits[qubit].rabi_ampl_oscillation[label],
                 rtol=rtol,
             )
         except TypeError:
-            ValueError("Pi pulse calibration is needed for crosstalk calibration.")
+            raise ValueError(
+                "Pi pulse calibration is needed for crosstalk calibration."
+            )
 
         if not condition:
             print(
@@ -101,9 +98,9 @@ def update_rabi_ampl_params(
             return
 
     platform.calibration.set_microwave_crosstalk(
-        qubit=target,
+        qubit=qubit,
         microwave_line=drive_line,
-        module=results.amplitude[target][0],
+        module=results.amplitude[qubit][0],
     )
 
 
@@ -158,9 +155,11 @@ def rabi_initial_guess(
 
 
 def plot_signal(
-    data: RabiData, qubit: QubitId, fit: RabiResults | None, rx90: bool
+    data: RabiData, target: QubitId | QubitPairId, fit: RabiResults | None
 ) -> tuple[list[go.Figure], str]:
     """Create plots for a Rabi experiment signal and phase."""
+    qubit, drive_line = target if isinstance(target, tuple) else (target, target)
+
     quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
@@ -224,7 +223,7 @@ def plot_signal(
             row=1,
             col=1,
         )
-        pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
+        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
 
         fitting_report = table_html(
             table_dict(
@@ -244,8 +243,7 @@ def plot_signal(
             xaxis2_title=title,
             yaxis2_title="Phase [rad]",
             title=(
-                f"Rabi experiment for qubit {qubit} with "
-                + f"drive line {fit.drive_lines[qubit]}"
+                f"Rabi experiment for qubit {qubit} with " + f"drive line {drive_line}"
             ),
         )
 
@@ -255,11 +253,13 @@ def plot_signal(
 
 
 def plot_probabilities(
-    data: RabiData, qubit: QubitId, fit: RabiResults | None, rx90: bool
+    data: RabiData, target: QubitId | QubitPairId, fit: RabiResults | None
 ) -> tuple[list[go.Figure], str]:
     """
     Generate probability plot for Rabi experiment.
     """
+    qubit, drive_line = target if isinstance(target, tuple) else (target, target)
+
     quantity, title, fitting = extract_rabi(data)
     figures: list[go.Figure] = []
     fitting_report = ""
@@ -302,7 +302,7 @@ def plot_probabilities(
                 line=dict(color=FIT_COLOUR_LINE),
             ),
         )
-        pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
+        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
 
         fitting_report = table_html(
             table_dict(
@@ -322,8 +322,7 @@ def plot_probabilities(
             xaxis_title=title,
             yaxis_title="Excited state probability",
             title=(
-                f"Rabi experiment for qubit {qubit} with "
-                + f"drive line {fit.drive_lines[qubit]}"
+                f"Rabi experiment for qubit {qubit} with " + f"drive line {drive_line}"
             ),
         )
 

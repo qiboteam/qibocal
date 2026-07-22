@@ -8,12 +8,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ParallelSweepers, Parameter, Sweeper
 
-from qibocal.auto.operation import Protocol, QubitId
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import HZ_TO_GHZ, chi2_reduced, table_dict, table_html
 
-from .acquisition import check_correct_drive_lines_setup, sequence_amplitude
+from .acquisition import define_qubits_and_drivelines, sequence_amplitude
 from .parent_classes import (
     RabiAmplitudeFrequencyParameters,
     RabiData,
@@ -70,17 +70,15 @@ class RabiAmplitudeFreqClassificationData(RabiData):
 def _acquisition(
     params: RabiAmplitudeFrequencyParameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    targets: list[QubitId] | list[QubitPairId],
 ) -> RabiAmplitudeFreqClassificationData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
-    drive_lines = check_correct_drive_lines_setup(
-        targets=targets, input_drivelines=params.drive_lines
-    )
+    qubits_list, drive_lines = define_qubits_and_drivelines(targets)
 
     # create a sequence of pulses for the experiment
     sequence, qd_pulses, durations, updates = sequence_amplitude(
-        targets=targets,
+        targets=qubits_list,
         drive_lines=drive_lines,
         platform=platform,
         pulse_duration=params.pulse_length,
@@ -96,7 +94,7 @@ def _acquisition(
 
     frequency_values = np.arange(*params.frequency_range)
     freq_sweepers = {}
-    for qubit, drive in zip(targets, drive_lines):
+    for qubit, drive in zip(qubits_list, drive_lines):
         channel = platform.qubits[drive].drive
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
@@ -105,7 +103,6 @@ def _acquisition(
         )
 
     data = RabiAmplitudeFreqClassificationData(
-        drive_lines={t: d for t, d in zip(targets, drive_lines)},
         durations=durations,
         rx90=params.rx90,
     )
@@ -114,7 +111,7 @@ def _acquisition(
         [sequence],
         [
             ParallelSweepers([amp_sweeper]),
-            ParallelSweepers([freq_sweepers[q] for q in targets]),
+            ParallelSweepers([freq_sweepers[q] for q in qubits_list]),
         ],
         updates=[updates],
         nshots=params.nshots,
@@ -123,7 +120,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for qubit in targets:
+    for qubit in qubits_list:
         ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
         prob = results[ro_pulse.id]
         data.register_qubit(
@@ -191,7 +188,6 @@ def _fit(data: RabiAmplitudeFreqClassificationData) -> RabiFreqResults:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiFreqResults(
-        drive_lines=data.drive_lines,
         amplitude=fitted_amplitudes,
         length={k: [v] for k, v in data.durations.items()},
         fitted_parameters=fitted_parameters,
@@ -203,10 +199,13 @@ def _fit(data: RabiAmplitudeFreqClassificationData) -> RabiFreqResults:
 
 def _plot(
     data: RabiAmplitudeFreqClassificationData,
-    target: QubitId,
-    fit: RabiFreqResults = None,
+    target: QubitId | QubitPairId,
+    fit: RabiFreqResults | None = None,
 ):
     """Plotting function for RabiAmplitudeFrequency."""
+
+    qubit, drive_line = target if isinstance(target, tuple) else (target, target)
+
     figures = []
     fitting_report = ""
     fig = make_subplots(
@@ -216,7 +215,7 @@ def _plot(
         vertical_spacing=0.2,
         subplot_titles=("Probability",),
     )
-    qubit_data = data[target]
+    qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
 
@@ -239,7 +238,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[min(amplitudes), max(amplitudes)],
-                y=[fit.frequency[target] * HZ_TO_GHZ] * 2,
+                y=[fit.frequency[qubit] * HZ_TO_GHZ] * 2,
                 mode="lines",
                 line={"color": "white", "width": 4, "dash": "dash"},
             ),
@@ -250,11 +249,11 @@ def _plot(
 
         fitting_report = table_html(
             table_dict(
-                target,
+                qubit,
                 ["Optimal rabi frequency", f"{pulse_name} amplitude"],
                 [
-                    fit.frequency[target],
-                    f"{fit.amplitude[target][0]:.6f} +- {fit.amplitude[target][1]:.6f} [a.u.]",
+                    fit.frequency[qubit],
+                    f"{fit.amplitude[qubit][0]:.6f} +- {fit.amplitude[qubit][1]:.6f} [a.u.]",
                 ],
             )
         )
@@ -262,12 +261,15 @@ def _plot(
     fig.update_layout(
         showlegend=False,
         legend={"orientation": "h"},
+        title=(f"Rabi experiment for qubit {qubit} with " + f"drive line {drive_line}"),
     )
     return figures, fitting_report
 
 
 def _update(
-    results: RabiFreqResults, platform: CalibrationPlatform, target: QubitId
+    results: RabiFreqResults,
+    platform: CalibrationPlatform,
+    target: QubitId | QubitPairId,
 ) -> None:
     return update_rabi_ampl_params(
         results=results,
