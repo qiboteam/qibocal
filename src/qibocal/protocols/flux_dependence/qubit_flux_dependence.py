@@ -110,15 +110,6 @@ class QubitFluxData(Data):
         """Returns True if resonator_type is 2D else False otherwise."""
         return self.resonator_type != "2D"
 
-    def filtered_data(self, qubit: QubitId) -> np.ndarray:
-        """Apply mask to specific qubit data."""
-        return utils.flux_extract_feature(
-            self.data[qubit].freq,
-            self.data[qubit].bias,
-            self.data[qubit].signal,
-            self.find_min,
-        )
-
 
 def _acquisition(
     params: QubitFluxParameters,
