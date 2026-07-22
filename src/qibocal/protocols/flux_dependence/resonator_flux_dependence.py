@@ -22,6 +22,18 @@ from . import utils
 
 __all__ = ["ResonatorFluxParameters", "resonator_flux"]
 
+from scipy.ndimage import median_filter
+from scipy.signal import find_peaks
+from scipy.special import erfinv
+
+GAUSSIAN_FILTER1D_SIGMA = 2
+INLIER_THRESHOLD = 0.5e6  # approximate width of a peak in the qubit spectroscopy in Hz
+RANSAC_P_SUCCESS = (
+    0.999  # desired probability of finding a sample containing only inliers
+)
+RANSAC_MIN_ITERATIONS = 100
+RANSAC_MAX_ITERATIONS = 5000
+
 
 @dataclass
 class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
@@ -168,6 +180,126 @@ def _acquisition(
     return data
 
 
+@dataclass
+class PeakCoordinates:
+    bias: np.ndarray
+    frequency: np.ndarray
+
+
+def _extract_peak_coordinates(
+    freq: np.ndarray,
+    bias: np.ndarray,
+    signal: np.ndarray,
+) -> PeakCoordinates:
+    """Extract the most prominent peaks per bias (if one is dominant enough)."""
+
+    bias_pts, freq_pts = [], []
+    signal_residuals = []
+    is_peak = []
+    for bias_val, row in zip(bias, signal):
+        # There may be fluctuations along the frequency axis caused by elements such cables
+        # or amplifiers. In principle this is flux independent and therefore ideal to remove
+        # by subtracting the median per frequency bin. However, the arc may be very flat, in
+        # which case we end up subtracting the arc rather than background. To avoid this, we
+        # use median_filter.
+        samples_per_peak = np.ceil(INLIER_THRESHOLD / np.diff(freq)[0])
+        baseline = median_filter(row, size=int(20 * samples_per_peak), mode="nearest")
+        residual = row - baseline
+
+        # Estimate the std from median absolute deviation because a naive std is inflated by
+        # the arc we're trying to detect.
+        row_mad = np.median(np.abs(residual - np.median(residual)))
+        row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
+
+        # Detect both peaks and dips by finding prominent extrema in the absolute residual.
+        peaks, props = find_peaks(np.abs(residual), prominence=row_std)
+        if len(peaks) == 0:
+            continue
+
+        # Keep the most prominent extremum and record whether it is a peak or a dip.
+        best = peaks[np.argmax(props["prominences"])]
+        bias_pts.append(bias_val)
+        freq_pts.append(freq[best])
+        signal_residuals.append(residual)
+        is_peak.append(residual[best] > 0)
+
+    # Keep only the dominant extremum type to reject rows detecting the opposite feature.
+    select_peaks = sum(is_peak) >= (len(is_peak) / 2)
+    mask = np.equal(is_peak, select_peaks)
+
+    bias_pts = np.asarray(bias_pts)[mask]
+    freq_pts = np.asarray(freq_pts)[mask]
+
+    return PeakCoordinates(
+        bias=bias_pts,
+        frequency=freq_pts,
+    )
+
+
+def _ransac_fit(
+    freq_ghz: np.ndarray,
+    bias_pts: np.ndarray,
+    fit_function,
+):
+    """perform fit using RANSAC"""
+
+    # The number of iterations is determined following the standard for RANSAC
+    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
+    N_needed = np.inf
+    ransac_iterations = 0
+    best_inliers = np.array([])
+    best_params = np.array([])
+    tried_subsets = set()
+    while (
+        ransac_iterations < min(N_needed, RANSAC_MAX_ITERATIONS)
+        or ransac_iterations < RANSAC_MIN_ITERATIONS
+    ):
+        ransac_iterations += 1
+
+        # randomly sample 6 points, because that's the dof of the parametrization
+        subset = np.random.choice(len(bias_pts), 6, replace=False)
+        subset_ = tuple(sorted(subset))
+        if subset_ in tried_subsets:
+            continue
+        tried_subsets.add(subset_)
+
+        try:
+            popt, _ = curve_fit(
+                fit_function,
+                bias_pts[subset],
+                freq_ghz[subset],
+                method="lm",  # lm is a fast option
+            )
+        except RuntimeError:
+            continue
+
+        residuals_all = np.abs(freq_ghz - fit_function(bias_pts, *popt))
+        inliers = residuals_all < INLIER_THRESHOLD * HZ_TO_GHZ
+        if inliers.sum() == len(bias_pts):
+            # all points are inliers, so we can proceed
+            best_inliers = inliers
+            best_params = popt
+            break
+
+        if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
+            best_inliers = inliers
+            best_params = popt
+            denom = np.log(1 - (best_inliers.sum() / len(bias_pts)) ** len(subset))
+            N_needed = np.log(1 - RANSAC_P_SUCCESS) / denom
+
+    # Finally optimize by doing a least-squares fit to the best set of inliers
+    popt, _ = curve_fit(
+        fit_function,
+        bias_pts[best_inliers],
+        freq_ghz[best_inliers],
+        p0=best_params,
+        method="lm",
+        maxfev=100000,
+    )
+
+    return popt
+
+
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """PostProcessing for resonator_flux protocol.
 
@@ -189,84 +321,68 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     successful_fit = {}
 
     for qubit in data.qubits:
-        # extract signal from 2D plot based on SNR mask
-        frequencies, biases = data.filtered_data(qubit)
+        qubit_data = data[qubit]
 
-        if frequencies is None or biases is None:
+        freq, freq_idx = np.unique(qubit_data.freq, return_inverse=True)
+        bias, bias_idx = np.unique(qubit_data.bias, return_inverse=True)
+        signal = np.full((len(bias), len(freq)), np.nan)
+        signal[bias_idx, freq_idx] = qubit_data.signal
+
+        peak_coordinates = _extract_peak_coordinates(
+            freq=freq,
+            bias=bias,
+            signal=signal,
+        )
+
+        def _fit_function(
+            x: float,
+            g: float,
+            d: float,
+            offset: float,
+            normalization: float,
+            freq: float,
+            charging_energy: float,
+        ):
+            """Fit function for resonator flux dependence."""
+            return utils.transmon_readout_frequency(
+                xi=x,
+                w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
+                xj=0,
+                d=d,
+                normalization=normalization,
+                offset=offset,
+                crosstalk_element=1,
+                charging_energy=charging_energy,
+                resonator_freq=freq,
+                g=g,
+            )
+
+        try:
+            popt = _ransac_fit(
+                peak_coordinates.frequency * HZ_TO_GHZ,
+                peak_coordinates.bias,
+                fit_function=_fit_function,
+            )
+            fitted_parameters[qubit] = {
+                "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
+                "xj": 0,
+                "d": popt[1],
+                "normalization": popt[3],
+                "offset": popt[2],
+                "crosstalk_element": 1,
+                "charging_energy": popt[5],
+                "resonator_freq": popt[4],
+                "g": popt[0],
+            }
+            matrix_element[qubit] = popt[3]
+            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
+            resonator_freq[qubit] = _fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
+            coupling[qubit] = popt[0]
+            asymmetry[qubit] = popt[1]
+            successful_fit[qubit] = True
+        except ValueError as e:
             successful_fit[qubit] = False
-
-        else:
-            # define fit function
-            def fit_function(
-                x: float,
-                g: float,
-                d: float,
-                offset: float,
-                normalization: float,
-                freq: float,
-                charging_energy: float,
-            ):
-                """Fit function for resonator flux dependence."""
-                return utils.transmon_readout_frequency(
-                    xi=x,
-                    w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
-                    xj=0,
-                    d=d,
-                    normalization=normalization,
-                    offset=offset,
-                    crosstalk_element=1,
-                    charging_energy=charging_energy,
-                    resonator_freq=freq,
-                    g=g,
-                )
-
-            try:
-                popt, _ = curve_fit(
-                    fit_function,
-                    biases,
-                    frequencies * HZ_TO_GHZ,
-                    bounds=(
-                        [
-                            0,
-                            0,
-                            -1,
-                            0,
-                            data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.5,
-                            0,
-                        ],
-                        [
-                            0.5,
-                            1,
-                            1,
-                            np.inf,
-                            data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.5,
-                            data.charging_energy[qubit] * HZ_TO_GHZ + 0.3,
-                        ],
-                    ),
-                    maxfev=100000,
-                )
-                fitted_parameters[qubit] = {
-                    "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
-                    "xj": 0,
-                    "d": popt[1],
-                    "normalization": popt[3],
-                    "offset": popt[2],
-                    "crosstalk_element": 1,
-                    "charging_energy": popt[5],
-                    "resonator_freq": popt[4],
-                    "g": popt[0],
-                }
-                matrix_element[qubit] = popt[3]
-                sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
-                resonator_freq[qubit] = (
-                    fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
-                )
-                coupling[qubit] = popt[0]
-                asymmetry[qubit] = popt[1]
-                successful_fit[qubit] = True
-            except ValueError as e:
-                successful_fit[qubit] = False
-                log.error(f"Error in resonator_flux protocol fit: {e} ")
+            log.error(f"Error in resonator_flux protocol fit: {e} ")
 
     return ResonatorFluxResults(
         frequency=resonator_freq,
