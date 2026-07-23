@@ -1,9 +1,13 @@
+import inspect
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import ndimage
+from scipy.optimize import curve_fit
 
 from ...auto.operation import Parameters
 from ..utils import (
@@ -68,19 +72,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             colorscale="Viridis",
         ),
     )
-
-    filtered_freq, filtered_bias = data.filtered_data(qubit)
-
-    if filtered_freq is not None and filtered_bias is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=filtered_freq * HZ_TO_GHZ,
-                y=filtered_bias,
-                name="Estimated points",
-                mode="markers",
-                marker=dict(color="rgb(248, 248, 248)"),
-            )
-        )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
@@ -398,3 +389,123 @@ def flux_extract_feature(
     signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
 
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
+
+
+def _function_dof(fit_function) -> int:
+    sig = inspect.signature(fit_function)
+
+    # Filter for positional parameters without defaults
+    params = [
+        p
+        for p in sig.parameters.values()
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        and p.default is inspect.Parameter.empty
+    ]
+
+    # Subtract 1 for the independent variable
+    return len(params) - 1
+
+
+def ransac_fit(
+    xvals: npt.NDArray[np.float64],
+    yvals: npt.NDArray[np.float64],
+    fit_function: Callable[..., np.ndarray],
+    residual_threshold: float,
+    min_trials: int = 100,
+    max_trials: int = 5000,
+    stop_probability: float = 0.999,
+    random_state: int = 0,
+):
+    """Fit a model to data using RANSAC, ignoring outliers.
+
+    Repeatedly fits ``fit_function`` to a minimal random subsets of the data (sized to
+    the function's degrees of freedom), scores each candidate by its inlier count
+    (points with residual below ``residual_threshold``), and keeps the best-performing
+    model. The number of trials adapts dynamically based on the current inlier ratio,
+    following the standard RANSAC stopping criterion, and is bounded by ``min_trials``
+    and ``max_trials``. A final least-squares refit is performed on the best inlier set.
+
+    Returns:
+        Optimal fit parameters from the least-squares refit on the best inlier set.
+
+    """
+    rng = np.random.RandomState(random_state)
+
+    function_dof = _function_dof(fit_function)
+
+    # N_needed is the adaptively-updated trial budget; start at infinity so the loop is
+    # initially bounded only by min_trials/max_trials.
+    N_needed = np.inf
+    ransac_iterations = 0
+    best_inliers = np.array([])
+    best_params = None
+    # Track already-sampled subsets so we don't waste a trial refitting the exact same
+    # minimal sample twice.
+    tried_subsets = set()
+
+    # Standard adaptive RANSAC loop: keep going until we've hit max_trials, or until the
+    # estimated number of iterations needed to find an all-inlier sample (with
+    # probability stop_probability) drops below where we already are, although we never
+    # stop before attempting at least min_trials.
+    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
+    while (
+        ransac_iterations < min(N_needed, max_trials) or ransac_iterations < min_trials
+    ):
+        ransac_iterations += 1
+
+        # Draw a minimal sample because fewer samples means that the probablilty of all
+        # points being on the feature of interest is maximized. To perform a fit we need
+        # at least as many points as the model's dof.
+        subset = rng.choice(len(xvals), function_dof, replace=False)
+        subset_ = tuple(sorted(subset))
+        if subset_ in tried_subsets:
+            continue
+        tried_subsets.add(subset_)
+
+        try:
+            popt, _ = curve_fit(
+                fit_function,
+                xvals[subset],
+                yvals[subset],
+                method="lm",  # lm is a fast option
+            )
+        except RuntimeError:
+            continue
+
+        residuals_all = np.abs(yvals - fit_function(xvals, *popt))
+        inliers = residuals_all < residual_threshold
+        if inliers.sum() == len(xvals):
+            # all points are inliers, so we cannot do better
+            best_inliers = inliers
+            best_params = popt
+            break
+
+        # Accept as a new best if it beats the current best AND at least matches the
+        # minimal sample size
+        if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
+            best_inliers = inliers
+            best_params = popt
+            # Re-estimate how many trials are needed to have `stop_probability`
+            # confidence of drawing an all-inlier minimal sample.
+            denom = np.log(1 - (best_inliers.sum() / len(xvals)) ** len(subset))
+            N_needed = np.log(1 - stop_probability) / denom
+
+    if best_params is None:
+        raise RuntimeError(
+            f"RANSAC failed to find a valid fit after {ransac_iterations} iterations: "
+            f"no sample of size {function_dof} produced at least {function_dof} inliers "
+            f"(residual_threshold={residual_threshold})."
+        )
+
+    # Finally optimize by doing a least-squares fit to the best set of inliers.
+    popt, _ = curve_fit(
+        fit_function,
+        xvals[best_inliers],
+        yvals[best_inliers],
+        p0=best_params,
+        method="lm",  # lm is used because all we need is a local optimizer
+        maxfev=100000,
+    )
+
+    return popt

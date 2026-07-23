@@ -10,7 +10,9 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
-from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import find_peaks
+from scipy.special import erfinv
 
 from qibocal.auto.operation import Data, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -97,15 +99,6 @@ class QubitFluxData(Data):
         """Returns True if resonator_type is 2D else False otherwise."""
         return self.resonator_type != "2D"
 
-    def filtered_data(self, qubit: QubitId) -> np.ndarray:
-        """Apply mask to specific qubit data."""
-        return utils.flux_extract_feature(
-            self.data[qubit].freq,
-            self.data[qubit].bias,
-            self.data[qubit].signal,
-            self.find_min,
-        )
-
 
 def _acquisition(
     params: QubitFluxParameters,
@@ -187,6 +180,53 @@ def _acquisition(
     return data
 
 
+def _extract_peak_coordinates(
+    frequencies: npt.NDArray[np.float64],
+    biases: npt.NDArray[np.float64],
+    signal: npt.NDArray[np.float64],
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    """Extract the most prominent peaks in the qubit (flux,frequency) landscape. At most
+    one peak per flux bin.
+    """
+
+    peak_biases, peak_frequencies = [], []
+    for bias, signal_row in zip(biases, signal):
+        # The Gaussian filter reduces noise in the background and helps make a noisy
+        # peak into a stronger signal.
+        smoothed_row = gaussian_filter1d(signal_row, sigma=2)
+
+        # The standard deviation is computed from the median absolute deviation instead
+        # of the standard deviation itself to avoid the peaks in the arc from affecting
+        # the estimate of the background noise. While this prominence threshold is
+        # somewhat motivated, it is still a choice and it has been observed that the
+        # result is not very sensitive to it and probably it is even fine to set the
+        # threshold to 0.
+        row_mad = np.median(np.abs(smoothed_row - np.median(smoothed_row)))
+        row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
+
+        # Use find_peaks instead of argmax because there may be nothing in a row. Try
+        # both peak and dip per row, since this may differ per row due to moving of the
+        # resonator frequency.
+        peaks, peak_props = find_peaks(smoothed_row, prominence=row_std)
+        dips, dip_props = find_peaks(-smoothed_row, prominence=row_std)
+        if len(peaks) == 0 and len(dips) == 0:
+            continue
+        # Keep only the feature with the largest prominence per bias.
+        if len(dips) == 0 or (
+            len(peaks) > 0
+            and peak_props["prominences"].max() >= dip_props["prominences"].max()
+        ):
+            best = peaks[np.argmax(peak_props["prominences"])]
+        else:
+            best = dips[np.argmax(dip_props["prominences"])]
+
+        # Store bias and frequency of the peak.
+        peak_biases.append(bias)
+        peak_frequencies.append(frequencies[best])
+
+    return np.asarray(peak_biases), np.asarray(peak_frequencies)
+
+
 def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
     Post-processing for QubitFlux Experiment. See `arXiv:0703002 <https://arxiv.org/abs/cond-mat/0703002>`_.
@@ -209,54 +249,57 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        # extract signal from 2D plot based on SNR mask
-        frequencies, biases = data.filtered_data(qubit)
+        freq, freq_idx = np.unique(qubit_data.freq, return_inverse=True)
+        bias, bias_idx = np.unique(qubit_data.bias, return_inverse=True)
+        signal = np.full((len(bias), len(freq)), np.nan)
+        signal[bias_idx, freq_idx] = qubit_data.signal
 
-        if frequencies is None or biases is None:
+        peak_biases, peak_frequencies = _extract_peak_coordinates(
+            frequencies=freq,
+            biases=bias,
+            signal=signal,
+        )
+
+        def _fit_function(x, w_max, normalization, offset):
+            return utils.transmon_frequency(
+                xi=x,
+                w_max=w_max,
+                xj=0,
+                d=0,
+                normalization=normalization,
+                offset=offset,
+                crosstalk_element=1,
+                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+            )
+
+        try:
+            popt = utils.ransac_fit(
+                peak_biases,
+                peak_frequencies * HZ_TO_GHZ,
+                fit_function=_fit_function,
+                # approximate width of a peak in the qubit spectroscopy
+                residual_threshold=0.6e6 * HZ_TO_GHZ,
+            )
+
+            fitted_parameters[qubit] = {
+                "w_max": popt[0],
+                "xj": 0,
+                "d": 0,
+                "normalization": popt[1],
+                "offset": popt[2],
+                "crosstalk_element": 1,
+                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+            }
+            frequency[qubit] = popt[0] * GHZ_TO_HZ
+            middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
+            sweetspot[qubit] = (
+                np.round(popt[1] * middle_bias + popt[2]) - popt[2]
+            ) / popt[1]
+            matrix_element[qubit] = popt[1]
+            successful_fit[qubit] = True
+        except (ValueError, RuntimeError) as e:
             successful_fit[qubit] = False
-        else:
-
-            def fit_function(x, w_max, normalization, offset):
-                return utils.transmon_frequency(
-                    xi=x,
-                    w_max=w_max,
-                    xj=0,
-                    d=0,
-                    normalization=normalization,
-                    offset=offset,
-                    crosstalk_element=1,
-                    charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-                )
-
-            try:
-                popt = curve_fit(
-                    fit_function,
-                    biases,
-                    frequencies * HZ_TO_GHZ,
-                    bounds=utils.qubit_flux_dependence_fit_bounds(
-                        data.qubit_frequency[qubit],
-                    ),
-                    maxfev=100000,
-                )[0]
-                fitted_parameters[qubit] = {
-                    "w_max": popt[0],
-                    "xj": 0,
-                    "d": 0,
-                    "normalization": popt[1],
-                    "offset": popt[2],
-                    "crosstalk_element": 1,
-                    "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-                }
-                frequency[qubit] = popt[0] * GHZ_TO_HZ
-                middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
-                sweetspot[qubit] = (
-                    np.round(popt[1] * middle_bias + popt[2]) - popt[2]
-                ) / popt[1]
-                matrix_element[qubit] = popt[1]
-                successful_fit[qubit] = True
-            except ValueError as e:
-                successful_fit[qubit] = False
-                log.error(f"Error in qubit_flux protocol fit: {e}.")
+            log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
         frequency=frequency,
