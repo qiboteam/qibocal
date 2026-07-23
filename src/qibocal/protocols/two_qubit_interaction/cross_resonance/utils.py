@@ -409,7 +409,7 @@ def update_cnot_from_fit(
 
     control_single_qubit_operation = (
         platform.qubits[ctrl].drive,
-        VirtualZ(phase=np.pi / 2),
+        VirtualZ(phase=-np.pi / 2),
     )
 
     new_cr_seq = cr_seq | PulseSequence(
