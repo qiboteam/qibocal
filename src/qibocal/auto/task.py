@@ -236,11 +236,13 @@ class Completed:
 
     def dump_data(self):
         """Dumping data."""
-        self._data.save(self.path)
+        if self._data is not None:
+            self._data.save(self.path)
 
     def dump_results(self):
         """Dumping results."""
-        self._results.save(self.path)
+        if self._results is not None:
+            self._results.save(self.path)
 
     @classmethod
     def load(cls, path: Path):
