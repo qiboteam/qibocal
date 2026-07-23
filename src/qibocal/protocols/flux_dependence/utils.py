@@ -439,7 +439,7 @@ def ransac_fit(
     N_needed = np.inf
     ransac_iterations = 0
     best_inliers = np.array([])
-    best_params = np.array([])
+    best_params = None
     # Track already-sampled subsets so we don't waste a trial refitting the exact same
     # minimal sample twice.
     tried_subsets = set()
@@ -490,6 +490,13 @@ def ransac_fit(
             # confidence of drawing an all-inlier minimal sample.
             denom = np.log(1 - (best_inliers.sum() / len(xvals)) ** len(subset))
             N_needed = np.log(1 - stop_probability) / denom
+
+    if best_params is None:
+        raise RuntimeError(
+            f"RANSAC failed to find a valid fit after {ransac_iterations} iterations: "
+            f"no sample of size {function_dof} produced at least {function_dof} inliers "
+            f"(residual_threshold={residual_threshold})."
+        )
 
     # Finally optimize by doing a least-squares fit to the best set of inliers.
     popt, _ = curve_fit(
