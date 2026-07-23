@@ -11,7 +11,6 @@ from qibolab import (
     Sweeper,
 )
 from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.special import erfinv
 
@@ -30,16 +29,6 @@ from ..utils import (
     table_html,
 )
 from . import utils
-
-GAUSSIAN_FILTER1D_SIGMA = 2
-INLIER_THRESHOLD = (
-    0.6e6 * HZ_TO_GHZ
-)  # approximate width of a peak in the qubit spectroscopy in GHz
-RANSAC_P_SUCCESS = (
-    0.999  # desired probability of finding a sample containing only inliers
-)
-RANSAC_MIN_ITERATIONS = 100
-RANSAC_MAX_ITERATIONS = 5000
 
 __all__ = [
     "QubitFluxData",
@@ -206,11 +195,9 @@ def _extract_peak_coordinates(
 
     bias_points, frequency_points = [], []
     for bias_val, signal_val in zip(bias, signal):
-        # The Gaussian filter not only reduces noise in the background far away from the
-        # arc, but also reduces noise within the arc, which may result in peaks being
-        # detected correctly that otherwise would have been missed (see e.g
-        # qubit_data_3.npz).
-        smoothed_row = gaussian_filter1d(signal_val, sigma=GAUSSIAN_FILTER1D_SIGMA)
+        # The Gaussian filter reduces noise in the background and helps make a noisy
+        # peak into a stronger signal.
+        smoothed_row = gaussian_filter1d(signal_val, sigma=2)
         # The standard deviation is computed from the median absolute deviation instead of
         # the standard deviation itself to avoid the peaks in the arc from affecting the
         # estimate of the background noise. While this prominence threshold is somewhat
@@ -243,70 +230,6 @@ def _extract_peak_coordinates(
         bias=np.asarray(bias_points),
         frequency=np.asarray(frequency_points),
     )
-
-
-def _ransac_fit(
-    freq_ghz: np.ndarray,
-    bias_pts: np.ndarray,
-    fit_function,
-):
-    """perform fit using RANSAC"""
-
-    # The number of iterations is determined following the standard for RANSAC
-    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
-    N_needed = np.inf
-    ransac_iterations = 0
-    best_inliers = np.array([])
-    best_params = np.array([])
-    tried_subsets = set()
-    while (
-        ransac_iterations < min(N_needed, RANSAC_MAX_ITERATIONS)
-        or ransac_iterations < RANSAC_MIN_ITERATIONS
-    ):
-        ransac_iterations += 1
-
-        # randomly sample 3 points, because that's the dof of the parametrization
-        subset = np.random.choice(len(bias_pts), 3, replace=False)
-        subset_ = tuple(sorted(subset))
-        if subset_ in tried_subsets:
-            continue
-        tried_subsets.add(subset_)
-
-        try:
-            popt, _ = curve_fit(
-                fit_function,
-                bias_pts[subset],
-                freq_ghz[subset],
-                method="lm",  # lm is a fast option
-            )
-        except RuntimeError:
-            continue
-
-        residuals_all = np.abs(freq_ghz - fit_function(bias_pts, *popt))
-        inliers = residuals_all < INLIER_THRESHOLD
-        if inliers.sum() == len(bias_pts):
-            # all points are inliers, so we can proceed
-            best_inliers = inliers
-            best_params = popt
-            break
-
-        if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
-            best_inliers = inliers
-            best_params = popt
-            denom = np.log(1 - (best_inliers.sum() / len(bias_pts)) ** len(subset))
-            N_needed = np.log(1 - RANSAC_P_SUCCESS) / denom
-
-    # Finally optimize by doing a least-squares fit to the best set of inliers
-    popt, _ = curve_fit(
-        fit_function,
-        bias_pts[best_inliers],
-        freq_ghz[best_inliers],
-        p0=best_params,
-        method="lm",
-        maxfev=100000,
-    )
-
-    return popt
 
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
@@ -355,10 +278,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             )
 
         try:
-            popt = _ransac_fit(
-                peak_coordinates.frequency * HZ_TO_GHZ,
+            popt = utils.ransac_fit(
                 peak_coordinates.bias,
+                peak_coordinates.frequency * HZ_TO_GHZ,
                 fit_function=_fit_function,
+                # approximate width of a peak in the qubit spectroscopy
+                residual_threshold=0.6e6 * HZ_TO_GHZ,
             )
 
             fitted_parameters[qubit] = {

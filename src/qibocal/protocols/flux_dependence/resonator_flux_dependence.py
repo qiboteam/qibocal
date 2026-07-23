@@ -1,12 +1,9 @@
-import inspect
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import partial
 
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
-from scipy.optimize import curve_fit
 
 from qibocal.calibration import CalibrationPlatform
 
@@ -225,93 +222,6 @@ def _extract_peak_coordinates(
     )
 
 
-def function_dof(fit_function) -> int:
-    sig = inspect.signature(fit_function)
-
-    # Filter for positional parameters without defaults
-    params = [
-        p
-        for p in sig.parameters.values()
-        if p.kind
-        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
-        and p.default is inspect.Parameter.empty
-    ]
-
-    # Subtract 1 for the independent variable
-    return len(params) - 1
-
-
-def _ransac_fit(
-    xvals: npt.NDArray[np.float64],
-    yvals: npt.NDArray[np.float64],
-    fit_function: Callable[..., np.ndarray],
-    residual_threshold: float,
-    min_trials: int = 100,
-    max_trials: int = 5000,
-    stop_probability: float = 0.999,
-    random_state: int = 0,
-):
-    """perform fit using RANSAC"""
-    rng = np.random.RandomState(random_state)
-
-    dof = function_dof(fit_function)
-
-    # The number of iterations is determined following the standard for RANSAC
-    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
-    N_needed = np.inf
-    ransac_iterations = 0
-    best_inliers = np.array([])
-    best_params = np.array([])
-    tried_subsets = set()
-    while (
-        ransac_iterations < min(N_needed, max_trials) or ransac_iterations < min_trials
-    ):
-        ransac_iterations += 1
-
-        # randomly sample 6 points, because that's the dof of the parametrization
-        subset = rng.choice(len(xvals), dof, replace=False)
-        subset_ = tuple(sorted(subset))
-        if subset_ in tried_subsets:
-            continue
-        tried_subsets.add(subset_)
-
-        try:
-            popt, _ = curve_fit(
-                fit_function,
-                xvals[subset],
-                yvals[subset],
-                method="lm",  # lm is a fast option
-            )
-        except RuntimeError:
-            continue
-
-        residuals_all = np.abs(yvals - fit_function(xvals, *popt))
-        inliers = residuals_all < residual_threshold
-        if inliers.sum() == len(xvals):
-            # all points are inliers, so we can proceed
-            best_inliers = inliers
-            best_params = popt
-            break
-
-        if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
-            best_inliers = inliers
-            best_params = popt
-            denom = np.log(1 - (best_inliers.sum() / len(xvals)) ** len(subset))
-            N_needed = np.log(1 - stop_probability) / denom
-
-    # Finally optimize by doing a least-squares fit to the best set of inliers
-    popt, _ = curve_fit(
-        fit_function,
-        xvals[best_inliers],
-        yvals[best_inliers],
-        p0=best_params,
-        method="lm",
-        maxfev=100000,
-    )
-
-    return popt
-
-
 def _fit_function(
     x: float,
     g: float,
@@ -399,7 +309,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 _fit_function,
                 w_max=w_max,
             )
-            popt = _ransac_fit(
+            popt = utils.ransac_fit(
                 peak_coordinates.bias,
                 peak_coordinates.frequency * HZ_TO_GHZ,
                 fit_function=fit_function,
