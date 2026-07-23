@@ -180,17 +180,11 @@ def _acquisition(
     return data
 
 
-@dataclass
-class PeakCoordinates:
-    bias: np.ndarray
-    frequency: np.ndarray
-
-
 def _extract_peak_coordinates(
-    freq: np.ndarray,
-    bias: np.ndarray,
-    signal: np.ndarray,
-) -> PeakCoordinates:
+    freq: npt.NDArray[np.float64],
+    bias: npt.NDArray[np.float64],
+    signal: npt.NDArray[np.float64],
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Extract the most prominent peaks per bias (if one is dominant enough)."""
 
     bias_points, frequency_points = [], []
@@ -226,10 +220,7 @@ def _extract_peak_coordinates(
         bias_points.append(bias_val)
         frequency_points.append(freq[best])
 
-    return PeakCoordinates(
-        bias=np.asarray(bias_points),
-        frequency=np.asarray(frequency_points),
-    )
+    return np.asarray(bias_points), np.asarray(frequency_points)
 
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
@@ -259,7 +250,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         signal = np.full((len(bias), len(freq)), np.nan)
         signal[bias_idx, freq_idx] = qubit_data.signal
 
-        peak_coordinates = _extract_peak_coordinates(
+        peak_biases, peak_frequencies = _extract_peak_coordinates(
             freq=freq,
             bias=bias,
             signal=signal,
@@ -279,8 +270,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
         try:
             popt = utils.ransac_fit(
-                peak_coordinates.bias,
-                peak_coordinates.frequency * HZ_TO_GHZ,
+                peak_biases,
+                peak_frequencies * HZ_TO_GHZ,
                 fit_function=_fit_function,
                 # approximate width of a peak in the qubit spectroscopy
                 residual_threshold=0.6e6 * HZ_TO_GHZ,

@@ -166,17 +166,11 @@ def _acquisition(
     return data
 
 
-@dataclass
-class PeakCoordinates:
-    bias: np.ndarray
-    frequency: np.ndarray
-
-
 def _extract_peak_coordinates(
-    freq: np.ndarray,
-    bias: np.ndarray,
-    signal: np.ndarray,
-) -> PeakCoordinates:
+    freq: npt.NDArray[np.float64],
+    bias: npt.NDArray[np.float64],
+    signal: npt.NDArray[np.float64],
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     """Extract the most prominent peaks per bias (if one is dominant enough)."""
 
     bias_pts, freq_pts = [], []
@@ -216,10 +210,7 @@ def _extract_peak_coordinates(
     bias_pts = np.asarray(bias_pts)[mask]
     freq_pts = np.asarray(freq_pts)[mask]
 
-    return PeakCoordinates(
-        bias=bias_pts,
-        frequency=freq_pts,
-    )
+    return bias_pts, freq_pts
 
 
 def _fit_function(
@@ -297,7 +288,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         signal = np.full((len(bias), len(freq)), np.nan)
         signal[bias_idx, freq_idx] = qubit_data.signal
 
-        peak_coordinates = _extract_peak_coordinates(
+        peak_biases, peak_frequencies = _extract_peak_coordinates(
             freq=freq,
             bias=bias,
             signal=signal,
@@ -310,8 +301,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 w_max=w_max,
             )
             popt = utils.ransac_fit(
-                peak_coordinates.bias,
-                peak_coordinates.frequency * HZ_TO_GHZ,
+                peak_biases,
+                peak_frequencies * HZ_TO_GHZ,
                 fit_function=fit_function,
                 residual_threshold=INLIER_THRESHOLD * HZ_TO_GHZ,
             )
