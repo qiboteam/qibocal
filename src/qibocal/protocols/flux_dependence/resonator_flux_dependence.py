@@ -171,42 +171,44 @@ def _extract_peak_coordinates(
     bias: npt.NDArray[np.float64],
     signal: npt.NDArray[np.float64],
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-    """Extract the most prominent peaks per bias (if one is dominant enough)."""
-
+    """Extract the most prominent peaks in the resonator (flux,frequency) landscape. At
+    most one peak per flux bin.
+    """
     bias_pts, freq_pts = [], []
     signal_residuals = []
     is_peak = []
     for bias_val, row in zip(bias, signal):
-        # There may be fluctuations along the frequency axis caused by elements such cables
-        # or amplifiers. In principle this is flux independent and therefore ideal to remove
-        # by subtracting the median per frequency bin. However, the arc may be very flat, in
-        # which case we end up subtracting the arc rather than background. To avoid this, we
-        # use median_filter.
+        # There may be fluctuations along the frequency axis caused by elements such
+        # cables or amplifiers. In principle this is flux independent and therefore
+        # ideal to remove by subtracting the median per frequency bin. However, the arc
+        # may be very flat, in which case we end up subtracting the arc rather than
+        # background. To avoid this, we use median_filter
         samples_per_peak = np.ceil(INLIER_THRESHOLD / np.diff(freq)[0])
         baseline = median_filter(row, size=int(20 * samples_per_peak), mode="nearest")
         residual = row - baseline
 
-        # Estimate the std from median absolute deviation because a naive std is inflated by
-        # the arc we're trying to detect.
+        # Estimate the std from median absolute deviation because a naive std is
+        # inflated by the arc we're trying to detect
         row_mad = np.median(np.abs(residual - np.median(residual)))
         row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
 
-        # Detect both peaks and dips by finding prominent extrema in the absolute residual.
+        # Detect both peaks and dips by finding prominent extrema in the absolute
+        # residual
         peaks, props = find_peaks(np.abs(residual), prominence=row_std)
         if len(peaks) == 0:
             continue
 
-        # Keep the most prominent extremum and record whether it is a peak or a dip.
+        # Keep the most prominent extremum, along with its prominence, and whether it is
+        # a peak or dip
         best = peaks[np.argmax(props["prominences"])]
         bias_pts.append(bias_val)
         freq_pts.append(freq[best])
         signal_residuals.append(residual)
         is_peak.append(residual[best] > 0)
 
-    # Keep only the dominant extremum type to reject rows detecting the opposite feature.
+    # Keep only the dominant extremum type and ignore extrema of the opposite feature
     select_peaks = sum(is_peak) >= (len(is_peak) / 2)
     mask = np.equal(is_peak, select_peaks)
-
     bias_pts = np.asarray(bias_pts)[mask]
     freq_pts = np.asarray(freq_pts)[mask]
 
@@ -238,36 +240,38 @@ def _fit_function(
     )
 
 
-def _maximum_in_data_window(bias, params, fit_function):
+def _find_sweetspot(bias, params, fit_function):
+    """Find the sweetspot by numerically identifying the point inside the window where
+    the fitted flux arc has a maximum. If there are multiple, take the one with absolute
+    bias closest to 0.
+    """
     bias_min, bias_max = np.min(bias), np.max(bias)
 
     dense_bias = np.linspace(bias_min, bias_max, 2000)
     freqs = fit_function(dense_bias, *params)
 
     # Find indices where local maxima occur in the fitted curve inside the window. A
-    # point is a local maximum if it's strictly greater than its neighbors
+    # point is a local maximum if it's strictly greater than its neighbors.
     peaks_mask = (freqs[1:-1] > freqs[:-2]) & (freqs[1:-1] > freqs[2:])
-    local_max_biases = dense_bias[1:-1][peaks_mask]
+    bias_value_at_maxima = dense_bias[1:-1][peaks_mask]
 
-    # Also check endpoints in case a maximum sits right on the boundary
-    if len(local_max_biases) == 0:
-        # If no internal local peak exists, the peak is at one of the window boundaries
-        # or the curve is strictly monotonic in the window
+    # If no internal local peak exists, the peak may is at one of the window boundaries,
+    # but more likely, the curve is strictly monotonic in the window.
+    if len(bias_value_at_maxima) == 0:
         return dense_bias[np.argmax(freqs)]
 
-    # Among all local maxima inside the window, return the one closest to 0 bias
-    closest_to_zero_idx = np.argmin(np.abs(local_max_biases))
-    return local_max_biases[closest_to_zero_idx]
+    # Among all local maxima inside the window, return the one closest to 0 bias.
+    closest_to_zero_idx = np.argmin(np.abs(bias_value_at_maxima))
+    return bias_value_at_maxima[closest_to_zero_idx]
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """PostProcessing for resonator_flux protocol.
 
-    After applying a mask on the 2D data, the signal is fitted using
-    the expected frequency vs flux behavior.
-    The fitting procedure requires the knowledge of the bare resonator frequency,
-    the charging energy Ec and the maximum qubit frequency which is assumed to be
-    the frequency at which the qubit is placed.
+    The fitting procedure requires the knowledge of the bare resonator frequency, the
+    charging energy Ec and the maximum qubit frequency which is assumed to be the
+    frequency at which the qubit is placed.
+
     The protocol aims at extracting the sweetspot, the flux coefficient, the coupling,
     the asymmetry and the dressed resonator frequency.
     """
@@ -318,7 +322,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "g": popt[0],
             }
             matrix_element[qubit] = popt[3]
-            sweetspot[qubit] = _maximum_in_data_window(bias, popt, fit_function)
+            sweetspot[qubit] = _find_sweetspot(bias, popt, fit_function)
             resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]

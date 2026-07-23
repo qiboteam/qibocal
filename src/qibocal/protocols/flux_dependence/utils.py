@@ -417,25 +417,47 @@ def ransac_fit(
     stop_probability: float = 0.999,
     random_state: int = 0,
 ):
-    """perform fit using RANSAC"""
+    """Fit a model to data using RANSAC, ignoring outliers.
+
+    Repeatedly fits ``fit_function`` to a minimal random subsets of the data (sized to
+    the function's degrees of freedom), scores each candidate by its inlier count
+    (points with residual below ``residual_threshold``), and keeps the best-performing
+    model. The number of trials adapts dynamically based on the current inlier ratio,
+    following the standard RANSAC stopping criterion, and is bounded by ``min_trials``
+    and ``max_trials``. A final least-squares refit is performed on the best inlier set.
+
+    Returns:
+        Optimal fit parameters from the least-squares refit on the best inlier set.
+
+    """
     rng = np.random.RandomState(random_state)
 
-    dof = _function_dof(fit_function)
+    function_dof = _function_dof(fit_function)
 
-    # The number of iterations is determined following the standard for RANSAC
-    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
+    # N_needed is the adaptively-updated trial budget; start at infinity so the loop is
+    # initially bounded only by min_trials/max_trials.
     N_needed = np.inf
     ransac_iterations = 0
     best_inliers = np.array([])
     best_params = np.array([])
+    # Track already-sampled subsets so we don't waste a trial refitting the exact same
+    # minimal sample twice.
     tried_subsets = set()
+
+    # Standard adaptive RANSAC loop: keep going until we've hit max_trials, or until the
+    # estimated number of iterations needed to find an all-inlier sample (with
+    # probability stop_probability) drops below where we already are, although we never
+    # stop before attempting at least min_trials.
+    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
     while (
         ransac_iterations < min(N_needed, max_trials) or ransac_iterations < min_trials
     ):
         ransac_iterations += 1
 
-        # randomly sample 6 points, because that's the dof of the parametrization
-        subset = rng.choice(len(xvals), dof, replace=False)
+        # Draw a minimal sample because fewer samples means that the probablilty of all
+        # points being on the feature of interest is maximized. To perform a fit we need
+        # at least as many points as the model's dof.
+        subset = rng.choice(len(xvals), function_dof, replace=False)
         subset_ = tuple(sorted(subset))
         if subset_ in tried_subsets:
             continue
@@ -454,24 +476,28 @@ def ransac_fit(
         residuals_all = np.abs(yvals - fit_function(xvals, *popt))
         inliers = residuals_all < residual_threshold
         if inliers.sum() == len(xvals):
-            # all points are inliers, so we can proceed
+            # all points are inliers, so we cannot do better
             best_inliers = inliers
             best_params = popt
             break
 
+        # Accept as a new best if it beats the current best AND at least matches the
+        # minimal sample size
         if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
             best_inliers = inliers
             best_params = popt
+            # Re-estimate how many trials are needed to have `stop_probability`
+            # confidence of drawing an all-inlier minimal sample.
             denom = np.log(1 - (best_inliers.sum() / len(xvals)) ** len(subset))
             N_needed = np.log(1 - stop_probability) / denom
 
-    # Finally optimize by doing a least-squares fit to the best set of inliers
+    # Finally optimize by doing a least-squares fit to the best set of inliers.
     popt, _ = curve_fit(
         fit_function,
         xvals[best_inliers],
         yvals[best_inliers],
         p0=best_params,
-        method="lm",
+        method="lm",  # lm is used because all we need is a local optimizer
         maxfev=100000,
     )
 

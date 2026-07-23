@@ -181,33 +181,36 @@ def _acquisition(
 
 
 def _extract_peak_coordinates(
-    freq: npt.NDArray[np.float64],
-    bias: npt.NDArray[np.float64],
+    frequencies: npt.NDArray[np.float64],
+    biases: npt.NDArray[np.float64],
     signal: npt.NDArray[np.float64],
 ) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
-    """Extract the most prominent peaks per bias (if one is dominant enough)."""
+    """Extract the most prominent peaks in the qubit (flux,frequency) landscape. At most
+    one peak per flux bin.
+    """
 
-    bias_points, frequency_points = [], []
-    for bias_val, signal_val in zip(bias, signal):
+    peak_biases, peak_frequencies = [], []
+    for bias, signal_row in zip(biases, signal):
         # The Gaussian filter reduces noise in the background and helps make a noisy
         # peak into a stronger signal.
-        smoothed_row = gaussian_filter1d(signal_val, sigma=2)
-        # The standard deviation is computed from the median absolute deviation instead of
-        # the standard deviation itself to avoid the peaks in the arc from affecting the
-        # estimate of the background noise. While this prominence threshold is somewhat
-        # motivated, it is still a choice and it has been observed that the result is not
-        # very sensitive to it and probably it is even fine to set the threshold to 0.
+        smoothed_row = gaussian_filter1d(signal_row, sigma=2)
+
+        # The standard deviation is computed from the median absolute deviation instead
+        # of the standard deviation itself to avoid the peaks in the arc from affecting
+        # the estimate of the background noise. While this prominence threshold is
+        # somewhat motivated, it is still a choice and it has been observed that the
+        # result is not very sensitive to it and probably it is even fine to set the
+        # threshold to 0.
         row_mad = np.median(np.abs(smoothed_row - np.median(smoothed_row)))
         row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
-        # Use find_peaks instead of argmax because there may be nothing in a row.
-        # Try both peak and dip per row, since this may differ per row due to moving
-        # of the resonator frequency.
+
+        # Use find_peaks instead of argmax because there may be nothing in a row. Try
+        # both peak and dip per row, since this may differ per row due to moving of the
+        # resonator frequency.
         peaks, peak_props = find_peaks(smoothed_row, prominence=row_std)
         dips, dip_props = find_peaks(-smoothed_row, prominence=row_std)
-
         if len(peaks) == 0 and len(dips) == 0:
             continue
-
         # Keep only the feature with the largest prominence per bias.
         if len(dips) == 0 or (
             len(peaks) > 0
@@ -217,10 +220,11 @@ def _extract_peak_coordinates(
         else:
             best = dips[np.argmax(dip_props["prominences"])]
 
-        bias_points.append(bias_val)
-        frequency_points.append(freq[best])
+        # Store bias and frequency of the peak.
+        peak_biases.append(bias)
+        peak_frequencies.append(frequencies[best])
 
-    return np.asarray(bias_points), np.asarray(frequency_points)
+    return np.asarray(peak_biases), np.asarray(peak_frequencies)
 
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
@@ -251,8 +255,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         signal[bias_idx, freq_idx] = qubit_data.signal
 
         peak_biases, peak_frequencies = _extract_peak_coordinates(
-            freq=freq,
-            bias=bias,
+            frequencies=freq,
+            biases=bias,
             signal=signal,
         )
 
