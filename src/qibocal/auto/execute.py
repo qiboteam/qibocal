@@ -31,7 +31,7 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def check_overlap_in_input_qubits(targets: list):
+def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
     """Check that target qubits do not contain duplicates."""
 
     targ = np.asarray(targets)
@@ -105,7 +105,7 @@ class Executor(BaseModel):
                 else CalibrationPlatform.from_datafolder(
                     folder_path=output,
                     platform_name=self.platform.name,
-                    dummy_hardware=False,
+                    dummy_hardware=True,
                 )
             ),
             targets=self.targets,

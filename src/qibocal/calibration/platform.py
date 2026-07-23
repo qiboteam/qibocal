@@ -2,12 +2,15 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qibolab import Parameters, Platform, create_platform, locate_platform
-from qibolab._core.dummy.platform import create_dummy
-from qibolab._core.platform.platform import PARAMETERS
+from qibolab.platform import create_dummy
 
 from .calibration import CALIBRATION, Calibration
 
 __all__ = ["CalibrationPlatform", "create_calibration_platform"]
+
+
+PARAMETERS = "parameters.json"
+"""File containing information about platform parameters."""
 
 
 class CalibrationError(Exception):
@@ -19,7 +22,7 @@ class CalibrationError(Exception):
 class CalibrationPlatform(Platform):
     """Qibolab platform with calibration information."""
 
-    calibration: Calibration = None
+    calibration: Calibration | None = None
     """Calibration information."""
 
     def __post_init__(self):
@@ -74,10 +77,9 @@ class CalibrationPlatform(Platform):
 
         The platform is rebuilt from the configuration saved in the experiment history,
         using the ``parameters.json`` and ``calibration.json`` files stored in the data folder
-        rather than the platform definition. If a ``platform_name`` is provided, the hardware
-        configuration is loaded from that platform; otherwise, a dummy hardware
-        configuration is used so that acquisition-related fields are still present
-        without requiring a live instrument setup.
+        rather than the platform in ``QIBOLAB_PLATFORMS``.
+        A real platform or a dummy platform is created according to
+        ``dummy_hardware``, then populated with the data in ``folder_path``.
         """
 
         parameters = Parameters.model_validate_json(
@@ -88,9 +90,7 @@ class CalibrationPlatform(Platform):
             (folder_path / CALIBRATION).read_text()
         )
 
-        platform = (
-            create_dummy() if dummy_hardware is None else create_platform(platform_name)
-        )
+        platform = create_dummy() if dummy_hardware else create_platform(platform_name)
         platform.parameters = parameters
         platform.name = platform_name
 
