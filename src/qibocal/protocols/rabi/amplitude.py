@@ -10,12 +10,12 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Protocol, QubitId
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from ..utils import chi2_reduced
-from .acquisition import check_correct_drive_lines_setup, sequence_amplitude
+from .acquisition import define_qubits_and_drivelines, sequence_amplitude
 from .parent_classes import (
     RabiAmplitudeParameters,
     RabiData,
@@ -49,7 +49,7 @@ class RabiAmplitudeClassificationData(RabiData):
 def _acquisition(
     params: RabiAmplitudeParameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    targets: list[QubitId] | list[QubitPairId],
 ) -> RabiAmplitudeClassificationData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -57,13 +57,11 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
-    drive_lines = check_correct_drive_lines_setup(
-        targets=targets, input_drivelines=params.drive_lines
-    )
+    qubits_list, drive_lines = define_qubits_and_drivelines(targets)
 
     # create a sequence of pulses for the experiment
     sequence, qd_pulses, durations, updates = sequence_amplitude(
-        targets=targets,
+        targets=qubits_list,
         drive_lines=drive_lines,
         platform=platform,
         pulse_duration=params.pulse_length,
@@ -78,7 +76,6 @@ def _acquisition(
     )
 
     data = RabiAmplitudeClassificationData(
-        drive_lines={t: d for t, d in zip(targets, drive_lines)},
         rx90=params.rx90,
         durations=durations,
     )
@@ -93,7 +90,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for qubit in targets:
+    for qubit in qubits_list:
         ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
         prob = results[ro_pulse.id]
         data.register_qubit(
@@ -147,7 +144,6 @@ def _fit(data: RabiAmplitudeClassificationData) -> RabiResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
     return RabiResults(
-        drive_lines=data.drive_lines,
         length=durations,
         amplitude=pi_pulse_amplitudes,
         fitted_parameters=fitted_parameters,
@@ -156,17 +152,8 @@ def _fit(data: RabiAmplitudeClassificationData) -> RabiResults:
     )
 
 
-def _plot(
-    data: RabiAmplitudeClassificationData,
-    target: QubitId,
-    fit: RabiResults | None = None,
-):
-    """Plotting function for RabiAmplitude."""
-    return plot_probabilities(data, target, fit, data.rx90)
-
-
 def _update(
-    results: RabiResults, platform: CalibrationPlatform, target: QubitId
+    results: RabiResults, platform: CalibrationPlatform, target: QubitId | QubitPairId
 ) -> None:
     return update_rabi_ampl_params(
         results=results,
@@ -176,5 +163,5 @@ def _update(
     )
 
 
-rabi_amplitude = Protocol(_acquisition, _fit, _plot, _update)
+rabi_amplitude = Protocol(_acquisition, _fit, plot_probabilities, _update)
 """RabiAmplitude Protocol object."""

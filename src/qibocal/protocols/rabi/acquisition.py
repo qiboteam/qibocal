@@ -1,32 +1,25 @@
 from qibolab import Delay, IqChannel, PulseLike, PulseSequence
 from qibolab._core.identifier import ChannelId
 
-from qibocal.auto.operation import QubitId
+from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.two_qubit_interaction.cross_resonance.cr_parent_classes import (
-    check_qubit_overlap,
-)
 from qibocal.update import replace
 
 
-def check_correct_drive_lines_setup(
-    targets: list[QubitId], input_drivelines: list[QubitId] | None
-) -> list[QubitId]:
-    """Validate the drive lines assigned to target qubits."""
+def define_qubits_and_drivelines(
+    targets: list[QubitId] | list[QubitPairId],
+) -> tuple[list[QubitId], list[QubitId]]:
+    """Separate target qubits from the drive lines used to address them.
 
-    if input_drivelines is None:
-        return targets
+    A single qubit target is interpreted as being driven by its own line,
+    while a ``(qubit, drive_line)`` pair specifies a potentially different
+    drive line.
+    """
 
-    if len(input_drivelines) != len(targets):
-        raise ValueError(
-            "Each qubit has to be assigned to a drive line; "
-            "If inserted, drive lines must have the same length of targets list."
-        )
+    pairs = [(t if isinstance(t, tuple) else (t, t)) for t in targets]
+    qubit_list, drive_lines = map(list, zip(*pairs))
 
-    # check if the pair overlap: not admitted if we want to execute in parallel
-    check_qubit_overlap([(q, d) for q, d in zip(targets, input_drivelines)])
-
-    return input_drivelines
+    return qubit_list, drive_lines
 
 
 def single_qubit_rabi_sequence(

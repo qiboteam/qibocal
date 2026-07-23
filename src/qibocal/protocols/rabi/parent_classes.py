@@ -17,9 +17,6 @@ class RabiLengthParameters(Parameters):
     """Step pulse duration [ns]."""
     pulse_amplitude: float | None = None
     """Pulse amplitude. Same for all qubits."""
-    drive_lines: list[QubitId] | None = None
-    """Drive lines to use for the qubits;
-    must be the same length as the qubits list."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     interpolated_sweeper: bool = False
@@ -57,9 +54,6 @@ class RabiAmplitudeParameters(Parameters):
     """Step pulse amplitude [a.u.]."""
     pulse_length: float | None = None
     """Pulse duration [ns]. Same for all qubits."""
-    drive_lines: list[QubitId] | None = None
-    """Drive lines to use for the qubits;
-    must be the same length as the qubits list."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
 
@@ -139,8 +133,6 @@ class RabiAmplitudeFrequencyParameters(RabiAmplitudeParameters):
 class RabiResults(Results):
     """Results container for outputs produced by Rabi protocols."""
 
-    drive_lines: dict[QubitId, QubitId]
-    """List of drive line used for each qubit."""
     length: dict[QubitId, list[float]]
     """Pi pulse duration for each qubit."""
     amplitude: dict[QubitId, list[float]]
@@ -166,8 +158,6 @@ class RabiData(Data):
 
     rx90: bool
     """Pi or Pi_half calibration"""
-    drive_lines: dict[QubitId, QubitId] = field(default_factory=dict)
-    """List of drive line used for each qubit."""
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse duration for each target qubit."""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)

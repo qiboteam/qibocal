@@ -10,12 +10,12 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Protocol, QubitId
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from ..utils import chi2_reduced
-from .acquisition import check_correct_drive_lines_setup, sequence_length
+from .acquisition import define_qubits_and_drivelines, sequence_length
 from .parent_classes import (
     RabiData,
     RabiLengthParameters,
@@ -49,18 +49,16 @@ class RabiLengthClassificationData(RabiData):
 def _acquisition(
     params: RabiLengthParameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    targets: list[QubitId] | list[QubitPairId],
 ) -> RabiLengthClassificationData:
     r"""
     Data acquisition for RabiLength Classification Experiment.
     """
 
-    drive_lines = check_correct_drive_lines_setup(
-        targets=targets, input_drivelines=params.drive_lines
-    )
+    qubits_list, drive_lines = define_qubits_and_drivelines(targets)
 
     sequence, qd_pulses, delays, amplitudes, updates = sequence_length(
-        targets=targets,
+        targets=qubits_list,
         drive_lines=drive_lines,
         platform=platform,
         pulse_ampl=params.pulse_amplitude,
@@ -82,7 +80,6 @@ def _acquisition(
     )
 
     data = RabiLengthClassificationData(
-        drive_lines={t: d for t, d in zip(targets, drive_lines)},
         rx90=params.rx90,
         amplitudes=amplitudes,
     )
@@ -98,7 +95,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for q in targets:
+    for q in qubits_list:
         ro_pulse = list(sequence.channel(platform.qubits[q].acquisition))[-1]
         prob = results[ro_pulse.id]
         data.register_qubit(
@@ -156,7 +153,6 @@ def _fit(data: RabiLengthClassificationData) -> RabiResults:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiResults(
-        drive_lines=data.drive_lines,
         length=durations,
         amplitude=amplitudes,
         fitted_parameters=fitted_parameters,
@@ -165,16 +161,7 @@ def _fit(data: RabiLengthClassificationData) -> RabiResults:
     )
 
 
-def _plot(
-    data: RabiLengthClassificationData,
-    target: QubitId,
-    fit: RabiResults | None = None,
-):
-    """Plotting function for RabiLength classification experiment."""
-    return plot_probabilities(data, target, fit, data.rx90)
-
-
-rabi_length = Protocol(_acquisition, _fit, _plot, update_rabi_parameters)
+rabi_length = Protocol(_acquisition, _fit, plot_probabilities, update_rabi_parameters)
 """RabiLength Routine object.
 
 In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length

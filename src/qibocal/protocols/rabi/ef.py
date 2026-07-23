@@ -11,13 +11,13 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Protocol, QubitId
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import readout_frequency
 from qibocal.update import drive_12_amplitude, drive_12_duration, replace
 
-from .acquisition import check_correct_drive_lines_setup
-from .amplitude_signal import _fit
+from .acquisition import define_qubits_and_drivelines
+from .amplitude_signal import _fit as ampltidue_signal_fit
 from .parent_classes import (
     RabiAmplitudeParameters,
     RabiData,
@@ -43,7 +43,7 @@ class RabiEFSignalData(RabiData):
 def _acquisition(
     params: RabiAmplitudeParameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    targets: list[QubitId] | list[QubitPairId],
 ) -> RabiEFSignalData:
     r"""
     Data acquisition for Rabi EF experiment sweeping amplitude.
@@ -54,9 +54,7 @@ def _acquisition(
 
     """
 
-    drive_lines = check_correct_drive_lines_setup(
-        targets=targets, input_drivelines=params.drive_lines
-    )
+    qubits_list, drive_lines = define_qubits_and_drivelines(targets)
 
     # create a sequence of pulses for the experiment
     sequence = PulseSequence()
@@ -64,7 +62,7 @@ def _acquisition(
     ro_pulses = {}
     durations = {}
     updates = {}
-    for q, d in zip(targets, drive_lines):
+    for q, d in zip(qubits_list, drive_lines):
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         qd12_channel, qd12_pulse = natives.RX12()[0]
@@ -98,13 +96,12 @@ def _acquisition(
     sweeper = Sweeper(
         parameter=Parameter.amplitude,
         range=(params.min_amp, params.max_amp, params.step_amp),
-        pulses=[qd_pulses[qubit] for qubit in targets],
+        pulses=[qd_pulses[qubit] for qubit in qubits_list],
     )
 
     assert not params.rx90, "Rabi ef available only for RX pulses."
 
     data = RabiEFSignalData(
-        drive_lines={t: d for t, d in zip(targets, drive_lines)},
         durations=durations,
         rx90=False,
     )
@@ -112,7 +109,7 @@ def _acquisition(
     # for signal measurement we have to change readout
     updates |= {
         platform.qubits[q].probe: {"frequency": readout_frequency(q, platform, state=1)}
-        for q in targets
+        for q in qubits_list
     }
 
     # sweep the parameter
@@ -125,7 +122,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for qubit in targets:
+    for qubit in qubits_list:
         result = results[ro_pulses[qubit].id]
         data.register_qubit(
             RabiEFSignalType,
@@ -139,20 +136,28 @@ def _acquisition(
     return data
 
 
-def _plot(data: RabiEFSignalData, target: QubitId, fit: RabiResults = None):
+def _plot(
+    data: RabiEFSignalData,
+    target: QubitId | QubitPairId,
+    fit: RabiResults | None = None,
+):
     """Plotting function for RabiAmplitude."""
-    figures, report = plot_signal(data, target, fit, data.rx90)
+    figures, report = plot_signal(data=data, target=target, fit=fit, rx90=data.rx90)
     if report is not None:
         report = report.replace("Pi pulse", "Pi pulse 12")
     return figures, report
 
 
-def _update(results: RabiResults, platform: CalibrationPlatform, target: QubitId):
+def _update(
+    results: RabiResults, platform: CalibrationPlatform, target: QubitId | QubitPairId
+):
     """Update RX2 amplitude_signal"""
-    if target == results.drive_lines[target]:
-        drive_12_amplitude(results.amplitude[target][0], platform, target)
-        drive_12_duration(results.length[target][0], platform, target)
+    qubit, drive_line = target if isinstance(target, tuple) else (target, target)
+    # update only when we are driving the qubit with its associated line
+    if qubit == drive_line:
+        drive_12_amplitude(results.amplitude[qubit][0], platform, qubit)
+        drive_12_duration(results.length[qubit], platform, qubit)
 
 
-rabi_amplitude_ef = Protocol(_acquisition, _fit, _plot, _update)
+rabi_amplitude_ef = Protocol(_acquisition, ampltidue_signal_fit, _plot, _update)
 """RabiAmplitudeEF Protocol object."""
