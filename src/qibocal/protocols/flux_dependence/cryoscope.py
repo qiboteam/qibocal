@@ -34,7 +34,13 @@ __all__ = ["CryoscopeData", "CryoscopeResults", "cryoscope"]
 
 
 class PaddedRectangular(BaseEnvelope):
-    """Rectangular envelope with leading zero padding."""
+    """Rectangular envelope with a fixed number of leading zero samples.
+
+    The waveform consists of ``padding`` zeros followed by unit-amplitude
+    samples. This allows short flux pulses to be represented at the waveform
+    level, even when the hardware's pulse scheduling granularity is coarser
+    than the desired pulse duration.
+    """
 
     kind: Literal["padded_rectangular"] = "padded_rectangular"
     padding: int
@@ -137,10 +143,12 @@ def generate_sequences(
     flux_channel = platform.qubits[qubit].flux
     assert flux_channel is not None
 
-    flux_pulse = Pulse(
+    # model_construct skips validation because PaddedRectangular is not a supported
+    # qibolab envelope. The pulse is not serialized, so this is acceptable here.
+    flux_pulse = Pulse.model_construct(
         duration=params.padding,
         amplitude=params.flux_pulse_amplitude,
-        envelope=PaddedRectangular(params.padding),
+        envelope=PaddedRectangular(padding=params.padding),
     )
 
     # create the sequences
