@@ -48,7 +48,7 @@ class ChevronParameters(Parameters):
     dt: int | None = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
-    """Wether to park non interacting qubits or not."""
+    """Whether to park non interacting qubits or not."""
     native: Literal["CZ", "iSWAP"] = "CZ"
     """Two qubit interaction to be calibrated."""
 
