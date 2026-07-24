@@ -61,7 +61,7 @@ sphinxcontrib-bibtex = "^2.6.0"
 recommonmark = "^0.7.1"
 sphinx_markdown_tables = "^0.0.17"
 sphinx-copybutton = "^0.5.1"
-setuptools = ">=75.8,<79.0"
+setuptools = ">=75.8,<84.0"
 
 
 [tool.poetry.group.dev]
