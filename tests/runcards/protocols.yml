@@ -941,3 +941,11 @@ actions:
       nshots: 2000
       pulse_amplitude: 0.1
       interpolated_sweeper: true
+
+  - id: standard_error_amplification
+    operation: standard_error_amplification
+    targets: [[0, 1]]
+    parameters:
+      nshots: 2000
+      repetitions_max: 10
+      repetitions_step: 1
