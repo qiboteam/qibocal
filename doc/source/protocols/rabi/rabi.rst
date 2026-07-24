@@ -44,12 +44,15 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass::
-	qibocal.protocols.rabi.amplitude.RabiAmplitudeParameters
+	qibocal.protocols.rabi.parent_classes.RabiAmplitudeParameters
 	:noindex:
 
 .. autoclass::
-	qibocal.protocols.rabi.length.RabiLengthParameters
+	qibocal.protocols.rabi.parent_classes.RabiLengthParameters
 	:noindex:
+
+We must note that all Rabi protocols takes as an optional input also `drive_lines`, which indicates the lines to use for each qubit.
+If this parameter is set it has to be of the same length of `targets` list and there must not be repeated elements in these two lists, otherwise an error is raised.
 
 Example
 ^^^^^^^

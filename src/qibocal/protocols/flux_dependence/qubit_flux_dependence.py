@@ -304,7 +304,11 @@ def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: Qub
         )
         update.sweetspot(results.sweetspot[qubit], platform, qubit)
         update.flux_offset(results.sweetspot[qubit], platform, qubit)
-        update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
+        platform.calibration.set_flux_crosstalk(
+            qubit=qubit,
+            flux_line=qubit,
+            value=results.matrix_element[qubit],
+        )
 
 
 qubit_flux = Protocol(_acquisition, _fit, _plot, _update)
