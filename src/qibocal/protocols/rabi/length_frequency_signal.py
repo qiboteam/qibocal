@@ -20,11 +20,11 @@ from .length_signal import RabiLengthSignalResults
 from .utils import fit_length_function, rabi_initial_guess, sequence_length
 
 __all__ = [
-    "rabi_length_frequency_signal",
-    "RabiLengthFrequencySignalParameters",
     "RabiLengthFreqSignalData",
-    "_update",
+    "RabiLengthFrequencySignalParameters",
     "RabiLengthFrequencySignalResults",
+    "_update",
+    "rabi_length_frequency_signal",
 ]
 
 

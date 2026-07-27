@@ -14,7 +14,7 @@ from ..utils import readout_frequency, table_dict, table_html
 from . import utils
 from .t1_signal import T1SignalData
 
-__all__ = ["t2_signal", "update_t2", "T2SignalData", "T2SignalParameters"]
+__all__ = ["T2SignalData", "T2SignalParameters", "t2_signal", "update_t2"]
 
 
 @dataclass

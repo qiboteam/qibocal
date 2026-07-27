@@ -19,7 +19,7 @@ from qibocal.protocols.utils import (
 )
 from qibocal.result import magnitude, phase, unpack
 
-__all__ = ["dispersive_shift", "DispersiveShiftData", "DispersiveShiftParameters"]
+__all__ = ["DispersiveShiftData", "DispersiveShiftParameters", "dispersive_shift"]
 
 
 @dataclass

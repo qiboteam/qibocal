@@ -23,7 +23,7 @@ from qibocal.update import replace
 
 from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
 
-__all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
+__all__ = ["ResSpecType", "ResonatorSpectroscopyData", "resonator_spectroscopy"]
 
 ResSpecType = np.dtype(
     [

@@ -13,7 +13,7 @@ from qibocal.result import magnitude, phase
 
 from . import utils
 
-__all__ = ["rabi_length_signal", "RabiLengthSignalResults"]
+__all__ = ["RabiLengthSignalResults", "rabi_length_signal"]
 
 
 @dataclass

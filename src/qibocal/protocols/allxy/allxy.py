@@ -16,7 +16,7 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
-__all__ = ["allxy", "gatelist", "AllXYType", "allxy_sequence"]
+__all__ = ["AllXYType", "allxy", "allxy_sequence", "gatelist"]
 
 
 @dataclass

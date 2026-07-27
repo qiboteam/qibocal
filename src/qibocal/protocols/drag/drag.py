@@ -28,11 +28,11 @@ from ..utils import (
 )
 
 __all__ = [
-    "drag_tuning",
-    "DragTuningType",
+    "DragTuningData",
     "DragTuningParameters",
     "DragTuningResults",
-    "DragTuningData",
+    "DragTuningType",
+    "drag_tuning",
 ]
 
 

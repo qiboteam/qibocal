@@ -13,7 +13,7 @@ from qibocal.result import magnitude, phase
 from ..utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
-__all__ = ["resonator_punchout", "ResonatorPunchoutData"]
+__all__ = ["ResonatorPunchoutData", "resonator_punchout"]
 
 
 @dataclass
