@@ -178,9 +178,9 @@ def _acquisition(
             data.register_qubit(
                 DragTuningType,
                 (qubit),
-                dict(
-                    prob=np.array([excited_state_prob]),
-                    error=np.array(
+                {
+                    "prob": np.array([excited_state_prob]),
+                    "error": np.array(
                         [
                             np.sqrt(
                                 excited_state_prob
@@ -189,8 +189,8 @@ def _acquisition(
                             )
                         ]
                     ),
-                    beta=np.array([beta]),
-                ),
+                    "beta": np.array([beta]),
+                },
             )
 
     return data
@@ -285,11 +285,11 @@ def _plot(
             go.Scatter(
                 x=qubit_data["beta"],
                 y=qubit_data["prob"],
-                error_y=dict(
-                    type="data",
-                    array=qubit_data["error"],
-                    visible=True,
-                ),
+                error_y={
+                    "type": "data",
+                    "array": qubit_data["error"],
+                    "visible": True,
+                },
                 mode="markers",
                 name="Data",
                 showlegend=True,

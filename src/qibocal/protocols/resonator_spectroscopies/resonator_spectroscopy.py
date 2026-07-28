@@ -223,11 +223,11 @@ def _acquisition(
         data.register_qubit(
             ResSpecType,
             q,
-            dict(
-                signal=signal,
-                phase=phase_,
-                freq=np.arange(*params.frequency_range(q, platform)).tolist(),
-            ),
+            {
+                "signal": signal,
+                "phase": phase_,
+                "freq": np.arange(*params.frequency_range(q, platform)).tolist(),
+            },
         )
     return data
 

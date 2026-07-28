@@ -27,6 +27,8 @@ from ..utils import (
     table_html,
 )
 
+logger = logging.getLogger(__name__)
+
 PHASES_THRESHOLD_PERCENTAGE = 80
 r"""Threshold percentage to ensure the phase data covers a significant portion of the full 2 :math:\pi circle."""
 STD_DEV_GAUSSIAN_KERNEL = 30
@@ -243,9 +245,9 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             x=np.real(s21_raw),
             y=np.imag(s21_raw),
             mode="markers",
-            marker=dict(
-                size=4,
-            ),
+            marker={
+                "size": 4,
+            },
             opacity=1,
             name="S21",
             showlegend=True,
@@ -260,9 +262,9 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             x=frequencies * scipy.constants.nano,
             y=signal,
             mode="markers",
-            marker=dict(
-                size=4,
-            ),
+            marker={
+                "size": 4,
+            },
             opacity=1,
             name="Magnitude",
             showlegend=True,
@@ -277,9 +279,9 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             x=frequencies * scipy.constants.nano,
             y=phase,
             mode="markers",
-            marker=dict(
-                size=4,
-            ),
+            marker={
+                "size": 4,
+            },
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -388,9 +390,9 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 x=np.real(s21_calibrated),
                 y=np.imag(s21_calibrated),
                 mode="markers",
-                marker=dict(
-                    size=4,
-                ),
+                marker={
+                    "size": 4,
+                },
                 opacity=1,
                 name="S21",
                 showlegend=True,
@@ -405,9 +407,9 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 x=frequencies * scipy.constants.nano,
                 y=np.abs(s21_calibrated),
                 mode="markers",
-                marker=dict(
-                    size=4,
-                ),
+                marker={
+                    "size": 4,
+                },
                 opacity=1,
                 name="Transmission",
                 showlegend=True,
@@ -422,9 +424,9 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 x=frequencies * scipy.constants.nano,
                 y=np.unwrap(np.angle(s21_calibrated)),
                 mode="markers",
-                marker=dict(
-                    size=4,
-                ),
+                marker={
+                    "size": 4,
+                },
                 opacity=1,
                 name="Phase",
                 showlegend=True,
@@ -748,7 +750,7 @@ def punchout_extract_feature(
     # filter data using find_peaks
     peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked)
     if peaks_dict is None:  # if find_peaks fails
-        logging.warning("""
+        logger.warning("""
         Peaks Detection Failed:
         no peaks found in peaks_finder routine.
         """)

@@ -7,7 +7,7 @@ def compute_chsh(frequencies, basis, i):
     """Computes the chsh inequality out of the frequencies of the 4 circuits executed."""
     chsh = 0
     aux = 0
-    for freq in frequencies:
+    for aux, freq in enumerate(frequencies):
         for outcome in freq:
             if aux == 1 + 2 * (
                 basis % 2
@@ -15,6 +15,5 @@ def compute_chsh(frequencies, basis, i):
                 chsh -= (-1) ** (int(outcome[0]) + int(outcome[1])) * freq[outcome][i]
             else:
                 chsh += (-1) ** (int(outcome[0]) + int(outcome[1])) * freq[outcome][i]
-        aux += 1
     nshots = sum(freq[x][i] for x in freq)
     return chsh / nshots

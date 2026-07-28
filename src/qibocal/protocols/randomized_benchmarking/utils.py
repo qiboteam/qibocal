@@ -3,7 +3,6 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from itertools import chain
 from numbers import Number
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -585,7 +584,7 @@ def twoq_rb_acquisition(
             data_dict={"survival_probs": results},
         )
 
-    assert isinstance(data, Union[RB2QData, RB2QInterData])
+    assert isinstance(data, RB2QData | RB2QInterData)
     return data
 
 

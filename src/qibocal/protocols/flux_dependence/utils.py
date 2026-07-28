@@ -64,7 +64,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.signal,
-            colorbar=dict(title="Signal [a.u.]"),
+            colorbar={"title": "Signal [a.u.]"},
             colorscale="Viridis",
         ),
     )
@@ -78,7 +78,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=filtered_bias,
                 name="Estimated points",
                 mode="markers",
-                marker=dict(color="rgb(248, 248, 248)"),
+                marker={"color": "rgb(248, 248, 248)"},
             )
         )
 
@@ -86,7 +86,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     if (
         fit is not None
         and fit_function is not None
-        and not data.__class__.__name__ == "CouplerSpectroscopyData"
+        and data.__class__.__name__ != "CouplerSpectroscopyData"
         and fit.successful_fit[qubit]
     ):
         params = fit.fitted_parameters[qubit]
@@ -97,7 +97,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=bias,
                 showlegend=True,
                 name="Fit",
-                marker=dict(color="rgb(248, 248, 248)"),
+                marker={"color": "rgb(248, 248, 248)"},
             ),
         )
 
@@ -110,10 +110,10 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                     fit.sweetspot[qubit],
                 ],
                 mode="markers",
-                marker=dict(
-                    size=8,
-                    color="red",
-                ),
+                marker={
+                    "size": 8,
+                    "color": "red",
+                },
                 name="Sweetspot",
                 showlegend=True,
             ),
@@ -124,11 +124,11 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     )
     fig.update_yaxes(title_text="Bias [a.u.]")
 
-    fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
+    fig.update_layout(xaxis1={"range": [np.min(frequencies), np.max(frequencies)]})
 
     fig.update_layout(
         showlegend=True,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
 
     figures.append(fig)
@@ -163,24 +163,23 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             row=1,
             col=col + 1,
         )
-        if fit is not None and fit.successful_fit[qubit]:
-            if flux_qubit[1] != qubit:
-                fig.add_trace(
-                    go.Scatter(
-                        x=fit_function(
-                            xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
-                        ),
-                        y=qubit_data.bias,
-                        showlegend=not any(
-                            isinstance(trace, go.Scatter) for trace in fig.data
-                        ),
-                        legendgroup="Fit",
-                        name="Fit",
-                        marker=dict(color="green"),
+        if fit is not None and fit.successful_fit[qubit] and flux_qubit[1] != qubit:
+            fig.add_trace(
+                go.Scatter(
+                    x=fit_function(
+                        xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
                     ),
-                    row=1,
-                    col=col + 1,
-                )
+                    y=qubit_data.bias,
+                    showlegend=not any(
+                        isinstance(trace, go.Scatter) for trace in fig.data
+                    ),
+                    legendgroup="Fit",
+                    name="Fit",
+                    marker={"color": "green"},
+                ),
+                row=1,
+                col=col + 1,
+            )
 
         fig.update_xaxes(
             title_text="Frequency [GHz]",
@@ -192,9 +191,9 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             title_text=f"Qubit {flux_qubit[1]}: Bias [a.u.]", row=1, col=col + 1
         )
 
-    fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
-    fig.update_layout(xaxis2=dict(range=[np.min(frequencies), np.max(frequencies)]))
-    fig.update_layout(xaxis3=dict(range=[np.min(frequencies), np.max(frequencies)]))
+    fig.update_layout(xaxis1={"range": [np.min(frequencies), np.max(frequencies)]})
+    fig.update_layout(xaxis2={"range": [np.min(frequencies), np.max(frequencies)]})
+    fig.update_layout(xaxis3={"range": [np.min(frequencies), np.max(frequencies)]})
     fig.update_layout(
         showlegend=True,
     )

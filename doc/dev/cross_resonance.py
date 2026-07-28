@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.2"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 with app.setup:
@@ -338,7 +338,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
         "",
         xy=(f01[0], 1),
         xytext=(f01[1], 1),
-        arrowprops=dict(arrowstyle="<->"),
+        arrowprops={"arrowstyle": "<->"},
     )
     ax.annotate(
         r"$\Delta$",
@@ -350,7 +350,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
         "",
         xy=(f12[0], 2),
         xytext=(f12[1], 2),
-        arrowprops=dict(arrowstyle="<->"),
+        arrowprops={"arrowstyle": "<->"},
     )
     ax.annotate(
         r"$\Delta_{12}$",
@@ -365,7 +365,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
             "",
             xy=(ef, 4 + i),
             xytext=(ge, 4 + i),
-            arrowprops=dict(arrowstyle="<->"),
+            arrowprops={"arrowstyle": "<->"},
         )
         ax.annotate(
             rf"$\eta_{chr(65 + i)}$",
@@ -378,7 +378,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
             "",
             xy=(ge, 7 + i),
             xytext=(f12[j], 7 + i),
-            arrowprops=dict(arrowstyle="<->"),
+            arrowprops={"arrowstyle": "<->"},
         )
         ax.annotate(
             rf"$\tilde{{\Delta}}_{{{chr(65 + i)}{chr(65 + j)}}}$",

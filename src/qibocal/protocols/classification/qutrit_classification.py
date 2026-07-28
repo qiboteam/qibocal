@@ -96,11 +96,11 @@ def _acquisition(
         savedir=params.savedir,
     )
 
-    options = dict(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.INTEGRATION,
+    }
     updates = [
         {
             platform.qubits[q].probe: {
@@ -119,11 +119,11 @@ def _acquisition(
             data.register_qubit(
                 ClassificationType,
                 (qubit),
-                dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
-                    state=[state] * params.nshots,
-                ),
+                {
+                    "i": result[..., 0],
+                    "q": result[..., 1],
+                    "state": [state] * params.nshots,
+                },
             )
 
     return data

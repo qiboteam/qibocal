@@ -81,11 +81,11 @@ def _acquisition(
         data.register_qubit(
             RamseySignalType,
             (qubit),
-            dict(
-                wait=np.arange(*params.delay_range),
-                i=i,
-                q=q,
-            ),
+            {
+                "wait": np.arange(*params.delay_range),
+                "i": i,
+                "q": q,
+            },
         )
 
     return data

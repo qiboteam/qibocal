@@ -341,7 +341,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         yaxis2_title="Amplitude [a.u.]",
         yaxis3_title="Amplitude [a.u.]",
         yaxis4_title="Amplitude [a.u.]",
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
         coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
         coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
         height=800,

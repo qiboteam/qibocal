@@ -220,11 +220,11 @@ def _acquisition(
         data.register_qubit(
             QubitSpecType,
             (qubit),
-            dict(
-                signal=signal,
-                phase=_phase,
-                freq=freq,
-            ),
+            {
+                "signal": signal,
+                "phase": _phase,
+                "freq": freq,
+            },
         )
 
     return data

@@ -328,8 +328,8 @@ def _plot(
             xaxis_title="Frequency [GHz]",
             xaxis2_title="Frequency [GHz]",
             xaxis3_title="Frequency [GHz]",
-            coloraxis=dict(colorscale="Viridis", cmin=0, cmax=1),
-            legend=dict(orientation="h"),
+            coloraxis={"colorscale": "Viridis", "cmin": 0, "cmax": 1},
+            legend={"orientation": "h"},
         )
 
         if has_best_point:
@@ -339,9 +339,9 @@ def _plot(
                         x=[fit.frequency[target] * HZ_TO_GHZ],
                         y=[fit.amplitude[target]],
                         mode="markers",
-                        marker=dict(size=8, color="black", symbol="cross"),
+                        marker={"size": 8, "color": "black", "symbol": "cross"},
                         name="Best Readout Point",
-                        showlegend=True if col == 1 else False,
+                        showlegend=col == 1,
                     ),
                     row=1,
                     col=col,

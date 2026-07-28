@@ -13,6 +13,8 @@ from qibocal.auto.operation import QubitId
 
 from . import data
 
+logger = logging.getLogger(__name__)
+
 CLS_MODULES = [
     "qubit_fit",
     "qblox_fit",
@@ -186,7 +188,7 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     y_pred = np.round(y_pred).tolist()
 
     score = accuracy_score(y_test.tolist(), y_pred)
-    logging.info(f"Accuracy: {score}")
+    logger.info(f"Accuracy: {score}")
     results = BenchmarkResults(score, test_time, training_time)
 
     return results, y_pred, model, fit_info
@@ -236,7 +238,7 @@ def train_qubit(
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir(exist_ok=True)
-        logging.info(f"Training quibt with classifier: {pretty_name(classifier.name)}")
+        logger.info(f"Training quibt with classifier: {pretty_name(classifier.name)}")
         hyperpars = classifier.hyperopt(
             x_train, y_train.astype(np.int64), classifier.savedir
         )

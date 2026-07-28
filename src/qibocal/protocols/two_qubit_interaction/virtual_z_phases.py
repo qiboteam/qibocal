@@ -101,7 +101,7 @@ class VirtualZPhasesData(Data):
     @property
     def order_pairs(self):
         pairs = []
-        for key in self.data.keys():
+        for key in self.data:
             pairs.append((key[0], key[1]))
         return np.unique(pairs, axis=0).tolist()
 
@@ -114,7 +114,7 @@ def create_sequence(
     ordered_pair: list[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    flux_pulse_max_duration: float = None,
+    flux_pulse_max_duration: float | None = None,
     gate_repetition: int = 1,
     flux_pulse: list | None = None,
 ) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
@@ -151,7 +151,7 @@ def create_sequence(
     # CZ
     if flux_pulse is None:
         cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
-        flux_pulse = list(cz_sequence.channel(flux_channel))[0]
+        flux_pulse = next(iter(cz_sequence.channel(flux_channel)))
 
     if flux_pulse_max_duration is not None:
         flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
@@ -421,7 +421,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         showlegend=True,
         xaxis1_title="Virtual phase[rad]",
         xaxis2_title="Virtual phase [rad]",
-        yaxis2=dict(range=[0, 1], title="State 1 Probability"),
+        yaxis2={"range": [0, 1], "title": "State 1 Probability"},
         yaxis_title="State 1 Probability",
     )
 
@@ -430,7 +430,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         showlegend=True,
         xaxis1_title="Virtual phase[rad]",
         xaxis2_title="Virtual phase[rad]",
-        yaxis1=dict(range=[0, 1], title="State 1 Probability"),
+        yaxis1={"range": [0, 1], "title": "State 1 Probability"},
         yaxis_title="State 1 Probability",
     )
 

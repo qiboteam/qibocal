@@ -321,7 +321,7 @@ def _plot(
                     name="Best CZ",
                     legendgroup="Best CZ",
                     showlegend=False,
-                    line=dict(color="yellow", width=1),
+                    line={"color": "yellow", "width": 1},
                 ),
                 row=1,
                 col=i + 1,
@@ -331,14 +331,14 @@ def _plot(
                     z=angles,
                     x=data.amplitudes,
                     y=data.t_idles,
-                    contours=dict(
-                        start=np.pi,
-                        end=np.pi,
-                        coloring="none",
-                        showlines=True,
-                        showlabels=True,
-                    ),
-                    line=dict(color="white", width=1),
+                    contours={
+                        "start": np.pi,
+                        "end": np.pi,
+                        "coloring": "none",
+                        "showlines": True,
+                        "showlabels": True,
+                    },
+                    line={"color": "white", "width": 1},
                 ),
                 row=1,
                 col=i + 1,
@@ -349,8 +349,8 @@ def _plot(
             xaxis2_title="Amplitude A [a.u.]",
             yaxis1_title="t_idle [ns]",
             yaxis2_title="t_idle [ns]",
-            xaxis2=dict(matches="x"),
-            yaxis2=dict(matches="y"),
+            xaxis2={"matches": "x"},
+            yaxis2={"matches": "y"},
         )
 
         fitting_report = table_html(

@@ -118,11 +118,11 @@ def _acquisition(
         data.register_qubit(
             RabiLenSignalType,
             (q),
-            dict(
-                length=sweeper.values,
-                signal=magnitude(result),
-                phase=phase(result),
-            ),
+            {
+                "length": sweeper.values,
+                "signal": magnitude(result),
+                "phase": phase(result),
+            },
         )
     return data
 

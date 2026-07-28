@@ -170,7 +170,7 @@ In the acquisition function we are going to perform the experiment.
         from qibocal.auto.operation import QubitId, QubitPairId
         from typing import Union
 
-        def acquisition(params: ProtocolParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> ProtocolData
+        def acquisition(params: ProtocolParameters, platform: Platform, targets: list[QubitId] | list[QubitPairId] | list[list[QubitId]]) -> ProtocolData
         """A generic acquisition function."""
 
 

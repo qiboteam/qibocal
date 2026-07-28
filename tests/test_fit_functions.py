@@ -73,7 +73,7 @@ def test_rabi_fit():
             with open(results_file) as file1:
                 results = json.load(file1)
 
-            if any([f in str_sub for f in ["freq", "signal"]]):
+            if any(f in str_sub for f in ["freq", "signal"]):
                 sig_min = np.min(raw_signal)
                 sig_max = np.max(raw_signal)
                 x_min = np.min(raw_x)
@@ -93,7 +93,7 @@ def test_rabi_fit():
             if "amp" in str_sub:
                 pguess = rabi_initial_guess(x, signal, "amplitude", signal_flag)
 
-                fit_params, _, pi_pulse_parameter = rabi_fit_amplitude_function(
+                _fit_params, _, pi_pulse_parameter = rabi_fit_amplitude_function(
                     x,
                     signal,
                     pguess,
@@ -115,7 +115,7 @@ def test_rabi_fit():
             if "length" in str_sub:
                 pguess = rabi_initial_guess(x, signal, "length", signal_flag)
 
-                fit_params, _, pi_pulse_parameter = rabi_fit_length_function(
+                _fit_params, _, pi_pulse_parameter = rabi_fit_length_function(
                     x,
                     signal,
                     pguess,

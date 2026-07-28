@@ -138,10 +138,10 @@ def _acquisition(
         data.register_qubit(
             QubitVzType,
             qubit,
-            dict(
-                phi=phi_range,
-                prob=results[acq_handle],
-            ),
+            {
+                "phi": phi_range,
+                "prob": results[acq_handle],
+            },
         )
     return data
 

@@ -19,12 +19,12 @@ def test_cryoscope_acquisition(platform):
     target = [0]
 
     params = cryoscope.parameters_type.load(
-        dict(
-            duration_min=1,
-            duration_max=10,
-            duration_step=1,
-            flux_pulse_amplitude=0.1,
-        )
+        {
+            "duration_min": 1,
+            "duration_max": 10,
+            "duration_step": 1,
+            "flux_pulse_amplitude": 0.1,
+        }
     )
 
     cryoscope_data, _ = cryoscope.acquisition(params, platform, target)

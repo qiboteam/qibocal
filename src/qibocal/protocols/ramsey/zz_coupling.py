@@ -211,11 +211,11 @@ def _execute_ramsey_zz(
             data.register_qubit(
                 RamseyZZType,
                 (pair, setup),
-                dict(
-                    wait=np.arange(*params.delay_range),
-                    targ_prob=targ_probs,
-                    spect_prob=spect_probs,
-                ),
+                {
+                    "wait": np.arange(*params.delay_range),
+                    "targ_prob": targ_probs,
+                    "spect_prob": spect_probs,
+                },
             )
 
     return data
@@ -396,8 +396,8 @@ def zz_fit_plot(
                 f"Coupling with {spect_qubit} [Hz]",
             ],
             [
-                fit.zz[pair] if pair in fit.zz else (0, 0),
-                fit.coupling[pair] if pair in fit.coupling else (0, 0),
+                fit.zz.get(pair, (0, 0)),
+                fit.coupling.get(pair, (0, 0)),
             ],
             display_error=True,
         ),

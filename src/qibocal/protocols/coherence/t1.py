@@ -82,7 +82,7 @@ def _acquisition(
         data.register_qubit(
             CoherenceProbType,
             (qubit),
-            dict(wait=ro_wait_range, prob=probs, error=errors),
+            {"wait": ro_wait_range, "prob": probs, "error": errors},
         )
 
     return data
@@ -126,7 +126,7 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
+                line={"color": COLORBAND_LINE},
                 showlegend=True,
                 name="Errors",
             ),

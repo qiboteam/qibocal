@@ -187,6 +187,23 @@ def _acquisition(
     return data
 
 
+def _fit_function(data: QubitFluxData, qubit: QubitId):
+
+    def func(x, w_max, normalization, offset):
+        return utils.transmon_frequency(
+            xi=x,
+            w_max=w_max,
+            xj=0,
+            d=0,
+            normalization=normalization,
+            offset=offset,
+            crosstalk_element=1,
+            charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+        )
+
+    return func
+
+
 def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
     Post-processing for QubitFlux Experiment. See `arXiv:0703002 <https://arxiv.org/abs/cond-mat/0703002>`_.
@@ -215,22 +232,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         if frequencies is None or biases is None:
             successful_fit[qubit] = False
         else:
-
-            def fit_function(x, w_max, normalization, offset):
-                return utils.transmon_frequency(
-                    xi=x,
-                    w_max=w_max,
-                    xj=0,
-                    d=0,
-                    normalization=normalization,
-                    offset=offset,
-                    crosstalk_element=1,
-                    charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-                )
-
             try:
                 popt = curve_fit(
-                    fit_function,
+                    _fit_function(data, qubit),
                     biases,
                     frequencies * HZ_TO_GHZ,
                     bounds=utils.qubit_flux_dependence_fit_bounds(

@@ -180,12 +180,12 @@ def _acquisition(
         bias_point=params.bias_point,
     )
 
-    options = dict(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.INTEGRATION,
+        "averaging_mode": AveragingMode.CYCLIC,
+    }
 
     updates = []
     for qubit in targets:
@@ -214,6 +214,23 @@ def _acquisition(
                 bias=offset_sweeper.values,
             )
     return data
+
+
+def _fit_function(data: QubitCrosstalkData, target_qubit: QubitId):
+
+    def func(x, crosstalk_element, offset):
+        return utils.transmon_frequency(
+            xi=data.bias_point[target_qubit],
+            xj=x,
+            d=0,
+            w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
+            offset=offset,
+            normalization=data.matrix_element[target_qubit],
+            charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
+            crosstalk_element=crosstalk_element,
+        )
+
+    return func
 
 
 def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
@@ -250,35 +267,23 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                 * GHZ_TO_HZ
             )
 
-            def fit_function(x, crosstalk_element, offset):
-                return utils.transmon_frequency(
-                    xi=data.bias_point[target_qubit],
-                    xj=x,
-                    d=0,
-                    w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
-                    offset=offset,
-                    normalization=data.matrix_element[target_qubit],
-                    charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
-                    crosstalk_element=crosstalk_element,
-                )
-
             try:
                 popt, _ = curve_fit(
-                    fit_function,
+                    _fit_function(data, target_qubit),
                     biases,
                     frequencies * HZ_TO_GHZ,
                     bounds=((-np.inf, -1), (np.inf, 1)),
                     maxfev=100000,
                 )
-                fitted_parameters[target_qubit, flux_qubit] = dict(
-                    xi=data.bias_point[target_qubit],
-                    d=0,
-                    w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
-                    offset=popt[1],
-                    normalization=data.matrix_element[target_qubit],
-                    charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
-                    crosstalk_element=float(popt[0]),
-                )
+                fitted_parameters[target_qubit, flux_qubit] = {
+                    "xi": data.bias_point[target_qubit],
+                    "d": 0,
+                    "w_max": data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
+                    "offset": popt[1],
+                    "normalization": data.matrix_element[target_qubit],
+                    "charging_energy": data.charging_energy[target_qubit] * HZ_TO_GHZ,
+                    "crosstalk_element": float(popt[0]),
+                }
                 crosstalk_matrix[target_qubit][flux_qubit] = (
                     popt[0] * data.matrix_element[target_qubit]
                 )

@@ -226,7 +226,7 @@ def estimate_cr_param(
     R only for the acquired datapoints.
     """
 
-    if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
+    if all((pair[0], pair[1], s) in fitted_parameters for s in SetControl):
         bloch_data, _, _ = compute_bloch_vector(data, pair, fitted_parameters)
         x_range = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
         param = numerical_root_finder(

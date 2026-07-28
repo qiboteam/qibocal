@@ -87,9 +87,8 @@ def readout_frequency(
                 return state_frequency
         except KeyError:
             pass
-    if power_level is PowerLevel.high:
-        if bare_frequency is not None:
-            return bare_frequency
+    if power_level is PowerLevel.high and bare_frequency is not None:
+        return bare_frequency
     if dressed_frequency is not None:
         return dressed_frequency
     return platform_frequency
@@ -546,7 +545,7 @@ def plot_results(
                     mode="markers",
                     showlegend=True,
                     opacity=0.7,
-                    marker=dict(size=3),
+                    marker={"size": 3},
                     marker_color=COLORS[state],
                 ),
                 row=1,
@@ -561,7 +560,7 @@ def plot_results(
                     legendgroup=f"{model}: state {state}",
                     showlegend=False,
                     mode="markers",
-                    marker=dict(size=10),
+                    marker={"size": 10},
                 ),
                 row=1,
                 col=i + 1,
@@ -597,7 +596,7 @@ def plot_results(
                         name=f"{model}: state {state} hist",
                         legendgroup=f"{model}: state {state}",
                         showlegend=False,
-                        marker=dict(color=COLORS[state]),
+                        marker={"color": COLORS[state]},
                         width=(bin_centers[1] - bin_centers[0])
                         if len(bin_centers) > 1
                         else 0.1,
@@ -613,7 +612,7 @@ def plot_results(
                         mode="lines",
                         legendgroup=f"{model}: state {state}",
                         showlegend=False,
-                        line=dict(width=2, color=COLORS[state]),
+                        line={"width": 2, "color": COLORS[state]},
                     ),
                     row=2,
                     col=i + 1,
@@ -626,7 +625,7 @@ def plot_results(
                         y=[0, max(hist) * 1.1],
                         name="threshold",  # No name for legend
                         mode="lines",
-                        line=dict(color="black", width=2, dash="dot"),
+                        line={"color": "black", "width": 2, "dash": "dot"},
                         showlegend=False,
                     ),
                     row=2,
@@ -639,7 +638,7 @@ def plot_results(
             row=1,
             col=i + 1,
             autorange=False,
-            rangeslider=dict(visible=False),
+            rangeslider={"visible": False},
         )
         fig.update_yaxes(
             title_text="q [a.u.]",
@@ -654,16 +653,16 @@ def plot_results(
         autosize=False,
         height=COLUMNWIDTH,
         width=COLUMNWIDTH * len(models_name),
-        title=dict(text="Results", font=dict(size=TITLE_SIZE)),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            xanchor="left",
-            y=-0.3,
-            x=0,
-            itemsizing="constant",
-            font=dict(size=LEGEND_FONT_SIZE),
-        ),
+        title={"text": "Results", "font": {"size": TITLE_SIZE}},
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "xanchor": "left",
+            "y": -0.3,
+            "x": 0,
+            "itemsizing": "constant",
+            "font": {"size": LEGEND_FONT_SIZE},
+        },
     )
     figures.append(fig)
 
@@ -687,7 +686,7 @@ def plot_results(
                         y=[fit.benchmark_table[qubit][i][plot]],
                         mode="markers",
                         showlegend=False,
-                        marker=dict(size=10, color=get_color_state1(i)),
+                        marker={"size": 10, "color": get_color_state1(i)},
                     ),
                     row=1,
                     col=plot + 1,
@@ -699,7 +698,7 @@ def plot_results(
             autosize=False,
             height=COLUMNWIDTH,
             width=COLUMNWIDTH * 3,
-            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+            title={"text": "Benchmarks", "font": {"size": TITLE_SIZE}},
         )
 
         figures.append(fig_benchmarks)
@@ -716,7 +715,7 @@ def table_dict(
     Build a dictionary to generate HTML table with `table_html`.
 
     Args:
-        qubit (Union[list[QubitId], QubitId]): If qubit is a scalar value,
+        qubit (list[QubitId] | QubitId): If qubit is a scalar value,
         the "Qubit" entries will have only this value repeated.
         names (list[str]): List of the names of the parameters.
         values (list): List of the values of the parameters.

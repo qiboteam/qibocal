@@ -22,7 +22,7 @@ PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 RUNCARDS_NAMES = ["protocols.yml"]
 
 
-INVOKER_OPTIONS = dict(catch_exceptions=False)
+INVOKER_OPTIONS = {"catch_exceptions": False}
 """Generate errors when calling qq."""
 
 

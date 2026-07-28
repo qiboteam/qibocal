@@ -233,11 +233,11 @@ def _acquisition(
         savedir=params.savedir,
     )
 
-    options = dict(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.INTEGRATION,
+    }
 
     results = platform.execute(sequences, **options)
 
@@ -248,11 +248,11 @@ def _acquisition(
             data.register_qubit(
                 ClassificationType,
                 (qubit),
-                dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
-                    state=[state] * params.nshots,
-                ),
+                {
+                    "i": result[..., 0],
+                    "q": result[..., 1],
+                    "state": [state] * params.nshots,
+                },
             )
 
     return data
@@ -353,7 +353,7 @@ def _plot(
             # Evaluate the ROC curve
             fig_roc = go.Figure()
             fig_roc.add_shape(
-                type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
+                type="line", line={"dash": "dash"}, x0=0.0, x1=1.0, y0=0.0, y1=1.0
             )
             for i, model in enumerate(models_name):
                 y_pred = fit.y_preds[target][i]
@@ -366,14 +366,14 @@ def _plot(
                         y=tpr,
                         name=name,
                         mode="lines",
-                        marker=dict(size=3, color=get_color_state0(i)),
+                        marker={"size": 3, "color": get_color_state0(i)},
                     )
                 )
             fig_roc.update_layout(
                 width=ROC_WIDTH,
                 height=ROC_LENGHT,
-                title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
-                legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
+                title={"text": "ROC curves", "font": {"size": TITLE_SIZE}},
+                legend={"font": {"size": LEGEND_FONT_SIZE}},
             )
             fig_roc.update_xaxes(
                 title_text="False Positive Rate",

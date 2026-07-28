@@ -162,7 +162,7 @@ def _plot(data: TwoLevelsCrossingData, target: QubitId, fit: TwoLevelsCrossingRe
             z=signal,
             zmin=np.percentile(signal, 0.5),
             zmax=np.percentile(signal, 99.5),
-            colorbar=dict(title="Raw signal"),
+            colorbar={"title": "Raw signal"},
             colorbar_x=1.01,
             colorscale="Viridis",
         ),
@@ -185,7 +185,7 @@ def _plot(data: TwoLevelsCrossingData, target: QubitId, fit: TwoLevelsCrossingRe
         labels = values = []
         fitting_report = table_html(table_dict(target, labels, values))
 
-    fig.update_layout(showlegend=True, legend=dict(orientation="h"))
+    fig.update_layout(showlegend=True, legend={"orientation": "h"})
     fig.update_xaxes(title_text="First tone [GHz]")
     fig.update_yaxes(title_text="Second tone [GHz]")
     figures.append(fig)

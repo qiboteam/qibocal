@@ -95,9 +95,8 @@ class Executor(BaseModel):
 
         # TODO: drop, as the conditions won't be necessary any longer, and then it could
         # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
-        if ExecutionMode.FIT in mode:
-            if self.update and task.update:
-                completed.update_platform(platform=self.platform)
+        if ExecutionMode.FIT in mode and self.update and task.update:
+            completed.update_platform(platform=self.platform)
 
         return completed
 
