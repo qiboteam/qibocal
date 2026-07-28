@@ -46,8 +46,16 @@ optional = true
 [tool.poetry.group.analysis.dependencies]
 ruff = "^0.16.0"
 
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
 [tool.ruff.lint]
-ignore = ["BLE001"] # TODO: warning about except Exception, fix properly
+extend-select = ["I", "UP"]
+ignore = ["BLE001"] # TODO: BLE001 is about except Exception, fix properly
+
+[tool.ruff.lint.isort]
+known-first-party = ["qibocal"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F403"]
@@ -102,7 +110,3 @@ types = "true"
 [tool.pytest.ini_options]
 testpaths = ['tests/']
 addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
-
-[tool.pycln]
-all = true
-exclude = "__init__.py"
