@@ -26,7 +26,7 @@ from scipy.ndimage import median_filter
 from scipy.signal import find_peaks
 from scipy.special import erfinv
 
-# approximate width of a peak in the qubit spectroscopy in Hz
+# approximate width of a peak in the resonator spectroscopy in Hz
 APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.2e6
 
 
