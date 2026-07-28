@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitPairId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import order_pair
@@ -165,5 +165,5 @@ def _update(
     pass
 
 
-chevron_couplers = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""Chevron couplers routine."""
+chevron_couplers = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""Chevron couplers Protocol."""

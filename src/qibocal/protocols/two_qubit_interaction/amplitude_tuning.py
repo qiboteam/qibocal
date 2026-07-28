@@ -1,7 +1,7 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from .chevron.utils import chevron_sequence
@@ -32,7 +32,7 @@ class AmplitudeTuningParameters(Parameters):
     """Duration minimum."""
     flux_pulse_amplitude: float
     """Duration maximum."""
-    dt: Optional[int] = 0
+    dt: int | None = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
@@ -176,5 +176,5 @@ def _update(
     pass
 
 
-amplitude_tuning = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""AmplitudeTuning routine."""
+amplitude_tuning = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""AmplitudeTuning Protocol."""

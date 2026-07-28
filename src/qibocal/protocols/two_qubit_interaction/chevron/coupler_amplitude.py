@@ -1,14 +1,14 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import order_pair
@@ -35,7 +35,7 @@ class CouplerAmplitudeParameters(Parameters):
     """Amplitude coupler step."""
     duration: int
     """Duration of coupler and qubit flux pulses"""
-    dt: Optional[int] = 0
+    dt: int | None = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
@@ -195,5 +195,5 @@ def _update(
     pass
 
 
-coupler_amplitude = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""CouplerAmplitude routine."""
+coupler_amplitude = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""CouplerAmplitude Protocol."""

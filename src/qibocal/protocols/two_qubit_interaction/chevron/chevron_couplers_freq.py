@@ -19,7 +19,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import order_pair
@@ -268,5 +268,5 @@ def _update(
     pass
 
 
-chevron_couplers = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""Chevron couplers routine."""
+chevron_couplers = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""Chevron couplers Protocol."""

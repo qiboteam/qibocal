@@ -17,9 +17,9 @@ from qibolab import (
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 
@@ -132,7 +132,7 @@ def _acquisition(
 def _fit(
     data: PhaseCalibrationData,
 ) -> PhaseCalibrationResults:
-    r"""Fitting routine for the experiment.
+    r"""Fitting Protocol for the experiment.
 
     The used model is
 
@@ -146,7 +146,7 @@ def _fit(
 def _plot(
     data: PhaseCalibrationData, fit: PhaseCalibrationResults, target: QubitPairId
 ):
-    """Plot routine for PhaseCalibration."""
+    """Plot Protocol for PhaseCalibration."""
     if target not in data.data:
         target = (target[1], target[0])
 
@@ -192,5 +192,5 @@ def _update(
     pass
 
 
-phase_calibration = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+phase_calibration = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Virtual phases correction protocol."""

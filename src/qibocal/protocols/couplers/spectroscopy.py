@@ -14,9 +14,9 @@ from qibolab import (
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
@@ -134,7 +134,7 @@ def _acquisition(
 
 
 def _fit(data: CouplerSpectroscopyData) -> CouplerSpectroscopyResults:
-    """Fitting routine for Coupler readout experiment."""
+    """Fitting Protocol for Coupler readout experiment."""
 
     return CouplerSpectroscopyResults()
 
@@ -172,5 +172,5 @@ def _plot(
     return figures, fitting_report
 
 
-coupler_spectroscopy = Routine(_acquisition, _fit, _plot)
-"""CouplerSpectroscopy Routine object."""
+coupler_spectroscopy = Protocol(_acquisition, _fit, _plot)
+"""CouplerSpectroscopy Protocol object."""

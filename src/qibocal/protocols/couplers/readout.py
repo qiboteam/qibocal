@@ -14,7 +14,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
@@ -163,7 +163,7 @@ def _acquisition(
 
 
 def _fit(data: CouplerReadoutData) -> CouplerReadoutResults:
-    """ ""Fitting routine for Coupler readout experiment."""
+    """ ""Fitting Protocol for Coupler readout experiment."""
     fitted_parameters = {}
     readout_duration = {}
 
@@ -267,5 +267,5 @@ def _plot(
     return figures, fitting_report
 
 
-coupler_readout = Routine(_acquisition, _fit, _plot)
-"""CouplerReadout Routine object."""
+coupler_readout = Protocol(_acquisition, _fit, _plot)
+"""CouplerReadout Protocol object."""
