@@ -86,11 +86,6 @@ class ResonatorFluxData(Data):
             freq, bias, signal, dtype=ResFluxType
         )
 
-    @property
-    def find_min(self) -> bool:
-        """Returns True if resonator_type is 2D else False otherwise."""
-        return self.resonator_type == "2D"
-
 
 def _acquisition(
     params: ResonatorFluxParameters,
