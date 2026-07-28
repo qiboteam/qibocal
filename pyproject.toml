@@ -44,7 +44,7 @@ pytest-mock = "^3.14.0"
 optional = true
 
 [tool.poetry.group.analysis.dependencies]
-ruff = "^0.9.1"
+ruff = "^0.16.0"
 
 [tool.ruff.lint]
 ignore = ["BLE001"] # TODO: warning about except Exception, fix properly
