@@ -1,4 +1,5 @@
 import inspect
+import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -7,7 +8,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import ndimage
-from scipy.optimize import curve_fit
+from scipy.optimize import OptimizeWarning, curve_fit
 
 from ...auto.operation import Parameters
 from ..utils import (
@@ -464,12 +465,15 @@ def ransac_fit(
         tried_subsets.add(subset_)
 
         try:
-            popt, _ = curve_fit(
-                fit_function,
-                xvals[subset],
-                yvals[subset],
-                method="lm",  # lm is a fast option
-            )
+            with warnings.catch_warnings():
+                # Poor fits are expected for random subsets, so suppress these warnings.
+                warnings.simplefilter("ignore", OptimizeWarning)
+                popt, _ = curve_fit(
+                    fit_function,
+                    xvals[subset],
+                    yvals[subset],
+                    method="lm",  # lm is a fast option
+                )
         except RuntimeError:
             continue
 
