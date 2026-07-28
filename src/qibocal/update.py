@@ -1,7 +1,7 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Literal
+from typing import Any, Literal, TypeVar
 
 import numpy as np
 from pydantic import BaseModel, TypeAdapter
@@ -26,7 +26,10 @@ def _dump_pair(pair: QubitPairId) -> str:
     return _QPAIR_DUMPER.dump_python(pair)
 
 
-def replace(model: BaseModel, **update):
+M = TypeVar("M", bound=BaseModel)
+
+
+def replace(model: M, **update: Any) -> M:
     """Replace interface for pydantic models."""
     return model.model_copy(update=update)
 

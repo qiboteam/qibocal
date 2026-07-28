@@ -1,6 +1,7 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
 
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
@@ -13,6 +14,7 @@ from qibolab import (
     Delay,
     Parameter,
     Pulse,
+    PulseId,
     PulseSequence,
     Sweeper,
     VirtualZ,
@@ -22,11 +24,11 @@ from qibocal.auto.operation import (
     Data,
     Parameters,
     Protocol,
-    QubitId,
     QubitPairId,
     Results,
 )
 from qibocal.calibration import CalibrationPlatform
+from qibocal.calibration.calibration import QubitId
 from qibocal.protocols.utils import table_dict, table_html
 
 from ... import update
@@ -56,13 +58,30 @@ class VirtualZPhasesParameters(Parameters):
     """Time delay between flux pulses and readout."""
     gate_repetition: int = 1
     """Number of CZ repetition"""
+    sweep: bool = True
+    """Toggle sweeping vs unrolling.
+
+
+    .. tip::
+
+       Sweeping phases has been proven fragile in certain platforms. For this reason, we
+       are now providing the double implementation.
+       The difference it is just an internal detail, and ideally the result is supposed
+       to be the exact same when sweeping phases is properly supported. Sweeping is
+       often a bit faster.
+
+       The recommended usage is just to toggle this to ``False`` when the user is
+       confident the sweeping is not working properly. Or just to check whether that is
+       actually the problem or not.
+
+    """
 
 
 @dataclass
 class VirtualZPhasesResults(Results):
     """VirtualZ outputs when fitting will be done."""
 
-    fitted_parameters: dict[tuple[str, QubitId],]
+    fitted_parameters: dict[tuple[str, QubitId], object]
     """Fitted parameters"""
     native: str
     """Native two qubit gate."""
@@ -87,11 +106,13 @@ class VirtualZPhasesData(Data):
     """VirtualZPhases data."""
 
     gate_repetition: int
-    data: dict[tuple, npt.NDArray] = field(default_factory=dict)
+    data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]]
+    thetas: list[float]
     native: str = "CZ"
-    thetas: list = field(default_factory=list)
 
-    def __getitem__(self, pair):
+    def __getitem__(
+        self, pair: QubitPairId
+    ) -> dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]]:
         return {
             index: value
             for index, value in self.data.items()
@@ -99,8 +120,8 @@ class VirtualZPhasesData(Data):
         }
 
     @property
-    def order_pairs(self):
-        pairs = []
+    def order_pairs(self) -> list[QubitPairId]:
+        pairs: list[QubitPairId] = []
         for key in self.data.keys():
             pairs.append((key[0], key[1]))
         return np.unique(pairs, axis=0).tolist()
@@ -111,13 +132,13 @@ def create_sequence(
     setup: Literal["I", "X"],
     target_qubit: QubitId,
     control_qubit: QubitId,
-    ordered_pair: list[QubitId, QubitId],
+    ordered_pair: tuple[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    flux_pulse_max_duration: float = None,
-    gate_repetition: int = 1,
-    flux_pulse: list | None = None,
-) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
+    vzphase: float = 0.0,
+    flux_pulse_max_duration: float | None = None,
+    flux_pulse: Pulse | None = None,
+) -> tuple[PulseSequence, Pulse, VirtualZ]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
 
@@ -132,9 +153,9 @@ def create_sequence(
     `flux_pulse_max_duration` parameter.
 
     The function returns:
-            - The full experiment pulse sequence.
-            - The applied flux pulse.
-            - The final `VirtualZPhase` pulses to be used for phase sweeping.
+    - The full experiment pulse sequence.
+    - The applied flux pulse.
+    - The final `VirtualZPhase` pulses to be used for phase sweeping.
     """
 
     target_natives = platform.natives.single_qubit[target_qubit]
@@ -145,63 +166,47 @@ def create_sequence(
     sequence += target_natives.R(theta=np.pi / 2)
     # X
     if setup == "X":
+        assert control_natives.RX is not None
         sequence += control_natives.RX()
 
     flux_channel = platform.qubits[ordered_pair[1]].flux
+    assert flux_channel is not None, (
+        "Flux channel must be defined for the control qubit."
+    )
     # CZ
     if flux_pulse is None:
         cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
         flux_pulse = list(cz_sequence.channel(flux_channel))[0]
+    assert isinstance(flux_pulse, Pulse), "Flux pulse must be a Pulse object."
 
     if flux_pulse_max_duration is not None:
         flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
-    flux_sequence = PulseSequence([(flux_channel, flux_pulse)])
-    virtual_phases = []
-    align_channels = [
-        platform.qubits[control_qubit].drive,
-        platform.qubits[target_qubit].drive,
-        flux_channel,
-        platform.qubits[target_qubit].acquisition,
-        platform.qubits[control_qubit].acquisition,
-    ]
 
-    sequence.align(align_channels)
+    sequence |= PulseSequence(
+        [
+            (flux_channel, Delay(duration=dt)),
+            (flux_channel, flux_pulse),
+            (flux_channel, Delay(duration=dt)),
+        ]
+    )
 
-    for _ in range(gate_repetition):
-        sequence.append((flux_channel, Delay(duration=dt)))
-        sequence += flux_sequence
-        sequence.append((flux_channel, Delay(duration=dt)))
+    vz = VirtualZ(phase=vzphase)
+    sequence.append((platform.qubits[target_qubit].drive, vz))
 
-    # Instead of having many RZ as expressed in gate_repetition,
-    # a single RZ with angle (theta*gate_repetition) is added because qm ignores the first one.
-    # This work for CZ since it commutes with the RZ, but break the iSWAP compatibility.
-    # See https://github.com/qiboteam/qibolab/discussions/1198.
-
-    virtual_phases.append(VirtualZ(phase=0))
-    sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
-
-    theta_sequence = PulseSequence()
-    # RX90 (angle to be swept)
-    sequence.align(align_channels)
-    theta_sequence += target_natives.R(theta=np.pi / 2)
-
-    sequence += theta_sequence
+    sequence |= target_natives.R(theta=np.pi / 2)
 
     # X gate for the leakage
     if setup == "X":
         sequence += control_natives.RX()
 
-    sequence.align(align_channels)
-
-    ro_sequence = PulseSequence(
+    sequence |= PulseSequence(
         [
             target_natives.MZ()[0],
             control_natives.MZ()[0],
         ]
     )
 
-    sequence += ro_sequence
-    return sequence, flux_pulse, virtual_phases
+    return sequence, flux_pulse, vz
 
 
 def _acquisition(
@@ -225,12 +230,21 @@ def _acquisition(
     during the execution of the flux pulse.
     """
     assert params.native == "CZ", "This protocol supports only CZ gate."
-    theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = VirtualZPhasesData(
-        gate_repetition=params.gate_repetition,
-        thetas=theta_absolute.tolist(),
-        native=params.native,
+
+    data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]] = {}
+    sequences: list[PulseSequence] = []
+    vzs: list[VirtualZ] = []
+    readouts: dict[
+        tuple[QubitId, QubitId, Literal["I", "X"]], list[tuple[PulseId, PulseId]]
+    ] = defaultdict(list)
+
+    range_ = (
+        -params.gate_repetition * params.theta_start,
+        -params.gate_repetition * params.theta_end,
+        -params.gate_repetition * params.theta_step,
     )
+    phases = [0.0] if params.sweep else np.arange(*range_).tolist()
+
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
@@ -240,60 +254,63 @@ def _acquisition(
             (ordered_pair[1], ordered_pair[0]),
         ):
             for setup in ("I", "X"):
-                (
-                    sequence,
-                    _,
-                    vz_pulses,
-                ) = create_sequence(
-                    platform,
-                    setup,
-                    target_q,
-                    control_q,
-                    ordered_pair,
-                    params.native,
-                    dt=params.dt,
-                    gate_repetition=params.gate_repetition,
-                )
+                for phase in phases:
+                    (sequence, _, vz) = create_sequence(
+                        platform,
+                        setup,
+                        target_q,
+                        control_q,
+                        ordered_pair,
+                        params.native,
+                        dt=params.dt,
+                        vzphase=phase,
+                    )
 
-                # The virtual phase values are the opposite of beta, this is
-                # because, according to the circuit we would like to reproduce
-                # after the CZ, an RZ is applied. The RZ gate with `theta` angle
-                # is compiled into  a VirtualPhase pulse with phase `-theta`.
-                # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
+                    sequences.append(sequence)
+                    vzs.append(vz)
 
-                sweeper = Sweeper(
-                    parameter=Parameter.phase,
-                    range=(
-                        -params.gate_repetition * params.theta_start,
-                        -params.gate_repetition * params.theta_end,
-                        -params.gate_repetition * params.theta_step,
-                    ),
-                    pulses=vz_pulses,
-                )
+                    ro_target = list(
+                        sequence.channel(platform.qubits[target_q].acquisition)
+                    )[-1]
+                    ro_control = list(
+                        sequence.channel(platform.qubits[control_q].acquisition)
+                    )[-1]
+                    readouts[target_q, control_q, setup].append(
+                        (ro_target.id, ro_control.id)
+                    )
 
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                )
+    # The virtual phase values are the opposite of beta, this is
+    # because, according to the circuit we would like to reproduce
+    # after the CZ, an RZ is applied. The RZ gate with `theta` angle
+    # is compiled into  a VirtualPhase pulse with phase `-theta`.
+    # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
+    sweeper = Sweeper(parameter=Parameter.phase, range=range_, pulses=vzs)
+    sweep = [[sweeper]] if params.sweep else []
 
-                ro_target = list(
-                    sequence.channel(platform.qubits[target_q].acquisition)
-                )[-1]
-                ro_control = list(
-                    sequence.channel(platform.qubits[control_q].acquisition)
-                )[-1]
-                result_target = results[ro_target.id]
-                result_control = results[ro_control.id]
+    results = platform.execute(
+        sequences,
+        sweep,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+    if params.sweep:
+        for key, [(target, control)] in readouts.items():
+            data[key] = np.stack([results[target], results[control]])
+    else:
+        for key, meas in readouts.items():
+            res = [[results[target], results[control]] for target, control in meas]
+            data[key] = np.moveaxis(res, 0, 1)
 
-                data.data[target_q, control_q, setup] = np.stack(
-                    [result_target, result_control]
-                )
-
-    return data
+    return VirtualZPhasesData(
+        data=data,
+        gate_repetition=params.gate_repetition,
+        thetas=np.arange(
+            params.theta_start, params.theta_end, params.theta_step
+        ).tolist(),
+        native=params.native,
+    )
 
 
 def _fit(
@@ -361,6 +378,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             go.Scatter(
                 x=np.array(thetas),
                 y=target_prob,
+                mode="markers",
                 name=f"{setup} sequence",
                 legendgroup=setup,
             ),
@@ -372,6 +390,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             go.Scatter(
                 x=np.array(thetas),
                 y=control_prob,
+                mode="markers",
                 name=f"{setup} sequence",
                 legendgroup=setup,
             ),
@@ -390,7 +409,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                         *fitted_parameters,
                     ),
                     name="Fit",
-                    line=go.scatter.Line(dash="dot"),
                 ),
                 row=1,
                 col=1 if fig == fig1 else 2,
