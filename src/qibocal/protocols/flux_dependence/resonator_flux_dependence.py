@@ -175,7 +175,6 @@ def _extract_peak_coordinates(
     most one peak per flux bin.
     """
     bias_pts, freq_pts = [], []
-    signal_residuals = []
     is_peak = []
     for bias_val, row in zip(bias, signal):
         # There may be fluctuations along the frequency axis caused by elements such
@@ -203,7 +202,6 @@ def _extract_peak_coordinates(
         best = peaks[np.argmax(props["prominences"])]
         bias_pts.append(bias_val)
         freq_pts.append(freq[best])
-        signal_residuals.append(residual)
         is_peak.append(residual[best] > 0)
 
     # Keep only the dominant extremum type and ignore extrema of the opposite feature
