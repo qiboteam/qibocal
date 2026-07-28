@@ -298,12 +298,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             signal=signal,
         )
 
+        w_max = data.qubit_frequency[qubit] * HZ_TO_GHZ
+        fit_function = partial(
+            _fit_function,
+            w_max=w_max,
+        )
         try:
-            w_max = data.qubit_frequency[qubit] * HZ_TO_GHZ
-            fit_function = partial(
-                _fit_function,
-                w_max=w_max,
-            )
             popt = utils.ransac_fit(
                 peak_biases,
                 peak_frequencies * HZ_TO_GHZ,
@@ -327,7 +327,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
             successful_fit[qubit] = True
-        except ValueError as e:
+        except (ValueError, RuntimeError) as e:
             successful_fit[qubit] = False
             log.error(f"Error in resonator_flux protocol fit: {e} ")
 
