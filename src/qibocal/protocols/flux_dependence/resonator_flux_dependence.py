@@ -4,6 +4,9 @@ from functools import partial
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from scipy.ndimage import median_filter
+from scipy.signal import find_peaks
+from scipy.special import erfinv
 
 from qibocal.calibration import CalibrationPlatform
 
@@ -22,9 +25,6 @@ from . import utils
 
 __all__ = ["ResonatorFluxParameters", "resonator_flux"]
 
-from scipy.ndimage import median_filter
-from scipy.signal import find_peaks
-from scipy.special import erfinv
 
 # approximate width of a peak in the resonator spectroscopy in Hz
 APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.2e6
