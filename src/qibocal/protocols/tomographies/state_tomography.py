@@ -27,7 +27,7 @@ CIRCUIT_PATH = "circuit.json"
 """Path where circuit is stored."""
 
 
-__all__ = ["state_tomography", "StateTomographyParameters", "plot_reconstruction"]
+__all__ = ["StateTomographyParameters", "plot_reconstruction", "state_tomography"]
 
 
 def parse_circuit(value: str | Circuit | None) -> Circuit | None:

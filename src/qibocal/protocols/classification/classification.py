@@ -39,10 +39,10 @@ ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
 
 __all__ = [
-    "single_shot_classification",
+    "ClassificationType",
     "SingleShotClassificationData",
     "SingleShotClassificationParameters",
-    "ClassificationType",
+    "single_shot_classification",
 ]
 
 

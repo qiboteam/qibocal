@@ -139,7 +139,7 @@ def numerical_root_finder(
     if res.success:
         cr_sig = min(res.x)
 
-    return cr_sig if cr_sig <= np.max(x_grid) else np.max(x_grid)
+    return min(cr_sig, np.max(x_grid))
 
 
 def compute_total_expectation_value(

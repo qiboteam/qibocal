@@ -297,7 +297,7 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def eval_magnitude(value: int | float | np.number) -> int:
+def eval_magnitude(value: float | np.number) -> int:
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
         return 0
@@ -935,7 +935,7 @@ def merging(
         distances_list = []
         indices = []
 
-        for idx in active_clusters.keys():
+        for idx in active_clusters:
             cluster_rightmost = cluster[:, np.argmax(cluster[1, :])]
             cluster_leftmost = cluster[:, np.argmin(cluster[1, :])]
             cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
@@ -1240,7 +1240,7 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
         # Default case: assume it's a tuple of (start, stop, step)
         return spec_
 
-    if any(lab in mode for lab in {"center", "asym"}) and center is None:
+    if any(lab in mode for lab in ("center", "asym")) and center is None:
         raise ValueError(f"Center must be provided for '{mode}' range specification.")
 
     if mode == "linspace":

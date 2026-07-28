@@ -17,7 +17,7 @@ from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
 
-__all__ = ["ProtocolsCollection", "Protocol"]
+__all__ = ["Protocol", "ProtocolsCollection"]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""

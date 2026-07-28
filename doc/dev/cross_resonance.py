@@ -74,7 +74,6 @@ def _(delta, eta_a, eta_b, g, plot):
         ),
         # path="interactive.svg"
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -84,7 +83,6 @@ def _():
 
     IBM cancellation paper, https://arxiv.org/abs/1603.04821
     """)
-    return
 
 
 @app.cell
@@ -99,7 +97,6 @@ def _(plot):
         ),
         # path="ibm.svg"
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -107,7 +104,6 @@ def _():
     mo.md(r"""
     Our beloved QPU 167
     """)
-    return
 
 
 @app.cell
@@ -123,7 +119,6 @@ def _(plot):
         ),
         # path="qpu167.svg"
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -131,7 +126,6 @@ def _():
     mo.md(r"""
     ## Input type
     """)
-    return
 
 
 @app.class_definition
@@ -193,7 +187,6 @@ def _():
     mo.md(r"""
     ## Calculation
     """)
-    return
 
 
 @app.class_definition
@@ -293,7 +286,6 @@ def _():
     mo.md(r"""
     ## Plotting
     """)
-    return
 
 
 @app.cell
@@ -401,7 +393,7 @@ def detunings(ax: Axes, detunings: dict[str, float]) -> None:
     sorted_ = dict(sorted(detunings.items(), key=lambda item: item[1]))
     ax.set_xticks(
         np.abs(list(sorted_.values())),
-        labels=[f"${sym}$" for sym in sorted_.keys()],
+        labels=[f"${sym}$" for sym in sorted_],
     )
     ax.tick_params(labelbottom=True, bottom=False, labelleft=False, left=False)
     ax.margins(0)

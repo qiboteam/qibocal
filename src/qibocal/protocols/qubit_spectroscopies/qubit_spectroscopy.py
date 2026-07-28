@@ -28,11 +28,11 @@ from qibocal.protocols.utils import (
 from qibocal.result import magnitude, phase
 
 __all__ = [
-    "qubit_spectroscopy",
+    "QubitSpectroscopyData",
     "QubitSpectroscopyParameters",
     "QubitSpectroscopyResults",
-    "QubitSpectroscopyData",
     "_fit",
+    "qubit_spectroscopy",
 ]
 
 

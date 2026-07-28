@@ -14,7 +14,7 @@ from qibocal.result import magnitude, phase
 from ..utils import HZ_TO_GHZ, table_dict, table_html
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
-__all__ = ["resonator_punchout_attenuation", "ResonatorPunchoutAttenuationData"]
+__all__ = ["ResonatorPunchoutAttenuationData", "resonator_punchout_attenuation"]
 
 
 @dataclass
