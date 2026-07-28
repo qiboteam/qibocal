@@ -26,7 +26,6 @@ from qibocal.auto.transpile import (
     execute_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import marginalize_qubit_counts
 
 from ..utils import table_dict, table_html
 from .state_tomography import StateTomographyParameters, plot_reconstruction
@@ -119,29 +118,17 @@ def _acquisition(
 
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
     data = StateTomographyData(simulated=simulated_state)
+    logical_pairs = [(2 * i, 2 * i + 1) for i in range(len(targets))]
+
     for basis1, basis2 in TWO_QUBIT_BASIS:
-        basis_circuit = deepcopy(params.circuit)
+        basis_circuit = params.circuit.copy()
         # FIXME: https://github.com/qiboteam/qibo/issues/1318
-        if basis1 != "Z":
-            basis_circuit.add(
-                getattr(gates, basis1)(2 * i).basis_rotation()
-                for i in range(len(targets))
-            )
-        if basis2 != "Z":
-            basis_circuit.add(
-                getattr(gates, basis2)(2 * i + 1).basis_rotation()
-                for i in range(len(targets))
-            )
-
-        pairs = (
-            (
-                gates.M(2 * i),
-                gates.M(2 * i + 1),
-            )
-            for i in range(len(targets))
-        )
-        basis_circuit.add(meas for pair in pairs for meas in pair)
-
+        for pair in logical_pairs:
+            if basis1 != "Z":
+                basis_circuit.add(getattr(gates, basis1)(pair[0]).basis_rotation())
+            if basis2 != "Z":
+                basis_circuit.add(getattr(gates, basis2)(pair[1]).basis_rotation())
+            basis_circuit.add(gates.M(*pair))
         simulation_result = simulator.execute_circuit(basis_circuit)
 
         [result] = execute_circuits(
@@ -153,14 +140,14 @@ def _acquisition(
             nshots=params.nshots,
         )
 
-        for i, pair in enumerate(targets):
-            frequencies = marginalize_qubit_counts(result, (2 * i, 2 * i + 1))
+        for pair, key in zip(logical_pairs, targets):
+            [frequencies] = result[key]
             simulation_probabilities = simulation_result.probabilities(
-                qubits=(2 * i, 2 * i + 1)
+                qubits=list(pair)
             )
             data.register_qubit(
                 TomographyType,
-                pair + (basis1, basis2),
+                key + (basis1, basis2),
                 {
                     "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
@@ -168,10 +155,8 @@ def _acquisition(
             )
             if basis1 == "Z" and basis2 == "Z":
                 nqubits = basis_circuit.nqubits
-                traced_qubits = tuple(
-                    q for q in range(nqubits) if q not in (2 * i, 2 * i + 1)
-                )
-                data.ideal[pair] = partial_trace(
+                traced_qubits = tuple(q for q in range(nqubits) if q not in pair)
+                data.ideal[key] = partial_trace(
                     simulation_result.state(), traced_qubits
                 )
 

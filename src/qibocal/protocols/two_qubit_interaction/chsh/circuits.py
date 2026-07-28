@@ -73,7 +73,7 @@ def create_chsh_circuits(
     bell_state=0,
     native=True,
     readout_basis=READOUT_BASIS,
-):
+) -> dict[str, Circuit]:
     """Creates the circuits needed for the 4 measurement settings for chsh.
     Native defaults to only using GPI2 and GPI gates.
     rerr adds a readout bitflip error to the simulation.
@@ -88,7 +88,6 @@ def create_chsh_circuits(
                     c.add(gates.GPI2(i, p[i] + np.pi / 2))
                 else:
                     c.add(gates.H(i))
-        c.add(gates.M(0))
-        c.add(gates.M(1))
+        c.add(gates.M(*range(2)))
         chsh_circuits[basis] = c
     return chsh_circuits
