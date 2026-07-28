@@ -27,7 +27,7 @@ from scipy.signal import find_peaks
 from scipy.special import erfinv
 
 # approximate width of a peak in the qubit spectroscopy in Hz
-INLIER_THRESHOLD = 0.2e6
+APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.2e6
 
 
 @dataclass
@@ -174,6 +174,8 @@ def _extract_peak_coordinates(
     """Extract the most prominent peaks in the resonator (flux,frequency) landscape. At
     most one peak per flux bin.
     """
+    assert np.allclose(np.diff(freq), np.diff(freq)[0])
+    samples_per_peak = np.ceil(APPROXIMATE_RESONATOR_PEAK_WIDTH / np.diff(freq)[0])
     bias_pts, freq_pts = [], []
     is_peak = []
     for bias_val, row in zip(bias, signal):
@@ -182,7 +184,6 @@ def _extract_peak_coordinates(
         # ideal to remove by subtracting the median per frequency bin. However, the arc
         # may be very flat, in which case we end up subtracting the arc rather than
         # background. To avoid this, we use median_filter
-        samples_per_peak = np.ceil(INLIER_THRESHOLD / np.diff(freq)[0])
         baseline = median_filter(row, size=int(20 * samples_per_peak), mode="nearest")
         residual = row - baseline
 
@@ -306,7 +307,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 peak_biases,
                 peak_frequencies * HZ_TO_GHZ,
                 fit_function=fit_function,
-                residual_threshold=INLIER_THRESHOLD * HZ_TO_GHZ,
+                residual_threshold=APPROXIMATE_RESONATOR_PEAK_WIDTH * HZ_TO_GHZ,
             )
             fitted_parameters[qubit] = {
                 "w_max": w_max,
