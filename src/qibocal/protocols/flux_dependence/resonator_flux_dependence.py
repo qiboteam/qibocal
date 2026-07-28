@@ -249,7 +249,7 @@ def _find_sweetspot(bias, params, fit_function):
     peaks_mask = (freqs[1:-1] > freqs[:-2]) & (freqs[1:-1] > freqs[2:])
     bias_value_at_maxima = dense_bias[1:-1][peaks_mask]
 
-    # If no internal local peak exists, the peak may is at one of the window boundaries,
+    # If no internal local peak exists, the peak may be at one of the window boundaries,
     # but more likely, the curve is strictly monotonic in the window.
     if len(bias_value_at_maxima) == 0:
         return dense_bias[np.argmax(freqs)]

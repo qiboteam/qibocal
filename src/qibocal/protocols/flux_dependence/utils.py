@@ -420,17 +420,20 @@ def ransac_fit(
 ):
     """Fit a model to data using RANSAC, ignoring outliers.
 
-    Repeatedly fits ``fit_function`` to a minimal random subsets of the data (sized to
-    the function's degrees of freedom), scores each candidate by its inlier count
-    (points with residual below ``residual_threshold``), and keeps the best-performing
-    model. The number of trials adapts dynamically based on the current inlier ratio,
-    following the standard RANSAC stopping criterion, and is bounded by ``min_trials``
-    and ``max_trials``. A final least-squares refit is performed on the best inlier set.
+    Repeatedly fits ``fit_function`` to minimal random subsets of the data (sized to the
+    function's degrees of freedom), scores each candidate by its inlier count (points
+    with residual below ``residual_threshold``), and keeps the best-performing model.
+    The number of trials adapts dynamically based on the current inlier ratio, following
+    the standard RANSAC stopping criterion, and is bounded by ``min_trials`` and
+    ``max_trials``. A final least-squares refit is performed on the best inlier set.
 
     Returns:
         Optimal fit parameters from the least-squares refit on the best inlier set.
 
     """
+    # A fixed seed makes debugging and regression tests reproducible. RandomState's
+    # output is guaranteed to be stable across numpy versions:
+    # https://numpy.org/doc/2.5/reference/random/legacy.html#numpy.random.RandomState
     rng = np.random.RandomState(random_state)
 
     function_dof = _function_dof(fit_function)
@@ -455,7 +458,7 @@ def ransac_fit(
     ):
         ransac_iterations += 1
 
-        # Draw a minimal sample because fewer samples means that the probablilty of all
+        # Draw a minimal sample because fewer samples means that the probability of all
         # points being on the feature of interest is maximized. To perform a fit we need
         # at least as many points as the model's dof.
         subset = rng.choice(len(xvals), function_dof, replace=False)
