@@ -44,12 +44,20 @@ pytest-mock = "^3.14.0"
 optional = true
 
 [tool.poetry.group.analysis.dependencies]
-ruff = "^0.9.1"
+ruff = "^0.16.0"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = ["I", "UP"]
+ignore = ["BLE001"] # TODO: BLE001 is about except Exception, fix properly
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F403"]
 "calibration_scripts/**/*.py" = ["F821"]
 "tests/calibration_scripts/**/*.py" = ["F821"]
+"doc/dev/*.py" = ["B018"] # Marimo notebooks may use bare expressions to render output
 
 [tool.poetry.group.docs]
 optional = true
@@ -98,7 +106,3 @@ types = "true"
 [tool.pytest.ini_options]
 testpaths = ['tests/']
 addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
-
-[tool.pycln]
-all = true
-exclude = "__init__.py"

@@ -140,14 +140,14 @@ def _plot(
             x=x * HZ_TO_GHZ,
             y=y,
             z=data.normalized_signal(target).ravel(),
-            colorbar=dict(title="Normalized signal"),
+            colorbar={"title": "Normalized signal"},
             colorscale="Viridis",
         )
     )
 
     fig.update_layout(
         showlegend=True,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
 
     fig.update_xaxes(title_text="Drive frequency [GHz]")

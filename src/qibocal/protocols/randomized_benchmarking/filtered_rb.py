@@ -88,7 +88,7 @@ def _plot(
         go.Scatter(
             x=np.hstack(raw_depths),
             y=np.hstack(raw_data),
-            line=dict(color="#6597aa"),
+            line={"color": "#6597aa"},
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
             name="iterations",
@@ -99,7 +99,7 @@ def _plot(
         go.Scatter(
             x=x,
             y=y,
-            line=dict(color="#aa6464"),
+            line={"color": "#aa6464"},
             mode="markers",
             name="average",
         )

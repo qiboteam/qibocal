@@ -303,8 +303,8 @@ def _plot(
             xaxis2_title="Pulse duration [ns]",
             yaxis1_title="t_idle [ns]",
             yaxis2_title="t_idle [ns]",
-            xaxis2=dict(matches="x"),
-            yaxis2=dict(matches="y"),
+            xaxis2={"matches": "x"},
+            yaxis2={"matches": "y"},
         )
 
     return [fig], fitting_report

@@ -123,11 +123,11 @@ def _acquisition(
         pulses=list(flux_pulses.values()) + delays,
     )
 
-    options = dict(
-        nshots=params.nshots,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
-    )
+    options = {
+        "nshots": params.nshots,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.SINGLESHOT,
+    }
 
     results = platform.execute([sequence], [[sweeper]], **options)
 
@@ -137,11 +137,11 @@ def _acquisition(
         data.register_qubit(
             FluxGateType,
             (qubit),
-            dict(
-                duration=duration_range,
-                prob_1=prob,
-                error=np.sqrt(prob * (1 - prob) / params.nshots),
-            ),
+            {
+                "duration": duration_range,
+                "prob_1": prob,
+                "error": np.sqrt(prob * (1 - prob) / params.nshots),
+            },
         )
 
     return data
@@ -184,7 +184,7 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
             y=np.concatenate((prob + error, (prob - error)[::-1])),
             fill="toself",
             fillcolor=COLORBAND,
-            line=dict(color=COLORBAND_LINE),
+            line={"color": COLORBAND_LINE},
             showlegend=True,
             name="Errors",
         )

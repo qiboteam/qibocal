@@ -118,11 +118,11 @@ def _acquisition(
         data.register_qubit(
             CoherenceType,
             (qubit),
-            dict(
-                wait=_wait,
-                signal=signal,
-                phase=phase(result),
-            ),
+            {
+                "wait": _wait,
+                "signal": signal,
+                "phase": phase(result),
+            },
         )
 
     return data

@@ -128,12 +128,12 @@ def _acquisition(
             data.register_qubit(
                 ResonatorAmplitudeType,
                 (qubit),
-                dict(
-                    amp=np.array([new_amp]),
-                    error=np.array([error]),
-                    angle=np.array([model.angle]),
-                    threshold=np.array([model.threshold]),
-                ),
+                {
+                    "amp": np.array([new_amp]),
+                    "error": np.array([error]),
+                    "angle": np.array([model.angle]),
+                    "threshold": np.array([model.threshold]),
+                },
             )
             new_amp += params.amplitude_step
     return data

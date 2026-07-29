@@ -84,11 +84,11 @@ def _acquisition(
         data.register_qubit(
             RabiAmpType,
             (qubit),
-            dict(
-                amp=sweeper.values,
-                prob=prob.tolist(),
-                error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
-            ),
+            {
+                "amp": sweeper.values,
+                "prob": prob.tolist(),
+                "error": np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+            },
         )
     return data
 

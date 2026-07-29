@@ -31,11 +31,11 @@ def chevron_sequence(
 
     drive_duration = sequence.duration
     raw_flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
-    flux_channel, flux_pulse = [
+    flux_channel, flux_pulse = next(
         (ch, pulse)
         for ch, pulse in raw_flux_sequence
         if ch == platform.qubits[ordered_pair[1]].flux
-    ][0]
+    )
 
     if duration_max is not None:
         flux_pulse = replace(flux_pulse, duration=duration_max)

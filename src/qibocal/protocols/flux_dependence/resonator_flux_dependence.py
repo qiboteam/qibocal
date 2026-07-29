@@ -168,6 +168,34 @@ def _acquisition(
     return data
 
 
+def _fit_function(data: ResonatorFluxData, qubit: QubitId):
+
+    def func(
+        x: float,
+        g: float,
+        d: float,
+        offset: float,
+        normalization: float,
+        freq: float,
+        charging_energy: float,
+    ):
+        """Fit function for resonator flux dependence."""
+        return utils.transmon_readout_frequency(
+            xi=x,
+            w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
+            xj=0,
+            d=d,
+            normalization=normalization,
+            offset=offset,
+            crosstalk_element=1,
+            charging_energy=charging_energy,
+            resonator_freq=freq,
+            g=g,
+        )
+
+    return func
+
+
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """PostProcessing for resonator_flux protocol.
 
@@ -196,29 +224,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             successful_fit[qubit] = False
 
         else:
-            # define fit function
-            def fit_function(
-                x: float,
-                g: float,
-                d: float,
-                offset: float,
-                normalization: float,
-                freq: float,
-                charging_energy: float,
-            ):
-                """Fit function for resonator flux dependence."""
-                return utils.transmon_readout_frequency(
-                    xi=x,
-                    w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
-                    xj=0,
-                    d=d,
-                    normalization=normalization,
-                    offset=offset,
-                    crosstalk_element=1,
-                    charging_energy=charging_energy,
-                    resonator_freq=freq,
-                    g=g,
-                )
+            fit_function = _fit_function(data, qubit)
 
             try:
                 popt, _ = curve_fit(

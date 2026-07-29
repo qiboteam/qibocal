@@ -267,7 +267,7 @@ def _plot(
             z=signal_norm,
             zmin=np.percentile(signal_norm, 0.5),
             zmax=np.percentile(signal_norm, 99.5),
-            colorbar=dict(title="Raw signal"),
+            colorbar={"title": "Raw signal"},
             colorbar_x=0.46,
             reversescale=data.find_min,
         ),
@@ -294,7 +294,7 @@ def _plot(
                 y=filtered_y,
                 mode="markers",
                 name="Estimated Resonance",
-                marker=dict(color="rgb(248, 0, 0)"),
+                marker={"color": "rgb(248, 0, 0)"},
                 showlegend=True,
             ),
             row=1,
@@ -311,11 +311,11 @@ def _plot(
                 x=[fit.readout_frequency[target] * HZ_TO_GHZ],
                 y=[-fit.readout_attenuation[target]],
                 mode="markers",
-                marker=dict(
-                    size=8,
-                    color="green",
-                    symbol="circle",
-                ),
+                marker={
+                    "size": 8,
+                    "color": "green",
+                    "symbol": "circle",
+                },
                 name="Estimated readout point",
                 showlegend=True,
             )
@@ -338,7 +338,7 @@ def _plot(
 
     fig.update_layout(
         showlegend=True,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
 
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)

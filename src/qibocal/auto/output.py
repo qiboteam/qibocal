@@ -119,7 +119,7 @@ class Metadata:
 
 def _new_output() -> Path:
     user = getpass.getuser().replace(".", "-")
-    date = datetime.now().strftime("%Y-%m-%d")
+    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     num = 0
     while True:

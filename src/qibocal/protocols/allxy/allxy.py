@@ -99,11 +99,11 @@ def _acquisition(
         all_ro_pulses.append(ro_pulses)
 
     # execute the pulse sequence
-    options = dict(
-        nshots=params.nshots,
-        averaging_mode=AveragingMode.CYCLIC,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-    )
+    options = {
+        "nshots": params.nshots,
+        "averaging_mode": AveragingMode.CYCLIC,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+    }
     results = platform.execute(sequences, **options)
 
     for gates, ro_pulses in zip(gatelist, all_ro_pulses):
@@ -115,11 +115,11 @@ def _acquisition(
             data.register_qubit(
                 AllXYType,
                 (qubit),
-                dict(
-                    prob=np.array([z_proj]),
-                    gate=np.array([gate]),
-                    errors=np.array([errors]),
-                ),
+                {
+                    "prob": np.array([z_proj]),
+                    "gate": np.array([gate]),
+                    "errors": np.array([errors]),
+                },
             )
 
     # finally, save the remaining data
@@ -217,11 +217,11 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
         go.Scatter(
             x=gates,
             y=probs,
-            error_y=dict(
-                type="data",
-                array=error_bars,
-                visible=True,
-            ),
+            error_y={
+                "type": "data",
+                "array": error_bars,
+                "visible": True,
+            },
             mode="markers",
             text=gatelist,
             textposition="bottom center",
