@@ -196,31 +196,6 @@ def _extract_peak_coordinates(
     return bias_pts, freq_pts
 
 
-def _find_sweetspot(bias, params, fit_function):
-    """Find the sweetspot by numerically identifying the point inside the window where
-    the fitted flux arc has a maximum. If there are multiple, take the one with absolute
-    bias closest to 0.
-    """
-    bias_min, bias_max = np.min(bias), np.max(bias)
-
-    dense_bias = np.linspace(bias_min, bias_max, 2000)
-    freqs = fit_function(dense_bias, *params)
-
-    # Find indices where local maxima occur in the fitted curve inside the window. A
-    # point is a local maximum if it's strictly greater than its neighbors.
-    peaks_mask = (freqs[1:-1] > freqs[:-2]) & (freqs[1:-1] > freqs[2:])
-    bias_value_at_maxima = dense_bias[1:-1][peaks_mask]
-
-    # If no internal local peak exists, the peak may be at one of the window boundaries,
-    # but more likely, the curve is strictly monotonic in the window.
-    if len(bias_value_at_maxima) == 0:
-        return dense_bias[np.argmax(freqs)]
-
-    # Among all local maxima inside the window, return the one closest to 0 bias.
-    closest_to_zero_idx = np.argmin(np.abs(bias_value_at_maxima))
-    return bias_value_at_maxima[closest_to_zero_idx]
-
-
 def _fit_function(data: ResonatorFluxData, qubit: QubitId):
 
     def func(
