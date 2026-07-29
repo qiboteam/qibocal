@@ -174,9 +174,13 @@ def _extract_peak_coordinates(
     bias_pts, freq_pts = [], []
     is_peak = []
     for bias_val, row in zip(bias, centered_signal):
+        # sometimes there are bright spots for a given bias. Not sure what causes them,
+        # but this hopefully gets rid of them.
+        residual = row - np.median(row)
+
         # Detect both peaks and dips by finding prominent extrema in the absolute
         # residual
-        peaks, props = find_peaks(np.abs(row), prominence=0)
+        peaks, props = find_peaks(np.abs(residual), prominence=0)
         if len(peaks) == 0:
             continue
 
