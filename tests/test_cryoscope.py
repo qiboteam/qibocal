@@ -31,12 +31,12 @@ def test_cryoscope_acquisition_raises_without_flux_coefficients(platform):
     platform.calibration.single_qubits[target].qubit.flux_coefficients = None
 
     params = cryoscope.parameters_type.load(
-        dict(
-            duration_min=1,
-            duration_max=10,
-            duration_step=1,
-            flux_pulse_amplitude=0.1,
-        )
+        {
+            "duration_min": 1,
+            "duration_max": 10,
+            "duration_step": 1,
+            "flux_pulse_amplitude": 0.1,
+        }
     )
 
     with pytest.raises(
