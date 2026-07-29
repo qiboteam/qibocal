@@ -6,7 +6,6 @@ READOUT_BASIS = ["ZZ", "ZX", "XZ", "XX"]
 def compute_chsh(frequencies, basis, i):
     """Computes the chsh inequality out of the frequencies of the 4 circuits executed."""
     chsh = 0
-    aux = 0
     for aux, freq in enumerate(frequencies):
         for outcome in freq:
             if aux == 1 + 2 * (
