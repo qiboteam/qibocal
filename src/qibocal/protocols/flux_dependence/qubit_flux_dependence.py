@@ -222,6 +222,23 @@ def _extract_peak_coordinates(
     return np.asarray(peak_biases), np.asarray(peak_frequencies)
 
 
+def _fit_function(data: QubitFluxData, qubit: QubitId):
+
+    def func(x, w_max, normalization, offset):
+        return utils.transmon_frequency(
+            xi=x,
+            w_max=w_max,
+            xj=0,
+            d=0,
+            normalization=normalization,
+            offset=offset,
+            crosstalk_element=1,
+            charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+        )
+
+    return func
+
+
 def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
     Post-processing for QubitFlux Experiment. See `arXiv:0703002 <https://arxiv.org/abs/cond-mat/0703002>`_.
@@ -255,23 +272,11 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             signal=signal,
         )
 
-        def _fit_function(x, w_max, normalization, offset):
-            return utils.transmon_frequency(
-                xi=x,
-                w_max=w_max,
-                xj=0,
-                d=0,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=1,
-                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-            )
-
         try:
             popt = utils.ransac_fit(
                 peak_biases,
                 peak_frequencies * HZ_TO_GHZ,
-                fit_function=_fit_function,
+                fit_function=_fit_function(data, qubit),
                 # approximate width of a peak in the qubit spectroscopy
                 residual_threshold=0.6e6 * HZ_TO_GHZ,
             )

@@ -19,7 +19,7 @@ from qibocal.protocols.utils import (
 )
 from qibocal.result import magnitude, phase, unpack
 
-__all__ = ["dispersive_shift", "DispersiveShiftData", "DispersiveShiftParameters"]
+__all__ = ["DispersiveShiftData", "DispersiveShiftParameters", "dispersive_shift"]
 
 
 @dataclass
@@ -129,13 +129,13 @@ def _acquisition(
             data.register_qubit(
                 DispersiveShiftType,
                 (qubit, state),
-                dict(
-                    freq=readout_frequency(qubit, platform) + delta_frequency_range,
-                    signal=magnitude(result),
-                    phase=phase(result),
-                    i=i,
-                    q=q,
-                ),
+                {
+                    "freq": readout_frequency(qubit, platform) + delta_frequency_range,
+                    "signal": magnitude(result),
+                    "phase": phase(result),
+                    "i": i,
+                    "q": q,
+                },
             )
     return data
 
@@ -220,11 +220,11 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                     showlegend=(col == 1),
                     legendgroup=data_group,
                     mode="markers",
-                    marker=dict(
-                        color=color_map[state],
-                        size=5,
-                        symbol="circle",
-                    ),
+                    marker={
+                        "color": color_map[state],
+                        "size": 5,
+                        "symbol": "circle",
+                    },
                 ),
                 row=1,
                 col=col,

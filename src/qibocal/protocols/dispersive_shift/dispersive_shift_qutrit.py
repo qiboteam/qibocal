@@ -132,12 +132,12 @@ def _acquisition(
             data.register_qubit(
                 ResSpecType,
                 (qubit, state),
-                dict(
-                    freq=readout_frequency(qubit, platform, state=1)
+                {
+                    "freq": readout_frequency(qubit, platform, state=1)
                     + delta_frequency_range,
-                    signal=magnitude(result),
-                    phase=phase(result),
-                ),
+                    "signal": magnitude(result),
+                    "phase": phase(result),
+                },
             )
 
     return data

@@ -21,7 +21,7 @@ from .operation import Data, DummyPars, OperationId, Protocol, Results, dummy_op
 Id = NewType("Id", str)
 """Action identifiers type."""
 
-Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+Targets = list[QubitId] | list[QubitPairId] | list[tuple[QubitId, ...]]
 """Elements to be calibrated by a single protocol."""
 
 SINGLE_ACTION = "action.yml"

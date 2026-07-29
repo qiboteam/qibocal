@@ -88,11 +88,11 @@ def _acquisition(
         data.register_qubit(
             CoherenceProbType,
             (qubit),
-            dict(
-                wait=wait_range,
-                prob=prob,
-                error=error,
-            ),
+            {
+                "wait": wait_range,
+                "prob": prob,
+                "error": error,
+            },
         )
 
     return data

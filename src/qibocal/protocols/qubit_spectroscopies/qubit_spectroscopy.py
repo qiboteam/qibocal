@@ -28,11 +28,11 @@ from qibocal.protocols.utils import (
 from qibocal.result import magnitude, phase
 
 __all__ = [
-    "qubit_spectroscopy",
+    "QubitSpectroscopyData",
     "QubitSpectroscopyParameters",
     "QubitSpectroscopyResults",
-    "QubitSpectroscopyData",
     "_fit",
+    "qubit_spectroscopy",
 ]
 
 
@@ -220,11 +220,11 @@ def _acquisition(
         data.register_qubit(
             QubitSpecType,
             (qubit),
-            dict(
-                signal=signal,
-                phase=_phase,
-                freq=freq,
-            ),
+            {
+                "signal": signal,
+                "phase": _phase,
+                "freq": freq,
+            },
         )
 
     return data

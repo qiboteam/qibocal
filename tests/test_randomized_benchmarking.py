@@ -83,7 +83,7 @@ def test_exp2_fitting():
         assert np.allclose(fitting.exp2_func(x, A1, A2, f1, f2), y)
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
-        popt, perr = fitting.fit_exp2_func(x, y_dist)
+        popt, _perr = fitting.fit_exp2_func(x, y_dist)
         worked = np.all(
             np.logical_or(
                 np.allclose(np.array(popt), [A2, A1, f2, f1], atol=0.05, rtol=0.1),
@@ -108,7 +108,7 @@ def test_exp2_fitting():
         y = A1 * f1**x + A2 * f2**x
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
-        popt, perr = fitting.fit_exp2_func(x, y_dist)
+        popt, _perr = fitting.fit_exp2_func(x, y_dist)
 
 
 # Test utils
@@ -199,7 +199,7 @@ def test_layer_circuit_two_qubit(mocker, depth):
 
 def test_single_qubit_circuit_generation_parallel():
     targets = [0, 1, 2]
-    params = standard_rb.parameters_type.load(dict(depths=[1], niter=1))
+    params = standard_rb.parameters_type.load({"depths": [1], "niter": 1})
     rb_gen = RBGenerator(123)
     circuits = _generate_indexed_circuits(params=params, rb_gen=rb_gen, targets=targets)
     assert len(circuits) == 1
@@ -211,7 +211,7 @@ def test_single_qubit_circuit_generation_parallel():
 
 def test_two_qubit_circuit_generation_parallel():
     targets = [(0, 1), (2, 3), (4, 5)]
-    params = standard_rb.parameters_type.load(dict(depths=[1], niter=1))
+    params = standard_rb.parameters_type.load({"depths": [1], "niter": 1})
     rb_gen = RBGenerator(123, file="2qubitCliffs.json")
     circuits = _generate_indexed_circuits(params=params, rb_gen=rb_gen, targets=targets)
     assert len(circuits) == 1

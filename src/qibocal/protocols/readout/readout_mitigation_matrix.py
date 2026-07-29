@@ -102,10 +102,10 @@ def _acquisition(
                 data.register_qubit(
                     ReadoutMitigationMatrixType,
                     (tuple(qubits)),
-                    dict(
-                        state=np.array([int(state, 2)]),
-                        frequency=freq,
-                    ),
+                    {
+                        "state": np.array([int(state, 2)]),
+                        "frequency": freq,
+                    },
                 )
     return data
 
@@ -140,31 +140,30 @@ def _plot(
     """Plotting function for readout mitigation matrix."""
     fitting_report = ""
     figs = []
-    if fit is not None:
-        if tuple(target) in fit.readout_mitigation_matrix:
-            computational_basis = [
-                format(i, f"0{len(target)}b") for i in range(2 ** len(target))
-            ]
-            # use pinv since it should be already invertibile
-            # however when casting to list we could lose precision
-            measurement_matrix = np.linalg.pinv(
-                fit.readout_mitigation_matrix[tuple(target)]
-            )
-            z = measurement_matrix
-            fig = px.imshow(
-                z,
-                x=computational_basis,
-                y=computational_basis,
-                text_auto=True,
-                labels={
-                    "x": "Measured States",
-                    "y": "Prepared States",
-                    "color": "Probabilities",
-                },
-                width=700,
-                height=700,
-            )
-            figs.append(fig)
+    if fit is not None and tuple(target) in fit.readout_mitigation_matrix:
+        computational_basis = [
+            format(i, f"0{len(target)}b") for i in range(2 ** len(target))
+        ]
+        # use pinv since it should be already invertibile
+        # however when casting to list we could lose precision
+        measurement_matrix = np.linalg.pinv(
+            fit.readout_mitigation_matrix[tuple(target)]
+        )
+        z = measurement_matrix
+        fig = px.imshow(
+            z,
+            x=computational_basis,
+            y=computational_basis,
+            text_auto=True,
+            labels={
+                "x": "Measured States",
+                "y": "Prepared States",
+                "color": "Probabilities",
+            },
+            width=700,
+            height=700,
+        )
+        figs.append(fig)
     return figs, fitting_report
 
 

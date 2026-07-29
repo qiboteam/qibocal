@@ -10,7 +10,7 @@ from qibocal.protocols.randomized_benchmarking.standard_rb import (
 from ...calibration.calibration import TwoQubitCalibration
 from .utils import RB2QData, StandardRBResult, fit, twoq_rb_acquisition
 
-__all__ = ["standard_rb_2q", "StandardRB2QParameters"]
+__all__ = ["StandardRB2QParameters", "standard_rb_2q"]
 
 
 FILE_CLIFFORDS = "2qubitCliffs.json"

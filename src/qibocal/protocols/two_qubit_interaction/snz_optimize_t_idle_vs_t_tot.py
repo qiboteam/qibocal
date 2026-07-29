@@ -112,7 +112,7 @@ def _aquisition(
         other_qubit_vz = ordered_pair[1]
         # Find CZ flux pulse
 
-        cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
+        cz_sequence = platform.natives.two_qubit[ordered_pair].CZ()
         flux_channel = platform.qubits[ordered_pair[1]].flux
         flux_pulses = list(cz_sequence.channel(flux_channel))
         assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
@@ -303,8 +303,8 @@ def _plot(
             xaxis2_title="Pulse duration [ns]",
             yaxis1_title="t_idle [ns]",
             yaxis2_title="t_idle [ns]",
-            xaxis2=dict(matches="x"),
-            yaxis2=dict(matches="y"),
+            xaxis2={"matches": "x"},
+            yaxis2={"matches": "y"},
         )
 
     return [fig], fitting_report

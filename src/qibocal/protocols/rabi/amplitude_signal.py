@@ -14,12 +14,12 @@ from qibocal.result import magnitude, phase
 from . import utils
 
 __all__ = [
-    "RabiAmplitudeSignalResults",
-    "RabiAmplitudeSignalParameters",
-    "RabiAmplitudeSignalData",
-    "rabi_amplitude_signal",
-    "_fit",
     "RabiAmpSignalType",
+    "RabiAmplitudeSignalData",
+    "RabiAmplitudeSignalParameters",
+    "RabiAmplitudeSignalResults",
+    "_fit",
+    "rabi_amplitude_signal",
 ]
 
 
@@ -113,11 +113,11 @@ def _acquisition(
         data.register_qubit(
             RabiAmpSignalType,
             (qubit),
-            dict(
-                amp=sweeper.values,
-                signal=magnitude(result),
-                phase=phase(result),
-            ),
+            {
+                "amp": sweeper.values,
+                "signal": magnitude(result),
+                "phase": phase(result),
+            },
         )
     return data
 

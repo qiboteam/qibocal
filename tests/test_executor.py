@@ -150,12 +150,12 @@ def test_open(tmp_path: Path, platform: CalibrationPlatform):
 
 def test_single_shot(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "targets": [0], "path": tmp_path}
-    exec((CALIBRATION_SCRIPTS / "single_shot.py").read_text(), globals_)
+    exec((CALIBRATION_SCRIPTS / "single_shot.py").read_text(), globals_)  # noqa: S102
 
 
 def test_rx_calibration(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "target": 0, "path": tmp_path}
-    exec((CALIBRATION_SCRIPTS / "rx_calibration.py").read_text(), globals_)
+    exec((CALIBRATION_SCRIPTS / "rx_calibration.py").read_text(), globals_)  # noqa: S102
 
 
 def test_check_input_qubit_overlap():

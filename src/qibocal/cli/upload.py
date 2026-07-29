@@ -90,12 +90,9 @@ def upload_report(path: pathlib.Path, tag: str, author: str, lab: str) -> str:
         subprocess.run(ssh_command_line, check=True)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(
-            (
-                "Could not validate the SSH key. "
-                "The command\n%s\nreturned a non zero exit status. "
-                "Please make sure that your public SSH key is on the server."
-            )
-            % str_line
+            "Could not validate the SSH key. "
+            f"The command\n{str_line}\nreturned a non zero exit status. "
+            "Please make sure that your public SSH key is on the server."
         ) from e
     except OSError as e:
         raise RuntimeError(f"Could not run the command\n{str_line}\n: {e}") from e

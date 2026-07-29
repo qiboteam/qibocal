@@ -271,7 +271,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
         fig.update_layout(
             xaxis_title="Theta [rad]",
             yaxis_title="CHSH value",
-            xaxis=dict(range=[min(data.thetas), max(data.thetas)]),
+            xaxis={"range": [min(data.thetas), max(data.thetas)]},
         )
         figures.append(fig)
 

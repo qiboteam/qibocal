@@ -156,11 +156,11 @@ def _fit(data: T1FluxData) -> T1FluxResults:
     return T1FluxResults(t1=t1s)
 
 
-def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults = None):
+def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults | None = None):
     """Plotting function for T1 flux experiment."""
     fig = go.Figure()
     if fit is not None:
-        indices = list(set(np.where(np.array(fit.t1[target]) != np.nan)[0]))
+        indices = list(set(np.where(~np.isnan(np.array(fit.t1[target])))[0]))
         t1s = np.array([fit.t1[target][i][0] for i in indices])
         error = np.array([fit.t1[target][i][1] for i in indices])
         detuning = np.array(data.detuning[target])[indices]
@@ -181,7 +181,7 @@ def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults = None):
                     y=np.concatenate((t1s + error, (t1s - error)[::-1])),
                     fill="toself",
                     fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
+                    line={"color": COLORBAND_LINE},
                     showlegend=True,
                     name="Errors",
                 ),
@@ -190,8 +190,8 @@ def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults = None):
         fig.update_layout(
             xaxis_title="Frequency [GHz]",
             yaxis_title="T1 [ns]",
-            yaxis=dict(range=[0, max(t1s) * 1.2]),
-            xaxis=dict(range=[min(data.detuning[target]), max(data.detuning[target])]),
+            yaxis={"range": [0, max(t1s) * 1.2]},
+            xaxis={"range": [min(data.detuning[target]), max(data.detuning[target])]},
         )
     return [fig], ""
 

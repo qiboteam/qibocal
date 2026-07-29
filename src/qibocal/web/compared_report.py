@@ -118,21 +118,21 @@ class ComparedReport:
                         col=1 if j % 2 == 0 else 2,
                     )
                 fig.update_layout(
-                    dict(
-                        legend={
+                    {
+                        "legend": {
                             "title": f"{self.report_paths[0].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.8,
                         },
-                        legend2={
+                        "legend2": {
                             "title": f"{self.report_paths[1].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.2,
                         },
-                        showlegend=None,
-                    )
+                        "showlegend": None,
+                    }
                 )
                 merged_figures.append(fig)
 
@@ -141,35 +141,35 @@ class ComparedReport:
                     fig0.add_trace(trace)
 
                 fig0.update_layout(
-                    dict(
-                        legend={
+                    {
+                        "legend": {
                             "title": f"{self.report_paths[0].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.8,
                         },
-                        legend2={
+                        "legend2": {
                             "title": f"{self.report_paths[1].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.2,
                         },
-                        showlegend=None,
-                    )
+                        "showlegend": None,
+                    }
                 )
 
                 # this fixes weird behavior for comparing classification protocols
                 if any(isinstance(trace, go.Contour) for trace in fig0.data):
                     fig0.update_layout(
-                        dict(
-                            legend={
+                        {
+                            "legend": {
                                 "font": {"size": None},
                                 "x": None,
                                 "xanchor": None,
                                 "yanchor": None,
                                 "orientation": None,
                             },
-                        )
+                        }
                     )
                     for trace in fig0.data:
                         if isinstance(trace, go.Scatter):

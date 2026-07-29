@@ -24,9 +24,9 @@ from .amplitude_signal import RabiAmplitudeSignalResults
 from .utils import fit_amplitude_function, rabi_initial_guess, sequence_amplitude
 
 __all__ = [
-    "RabiAmplitudeSignalResults",
-    "RabiAmplitudeFrequencySignalParameters",
     "RabiAmplitudeFreqSignalData",
+    "RabiAmplitudeFrequencySignalParameters",
+    "RabiAmplitudeSignalResults",
     "_update",
     "rabi_amplitude_frequency_signal",
 ]

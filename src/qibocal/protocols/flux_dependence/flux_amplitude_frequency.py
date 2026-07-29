@@ -208,11 +208,11 @@ def _acquisition(
         params.amplitude_min, params.amplitude_max, params.amplitude_step
     )
 
-    options = dict(
-        nshots=params.nshots,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    options = {
+        "nshots": params.nshots,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.CYCLIC,
+    }
 
     for measure in ["X", "Y"]:
         sequence = PulseSequence()
@@ -254,10 +254,10 @@ def _acquisition(
             data.register_qubit(
                 FluxAmplitudeFrequencyType,
                 (qubit, measure),
-                dict(
-                    amplitude=amplitudes,
-                    prob_1=result[ro_pulse.id],
-                ),
+                {
+                    "amplitude": amplitudes,
+                    "prob_1": result[ro_pulse.id],
+                },
             )
 
     return data

@@ -187,7 +187,7 @@ def _plot(
                     mode="markers",
                     showlegend=True,
                     opacity=0.7,
-                    marker=dict(size=3),
+                    marker={"size": 3},
                 )
             )
     fig.update_layout(

@@ -102,13 +102,13 @@ def _acquisition(
         data.register_qubit(
             CoherenceProbType,
             (qubit),
-            dict(
-                wait=np.arange(params.readouts) + 1,
-                prob=np.array(probs),
-                error=np.array(
+            {
+                "wait": np.arange(params.readouts) + 1,
+                "prob": np.array(probs),
+                "error": np.array(
                     [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
                 ),
-            ),
+            },
         )
     return data
 
@@ -151,7 +151,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
+                line={"color": COLORBAND_LINE},
                 showlegend=True,
                 name="Errors",
             ),

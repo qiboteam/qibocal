@@ -83,7 +83,7 @@ def _acquisition(
                 sequence += qubit_sequence
             sequences.append(sequence)
             all_ro_pulses.append(ro_pulses)
-        options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
+        options = {"nshots": params.nshots, "averaging_mode": AveragingMode.CYCLIC}
         results = platform.execute(sequences, **options)
 
         for gates, ro_pulses in zip(gatelist, all_ro_pulses):
@@ -95,11 +95,11 @@ def _acquisition(
                 data.register_qubit(
                     AllXYType,
                     (qubit, float(delay)),
-                    dict(
-                        prob=np.array([z_proj]),
-                        gate=np.array([gate]),
-                        errors=np.array([errors]),
-                    ),
+                    {
+                        "prob": np.array([z_proj]),
+                        "gate": np.array([gate]),
+                        "errors": np.array([errors]),
+                    },
                 )
 
     return data

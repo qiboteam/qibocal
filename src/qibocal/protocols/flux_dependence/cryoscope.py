@@ -33,7 +33,7 @@ FEEDFORWARD_MAX = 2 - 2**-16
 FEEDBACK_MAX = 1 - 2**-20
 """Maximum feedback tap value"""
 
-__all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
+__all__ = ["CryoscopeData", "CryoscopeResults", "cryoscope"]
 
 
 @dataclass
@@ -225,11 +225,11 @@ def _acquisition(
         sequences_x.append(sequence_x)
         sequences_y.append(sequence_y)
 
-    options = dict(
-        nshots=params.nshots,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    options = {
+        "nshots": params.nshots,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.CYCLIC,
+    }
 
     results_x = platform.execute(sequences_x, **options)
     results_y = platform.execute(sequences_y, **options)
@@ -237,19 +237,19 @@ def _acquisition(
     for measure, results, sequence in zip(
         ["MX", "MY"], [results_x, results_y], [sequences_x, sequences_y]
     ):
-        for i, (duration, sequence) in enumerate(zip(duration_range, sequence)):
+        for duration, sequence_ in zip(duration_range, sequence):
             for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
+                ro_pulse = list(sequence_.channel(platform.qubits[qubit].acquisition))[
                     -1
                 ]
                 result = results[ro_pulse.id]
                 data.register_qubit(
                     CryoscopeType,
                     (qubit, measure),
-                    dict(
-                        duration=np.array([duration]),
-                        prob_1=result,
-                    ),
+                    {
+                        "duration": np.array([duration]),
+                        "prob_1": result,
+                    },
                 )
 
     return data
@@ -289,6 +289,15 @@ def filter_calc(params, sampling_rate):
         feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
 
     return feedback_taps.tolist(), feedforward_taps.tolist()
+
+
+def _fir_cost_function(iir_correction: npt.NDArray, baseline: float):
+
+    def cost(x):
+        yc = lfilter(x, 1, iir_correction)
+        return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
+
+    return cost
 
 
 def _fit(data: CryoscopeData) -> CryoscopeResults:
@@ -390,11 +399,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             baseline = g[qubit]
             x0 = [1] + (taps - 1) * [0]
 
-            def fir_cost_function(x):
-                yc = lfilter(x, 1, iir_correction)
-                return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
-
-            fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
+            fir = cma.fmin2(_fir_cost_function(iir_correction, baseline), x0, 0.5)[0]
 
             feedforward_taps[qubit] = np.convolve(
                 feedforward_taps_iir[qubit], fir

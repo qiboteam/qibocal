@@ -54,7 +54,7 @@ class RamseyParameters(Parameters):
         return self.delay
 
     def __post_init__(self):
-        if any([d is None for d in self.delay_range]):
+        if any(d is None for d in self.delay_range):
             raise InputError("Valid delay range not inserted.")
 
 

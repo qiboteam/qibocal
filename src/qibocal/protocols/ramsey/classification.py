@@ -68,10 +68,10 @@ def _acquisition(
         data.register_qubit(
             RamseyProbType,
             (qubit),
-            dict(
-                wait=np.arange(*params.delay_range),
-                prob=results[ro_pulse.id],
-            ),
+            {
+                "wait": np.arange(*params.delay_range),
+                "prob": results[ro_pulse.id],
+            },
         )
 
     return data

@@ -138,10 +138,10 @@ def _acquisition(
         data.register_qubit(
             QubitVzType,
             qubit,
-            dict(
-                phi=phi_range,
-                prob=results[acq_handle],
-            ),
+            {
+                "phi": phi_range,
+                "prob": results[acq_handle],
+            },
         )
     return data
 
@@ -241,7 +241,6 @@ def _plot(data: QubitVzData, target: QubitId, fit: QubitVzResults = None):
 
 def _update(results: QubitVzResults, platform: Platform, target: QubitId):
     """This experiment does not update any parameters in the platform."""
-    pass
 
 
 qubit_vz = Protocol(_acquisition, _fit, _plot, _update)

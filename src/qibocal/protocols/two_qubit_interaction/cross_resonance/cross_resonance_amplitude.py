@@ -181,18 +181,18 @@ def _acquisition(
                 data.register_qubit(
                     HamiltonianTomographyType,
                     (ctrl, trg, basis, setup),
-                    dict(
-                        x=np.arange(*params.amplitude_range),
-                        prob_target=1 - 2 * prob_target,
-                        error_target=(
+                    {
+                        "x": np.arange(*params.amplitude_range),
+                        "prob_target": 1 - 2 * prob_target,
+                        "error_target": (
                             2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
                         ).tolist(),
-                        prob_control=1 - 2 * prob_control,
-                        error_control=(
+                        "prob_control": 1 - 2 * prob_control,
+                        "error_control": (
                             2
                             * np.sqrt(prob_control * (1 - prob_control) / params.nshots)
                         ).tolist(),
-                    ),
+                    },
                 )
     return data
 
@@ -253,11 +253,7 @@ def _plot(
                         for term in HamiltonianTerm
                     ]
                     + [fit.cr_duration]
-                    + [
-                        fit.cr_amplitudes[target]
-                        if target in fit.cr_amplitudes
-                        else None
-                    ]
+                    + [fit.cr_amplitudes.get(target, None)]
                     + [fit.control_phase, fit.target_amplitude, fit.target_phase]
                 ),
             )

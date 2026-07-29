@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from functools import partial
 
 import numpy as np
 import numpy.typing as npt
@@ -209,31 +208,6 @@ def _extract_peak_coordinates(
     return bias_pts, freq_pts
 
 
-def _fit_function(
-    x: float,
-    g: float,
-    d: float,
-    offset: float,
-    normalization: float,
-    freq: float,
-    charging_energy: float,
-    w_max: float,
-):
-    """Fit function for resonator flux dependence."""
-    return utils.transmon_readout_frequency(
-        xi=x,
-        w_max=w_max,
-        xj=0,
-        d=d,
-        normalization=normalization,
-        offset=offset,
-        crosstalk_element=1,
-        charging_energy=charging_energy,
-        resonator_freq=freq,
-        g=g,
-    )
-
-
 def _find_sweetspot(bias, params, fit_function):
     """Find the sweetspot by numerically identifying the point inside the window where
     the fitted flux arc has a maximum. If there are multiple, take the one with absolute
@@ -257,6 +231,34 @@ def _find_sweetspot(bias, params, fit_function):
     # Among all local maxima inside the window, return the one closest to 0 bias.
     closest_to_zero_idx = np.argmin(np.abs(bias_value_at_maxima))
     return bias_value_at_maxima[closest_to_zero_idx]
+
+
+def _fit_function(data: ResonatorFluxData, qubit: QubitId):
+
+    def func(
+        x: float,
+        g: float,
+        d: float,
+        offset: float,
+        normalization: float,
+        freq: float,
+        charging_energy: float,
+    ):
+        """Fit function for resonator flux dependence."""
+        return utils.transmon_readout_frequency(
+            xi=x,
+            w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
+            xj=0,
+            d=d,
+            normalization=normalization,
+            offset=offset,
+            crosstalk_element=1,
+            charging_energy=charging_energy,
+            resonator_freq=freq,
+            g=g,
+        )
+
+    return func
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
@@ -293,10 +295,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         )
 
         w_max = data.qubit_frequency[qubit] * HZ_TO_GHZ
-        fit_function = partial(
-            _fit_function,
-            w_max=w_max,
-        )
+        fit_function = _fit_function(data, qubit)
+
         try:
             popt = utils.ransac_fit(
                 peak_biases,

@@ -21,6 +21,8 @@ from .cr_parent_classes import (
 )
 from .cross_resonance_processing import compute_bloch_vector
 
+logger = logging.getLogger(__name__)
+
 
 def tomography_cr_plot(
     data: HamiltonianTomographyData,
@@ -54,15 +56,15 @@ def tomography_cr_plot(
                     x=pair_data.x,
                     y=pair_data.prob_target,
                     name=f"Target when Control at {0 if setup is SetControl.Id else 1}",
-                    showlegend=True if basis is Basis.Z else False,
+                    showlegend=basis is Basis.Z,
                     legendgroup=f"Target when Control at {0 if setup is SetControl.Id else 1}",
                     mode="markers",
-                    marker=dict(color="blue" if setup is SetControl.Id else "red"),
-                    error_y=dict(
-                        type="data",
-                        array=pair_data.error_target,
-                        visible=True,
-                    ),
+                    marker={"color": "blue" if setup is SetControl.Id else "red"},
+                    error_y={
+                        "type": "data",
+                        "array": pair_data.error_target,
+                        "visible": True,
+                    },
                 ),
                 row=i + 1,
                 col=1,
@@ -72,15 +74,15 @@ def tomography_cr_plot(
                     x=pair_data.x,
                     y=pair_data.prob_control,
                     name=f"Control in {0 if setup is SetControl.Id else 1}",
-                    showlegend=True if basis is Basis.Z else False,
+                    showlegend=basis is Basis.Z,
                     legendgroup=f"Control in {0 if setup is SetControl.Id else 1}",
                     mode="markers",
-                    marker=dict(color="blue" if setup is SetControl.Id else "red"),
-                    error_y=dict(
-                        type="data",
-                        array=pair_data.error_control,
-                        visible=True,
-                    ),
+                    marker={"color": "blue" if setup is SetControl.Id else "red"},
+                    error_y={
+                        "type": "data",
+                        "array": pair_data.error_control,
+                        "visible": True,
+                    },
                 ),
                 row=i + 1,
                 col=2,
@@ -100,12 +102,12 @@ def tomography_cr_plot(
                             gamma=fit.fitted_parameters[target[0], target[1], setup][3],
                         ),
                         name=f"Simultaneous Fit of target when control at {0 if setup is SetControl.Id else 1}",
-                        showlegend=True if basis is Basis.Z else False,
+                        showlegend=basis is Basis.Z,
                         legendgroup=f"Simultaneous Fit target when control at {0 if setup is SetControl.Id else 1}",
                         mode="lines",
-                        line=dict(
-                            color="green" if setup is SetControl.Id else "orange",
-                        ),
+                        line={
+                            "color": "green" if setup is SetControl.Id else "orange",
+                        },
                     ),
                     row=i + 1,
                     col=1,
@@ -147,9 +149,9 @@ def tomography_cr_plot(
                     legendgroup=f"{label} Bloch vector |R(t)|",
                     showlegend=True,
                     mode="markers",
-                    marker=dict(
-                        color="green",
-                    ),
+                    marker={
+                        "color": "green",
+                    },
                 )
                 for y, label in [
                     (bloch_vect_targ, "Target"),
@@ -225,7 +227,7 @@ def cancellation_calibration_plot(
     fitting_report = ""
 
     if fit is None:
-        logging.warning("Fit failed, plotting only data.")
+        logger.warning("Fit failed, plotting only data.")
     else:
         if type(data).__name__ == "HamiltonianTomographyCANCAmplData":
             fit_func = fitting.linear_func
@@ -336,7 +338,7 @@ def cancellation_calibration_plot(
         fitting_report = table_html(
             table_dict(
                 len(plotting_line) * [target],
-                ([k for k in tunable_params.keys()]),
+                ([k for k in tunable_params]),
                 ([v for v in tunable_params.values()]),
             )
         )

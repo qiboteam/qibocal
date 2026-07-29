@@ -141,4 +141,4 @@ class DummyHistory:
     """
 
     def items(self):
-        return tuple()
+        return ()
