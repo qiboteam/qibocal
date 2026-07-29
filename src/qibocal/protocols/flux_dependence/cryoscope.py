@@ -29,7 +29,6 @@ from qibocal.config import log
 from qibocal.protocols.ramsey.processing import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
-
 __all__ = ["CryoscopeData", "CryoscopeResults", "cryoscope"]
 
 
@@ -293,10 +292,10 @@ def _acquisition(
             data.register_qubit(
                 CryoscopeType,
                 (qubit, measure),
-                dict(
-                    duration=duration_range,
-                    prob_1=results[ro_ids[qubit]],
-                ),
+                {
+                    "duration": duration_range,
+                    "prob_1": results[ro_ids[qubit]],
+                },
             )
 
     return data
@@ -338,7 +337,7 @@ def filter_calc(params, sampling_rate):
 def _fir_cost_function(iir_correction: npt.NDArray, baseline: float):
 
     def cost(x):
-        yc = lfilter(x, 1, iir_correction)
+        yc = scipy.signal.lfilter(x, 1, iir_correction)
         return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
 
     return cost
