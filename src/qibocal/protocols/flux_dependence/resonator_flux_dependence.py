@@ -189,7 +189,7 @@ def _extract_peak_coordinates(
         best = peaks[np.argmax(props["prominences"])]
         bias_pts.append(bias_val)
         freq_pts.append(freq[best])
-        is_peak.append(row[best] > 0)
+        is_peak.append(residual[best] > 0)
 
     # Keep only the dominant extremum type and ignore extrema of the opposite feature
     select_peaks = sum(is_peak) >= (len(is_peak) / 2)
