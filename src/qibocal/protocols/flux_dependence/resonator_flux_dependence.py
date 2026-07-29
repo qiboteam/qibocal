@@ -330,7 +330,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "g": popt[0],
             }
             matrix_element[qubit] = popt[3]
-            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
+            sweetspot[qubit] = utils.select_sweetspot(
+                popt[2], popt[3], (np.min(data[qubit].bias), np.max(data[qubit].bias))
+            )
             resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]

@@ -305,10 +305,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
-            sweetspot[qubit] = (
-                np.round(popt[1] * middle_bias + popt[2]) - popt[2]
-            ) / popt[1]
+            sweetspot[qubit] = utils.select_sweetspot(
+                popt[2], popt[1], (np.min(qubit_data.bias), np.max(qubit_data.bias))
+            )
             matrix_element[qubit] = popt[1]
             successful_fit[qubit] = True
         except (ValueError, RuntimeError) as e:

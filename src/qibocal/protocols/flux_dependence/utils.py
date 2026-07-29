@@ -391,6 +391,30 @@ def _function_dof(fit_function) -> int:
     return len(params) - 1
 
 
+def select_sweetspot(
+    offset: float, normalization: float, bias_window: np.typing.ArrayLike
+):
+    """Select the closest flux sweetspot that lies in the acquired bias window.
+
+    The fitted model is periodic in the reduced flux, so every integer ``n`` gives
+    a candidate ``(n - offset) / normalization``.
+    """
+    low, high = np.sort(np.asarray(bias_window, dtype=float))
+
+    n_low = int(np.ceil(offset + normalization * low))
+    n_high = int(np.floor(offset + normalization * high))
+    candidates = []
+    for n in range(min(n_low, n_high), max(n_low, n_high) + 1):
+        candidate = (n - offset) / normalization
+        if low <= candidate <= high:
+            candidates.append(candidate)
+
+    if not candidates:
+        raise ValueError("No fitted sweetspot lies inside the acquired bias window.")
+
+    return min(candidates, key=abs)  # take the bias with abs closest to 0.0
+
+
 def ransac_fit(
     xvals: npt.NDArray[np.float64],
     yvals: npt.NDArray[np.float64],
