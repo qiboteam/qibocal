@@ -2,6 +2,7 @@ import inspect
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -391,9 +392,7 @@ def _function_dof(fit_function) -> int:
     return len(params) - 1
 
 
-def select_sweetspot(
-    offset: float, normalization: float, bias_window: np.typing.ArrayLike
-):
+def select_sweetspot(offset: float, normalization: float, bias_window: npt.ArrayLike):
     """Select the closest flux sweetspot that lies in the acquired bias window.
 
     The fitted model is periodic in the reduced flux, so every integer ``n`` gives
@@ -424,7 +423,7 @@ def ransac_fit(
     max_trials: int = 5000,
     stop_probability: float = 0.999,
     random_state: int = 0,
-    bounds=None,
+    bounds: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
 ):
     """Fit a model to data using RANSAC, ignoring outliers.
 
@@ -443,6 +442,9 @@ def ransac_fit(
     # output is guaranteed to be stable across numpy versions:
     # https://numpy.org/doc/2.5/reference/random/legacy.html#numpy.random.RandomState
     rng = np.random.RandomState(random_state)
+
+    method = "lm" if bounds is None else "trf"
+    fit_kwargs: dict[str, Any] = {} if bounds is None else {"bounds": bounds}
 
     function_dof = _function_dof(fit_function)
 
@@ -483,7 +485,8 @@ def ransac_fit(
                     fit_function,
                     xvals[subset],
                     yvals[subset],
-                    bounds=bounds,
+                    method=method,
+                    **fit_kwargs,
                 )
         except RuntimeError:
             continue
@@ -519,8 +522,9 @@ def ransac_fit(
         xvals[best_inliers],
         yvals[best_inliers],
         p0=best_params,
-        bounds=bounds,
+        method=method,
         maxfev=100000,
+        **fit_kwargs,
     )
 
     return popt
