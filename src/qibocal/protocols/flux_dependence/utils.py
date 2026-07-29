@@ -306,22 +306,6 @@ def transmon_readout_frequency(
     )
 
 
-def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
-    """Returns bounds for qubit flux fit."""
-    return (
-        [
-            qubit_frequency * HZ_TO_GHZ - 1,
-            0,
-            -1,
-        ],
-        [
-            qubit_frequency * HZ_TO_GHZ + 1,
-            np.inf,
-            1,
-        ],
-    )
-
-
 def filter_data(matrix_z: np.ndarray):
     """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
 
@@ -416,6 +400,7 @@ def ransac_fit(
     max_trials: int = 5000,
     stop_probability: float = 0.999,
     random_state: int = 0,
+    bounds=None,
 ):
     """Fit a model to data using RANSAC, ignoring outliers.
 
@@ -474,7 +459,7 @@ def ransac_fit(
                     fit_function,
                     xvals[subset],
                     yvals[subset],
-                    method="lm",  # lm is a fast option
+                    bounds=bounds,
                 )
         except RuntimeError:
             continue
@@ -510,7 +495,7 @@ def ransac_fit(
         xvals[best_inliers],
         yvals[best_inliers],
         p0=best_params,
-        method="lm",  # lm is used because all we need is a local optimizer
+        bounds=bounds,
         maxfev=100000,
     )
 

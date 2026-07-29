@@ -272,6 +272,19 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             signal=signal,
         )
 
+        bounds = (
+            [
+                data.qubit_frequency[qubit] * HZ_TO_GHZ - 1,
+                0,
+                -1,
+            ],
+            [
+                data.qubit_frequency[qubit] * HZ_TO_GHZ + 1,
+                np.inf,
+                1,
+            ],
+        )
+
         try:
             popt = utils.ransac_fit(
                 peak_biases,
@@ -279,6 +292,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 fit_function=_fit_function(data, qubit),
                 # approximate width of a peak in the qubit spectroscopy
                 residual_threshold=0.6e6 * HZ_TO_GHZ,
+                bounds=bounds,
             )
 
             fitted_parameters[qubit] = {

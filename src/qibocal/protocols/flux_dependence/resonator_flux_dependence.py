@@ -297,12 +297,26 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         w_max = data.qubit_frequency[qubit] * HZ_TO_GHZ
         fit_function = _fit_function(data, qubit)
 
+        # bounds for (g, d, offset, normalization, freq, charging_energy)
+        bare_resonator_freq = data.bare_resonator_frequency[qubit] * HZ_TO_GHZ
+        bounds = (
+            [0, 0, -1, 0, bare_resonator_freq - 0.5, 0],
+            [
+                0.5,
+                1,
+                1,
+                np.inf,
+                bare_resonator_freq + 0.5,
+                data.charging_energy[qubit] * HZ_TO_GHZ + 0.3,
+            ],
+        )
         try:
             popt = utils.ransac_fit(
                 peak_biases,
                 peak_frequencies * HZ_TO_GHZ,
                 fit_function=fit_function,
                 residual_threshold=APPROXIMATE_RESONATOR_PEAK_WIDTH * HZ_TO_GHZ,
+                bounds=bounds,
             )
             fitted_parameters[qubit] = {
                 "w_max": w_max,
@@ -316,7 +330,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "g": popt[0],
             }
             matrix_element[qubit] = popt[3]
-            sweetspot[qubit] = _find_sweetspot(bias, popt, fit_function)
+            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
             resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
