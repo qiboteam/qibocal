@@ -3,9 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
-from scipy.ndimage import median_filter
 from scipy.signal import find_peaks
-from scipy.special import erfinv
 
 from qibocal.calibration import CalibrationPlatform
 
@@ -168,27 +166,17 @@ def _extract_peak_coordinates(
     """Extract the most prominent peaks in the resonator (flux,frequency) landscape. At
     most one peak per flux bin.
     """
-    assert np.allclose(np.diff(freq), np.diff(freq)[0])
-    samples_per_peak = np.ceil(APPROXIMATE_RESONATOR_PEAK_WIDTH / np.diff(freq)[0])
+    # First we remove the median signal per frequency since in the case of the resonator
+    # there is a frequency-dependent but flux-independent background signal .
+    median_per_freq = np.median(signal, axis=0, keepdims=True)
+    centered_signal = signal - median_per_freq
+
     bias_pts, freq_pts = [], []
     is_peak = []
-    for bias_val, row in zip(bias, signal):
-        # There may be fluctuations along the frequency axis caused by elements such
-        # cables or amplifiers. In principle this is flux independent and therefore
-        # ideal to remove by subtracting the median per frequency bin. However, the arc
-        # may be very flat, in which case we end up subtracting the arc rather than
-        # background. To avoid this, we use median_filter
-        baseline = median_filter(row, size=int(20 * samples_per_peak), mode="nearest")
-        residual = row - baseline
-
-        # Estimate the std from median absolute deviation because a naive std is
-        # inflated by the arc we're trying to detect
-        row_mad = np.median(np.abs(residual - np.median(residual)))
-        row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
-
+    for bias_val, row in zip(bias, centered_signal):
         # Detect both peaks and dips by finding prominent extrema in the absolute
         # residual
-        peaks, props = find_peaks(np.abs(residual), prominence=row_std)
+        peaks, props = find_peaks(np.abs(row), prominence=0)
         if len(peaks) == 0:
             continue
 
@@ -197,7 +185,7 @@ def _extract_peak_coordinates(
         best = peaks[np.argmax(props["prominences"])]
         bias_pts.append(bias_val)
         freq_pts.append(freq[best])
-        is_peak.append(residual[best] > 0)
+        is_peak.append(row[best] > 0)
 
     # Keep only the dominant extremum type and ignore extrema of the opposite feature
     select_peaks = sum(is_peak) >= (len(is_peak) / 2)
