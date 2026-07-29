@@ -89,65 +89,69 @@ def _acquisition(
         params.amplitude_coupler_step,
     )
 
-    sequence = PulseSequence()
+    data = CouplerRamseyData()
+    sequences_dict: dict[float, PulseSequence] = {}
+    for w in waits:
+        sequence = PulseSequence()
 
-    coupler_pulse = Pulse(duration=0, amplitude=0, envelope=Rectangular())
-    delay = Delay(duration=0)
-    coupler_amplitude_sweeper = Sweeper(
-        parameter=Parameter.amplitude, values=amplitudes, pulses=[coupler_pulse]
-    )
-    duration_sweeper = Sweeper(
-        parameter=Parameter.duration, values=waits, pulses=[delay, coupler_pulse]
-    )
+        coupler_pulse = Pulse(duration=w, amplitude=0, envelope=Rectangular())
+        delay = Delay(duration=w)
 
-    for pair in targets:
-        coupler_channel = platform.couplers[
-            platform.calibration.two_qubits[pair].coupler
-        ].flux
-        target_qubit_id, control_qubit_id = pair
-        target_qubit = platform.qubits[target_qubit_id]
-        rx90 = platform.natives.single_qubit[target_qubit_id].R(np.pi / 2)
+        amplitude_sweeper = Sweeper(
+            parameter=Parameter.amplitude,
+            values=amplitudes,
+            pulses=[coupler_pulse],
+        )
 
-        seq = PulseSequence()
-        seq += rx90
-        seq |= [
-            (coupler_channel, coupler_pulse),
-            (target_qubit.acquisition, delay),
-            (target_qubit.drive, delay),
-        ]
-        seq += (
-            rx90 | platform.natives.single_qubit[target_qubit_id].MZ()
-        ).align_to_delays()
+        for pair in targets:
+            coupler_channel = platform.couplers[
+                platform.calibration.two_qubits[pair].coupler
+            ].flux
+            target_qubit_id, control_qubit_id = pair
+            target_qubit = platform.qubits[target_qubit_id]
+            rx90 = platform.natives.single_qubit[target_qubit_id].R(np.pi / 2)
 
-        seq += platform.natives.single_qubit[control_qubit_id].RX()
-        # Add the partial sequence to the full sequence
-        sequence += seq
+            seq = PulseSequence()
+            seq += rx90
+            seq |= [
+                (coupler_channel, coupler_pulse),
+                (target_qubit.acquisition, delay),
+                (target_qubit.drive, delay),
+            ]
+            seq += (
+                rx90 | platform.natives.single_qubit[target_qubit_id].MZ()
+            ).align_to_delays()
+
+            seq += platform.natives.single_qubit[control_qubit_id].RX()
+            # Add the partial sequence to the full sequence
+            sequence += seq
+
+        sequences_dict[w] = sequence
 
     results = platform.execute(
         sequences=[sequence],
-        sweepers=[[duration_sweeper], [coupler_amplitude_sweeper]],
+        sweepers=[[amplitude_sweeper]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    data = CouplerRamseyData()
 
-    for pair in targets:
-        target_qubit_id, control_qubit_id = pair
-        ro_pulse = list(sequence.channel(platform.qubits[target_qubit_id].acquisition))[
-            -1
-        ]
-        prob_2d = results[ro_pulse.id]
+    for w in waits:
+        for pair in targets:
+            target_qubit_id, control_qubit_id = pair
+            ro_pulse = list(
+                sequence.channel(platform.qubits[target_qubit_id].acquisition)
+            )[-1]
+            prob_1d = results[ro_pulse.id]
 
-        for wait, prob_1d in zip(waits, prob_2d):
             for amplitude, prob in zip(amplitudes, prob_1d):
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     CouplerRamseyType,
                     pair,
                     {
-                        "tau": np.array([wait]),
+                        "tau": np.array([w]),
                         "amplitude": np.array([amplitude]),
                         "prob": np.array([prob]),
                         "error": np.array([error]),
