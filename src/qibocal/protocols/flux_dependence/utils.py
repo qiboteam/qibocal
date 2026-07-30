@@ -435,9 +435,32 @@ def select_sweetspot(
     return sweetspot
 
 
+def _continuity_score(
+    xvals: npt.NDArray[np.floating],
+    yvals: npt.NDArray[np.floating],
+    inliers: npt.NDArray[np.bool_],
+) -> int:
+    """Score consecutive inlier runs quadratically, counting each y-value once."""
+    order = np.argsort(xvals)  # in practice they are already ordered
+    ordered_yvals = np.asarray(yvals)[order]
+    ordered_inliers = np.asarray(inliers, dtype=bool)[order]
+
+    # pad with 0s to ensure a change if the arc starts at the boundary
+    padded = np.pad(ordered_inliers.astype(int), (1, 1))
+    changes = np.diff(padded)
+    starts = np.flatnonzero(changes == 1)
+    stops = np.flatnonzero(changes == -1)
+
+    unique_y_counts = [
+        len(np.unique(ordered_yvals[start:stop])) for start, stop in zip(starts, stops)
+    ]
+
+    return int(np.sum(np.square(unique_y_counts)))
+
+
 def ransac_fit(
-    xvals: npt.NDArray[np.float64],
-    yvals: npt.NDArray[np.float64],
+    xvals: npt.NDArray[np.floating],
+    yvals: npt.NDArray[np.floating],
     fit_function: Callable[..., np.ndarray],
     residual_threshold: float,
     min_trials: int = 100,
@@ -449,15 +472,18 @@ def ransac_fit(
     """Fit a model to data using RANSAC, ignoring outliers.
 
     Repeatedly fits ``fit_function`` to minimal random subsets of the data (sized to the
-    function's degrees of freedom), scores each candidate by its inlier count (points
-    with residual below ``residual_threshold``), and keeps the best-performing model.
-    The number of trials adapts dynamically based on the current inlier ratio, following
-    the standard RANSAC stopping criterion, and is bounded by ``min_trials`` and
-    ``max_trials``. A final least-squares refit is performed on the best inlier set.
+    function's degrees of freedom). Points with residual below ``residual_threshold``
+    are inliers. Candidate models are scored by summing the squared lengths of
+    consecutive inlier runs along the x-axis, favoring a continuous feature over
+    scattered noise.
+
+    The number of trials adapts dynamically based on the current inlier
+    ratio, following the standard RANSAC stopping criterion, and is bounded by
+    ``min_trials`` and ``max_trials``. A final least-squares refit is performed on the
+    best inlier set.
 
     Returns:
         Optimal fit parameters from the least-squares refit on the best inlier set.
-
     """
     # A fixed seed makes debugging and regression tests reproducible. RandomState's
     # output is guaranteed to be stable across numpy versions:
@@ -473,8 +499,9 @@ def ransac_fit(
     # initially bounded only by min_trials/max_trials.
     N_needed = np.inf
     ransac_iterations = 0
-    best_inliers = np.array([])
+    best_inliers = np.zeros(len(xvals), dtype=bool)
     best_params = None
+    best_score = (0, 0)
     # Track already-sampled subsets so we don't waste a trial refitting the exact same
     # minimal sample twice.
     tried_subsets = set()
@@ -520,11 +547,21 @@ def ransac_fit(
             best_params = popt
             break
 
-        # Accept as a new best if it beats the current best AND at least matches the
-        # minimal sample size
-        if inliers.sum() >= len(subset) and inliers.sum() > best_inliers.sum():
+        # Use a continuity score to reduce the sensitivity to a noisy background.
+        # Especially if the arc is only in a small part of the bias range.
+        # TODO: would be nice to have this as a callback
+        unique_y_count = len(np.unique(yvals[inliers]))
+        score = (
+            _continuity_score(xvals, yvals, inliers),
+            unique_y_count,
+        )
+
+        # Accept as a new best if it has a better continuity score and at least matches
+        # the minimal sample size.
+        if inliers.sum() >= len(subset) and score > best_score:
             best_inliers = inliers
             best_params = popt
+            best_score = score
             # Re-estimate how many trials are needed to have `stop_probability`
             # confidence of drawing an all-inlier minimal sample.
             denom = np.log(1 - (best_inliers.sum() / len(xvals)) ** len(subset))

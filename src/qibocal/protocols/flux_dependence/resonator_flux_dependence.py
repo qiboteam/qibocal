@@ -176,8 +176,8 @@ def _extract_peak_coordinates(
     median_per_flux = np.median(signal, axis=1, keepdims=True)
     median_per_frequency = np.median(signal, axis=0, keepdims=True)
     global_median = np.median(signal)
-
     centered_signal = signal - median_per_flux - median_per_frequency + global_median
+
     bias_pts, freq_pts = [], []
     is_peak = []
     for bias_val, row in zip(bias, centered_signal):

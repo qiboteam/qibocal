@@ -176,16 +176,20 @@ def _acquisition(
 
 
 def _extract_peak_coordinates(
-    frequencies: npt.NDArray[np.float64],
-    biases: npt.NDArray[np.float64],
-    signal: npt.NDArray[np.float64],
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+    frequencies: npt.NDArray[np.floating],
+    biases: npt.NDArray[np.floating],
+    signal: npt.NDArray[np.floating],
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
     """Extract the most prominent peaks in the qubit (flux,frequency) landscape. At most
     one peak per flux bin.
     """
 
+    # Sometimes we observe bright lines for certain bias values that are constant in
+    # frequency
+    centred_signal = signal - np.median(signal, axis=1, keepdims=True)
+
     peak_biases, peak_frequencies = [], []
-    for bias, signal_row in zip(biases, signal):
+    for bias, signal_row in zip(biases, centred_signal):
         # The Gaussian filter reduces noise in the background and helps make a noisy
         # peak into a stronger signal.
         smoothed_row = gaussian_filter1d(signal_row, sigma=2)
@@ -291,7 +295,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 peak_frequencies * HZ_TO_GHZ,
                 fit_function=_fit_function(data, qubit),
                 # approximate width of a peak in the qubit spectroscopy
-                residual_threshold=0.6e6 * HZ_TO_GHZ,
+                residual_threshold=0.2e6 * HZ_TO_GHZ,
                 bounds=bounds,
             )
 
