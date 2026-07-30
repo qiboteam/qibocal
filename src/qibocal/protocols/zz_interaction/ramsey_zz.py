@@ -186,15 +186,17 @@ def _acquisition(
             data.register_qubit(
                 ZZIntType,
                 (targ, spect, setup),
-                dict(
-                    delay=parsweepers[setup].values,
-                    targ_prob=np.array(targ_probs),
-                    targ_error=np.sqrt(targ_probs * (1 - targ_probs) / params.nshots),
-                    spect_prob=np.array(spect_probs),
-                    spect_error=np.sqrt(
+                {
+                    "delay": parsweepers[setup].values,
+                    "targ_prob": np.array(targ_probs),
+                    "targ_error": np.sqrt(
+                        targ_probs * (1 - targ_probs) / params.nshots
+                    ),
+                    "spect_prob": np.array(spect_probs),
+                    "spect_error": np.sqrt(
                         spect_probs * (1 - spect_probs) / params.nshots
                     ),
-                ),
+                },
             )
 
     return data

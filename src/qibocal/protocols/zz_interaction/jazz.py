@@ -161,13 +161,13 @@ def _acquisition(
         data.register_qubit(
             ZZIntType,
             pair,
-            dict(
-                delay=sweeper.values,
-                targ_prob=np.array(targ_prob),
-                targ_error=targ_error,
-                spect_prob=np.array(spect_prob),
-                spect_error=spect_error,
-            ),
+            {
+                "delay": sweeper.values,
+                "targ_prob": np.array(targ_prob),
+                "targ_error": targ_error,
+                "spect_prob": np.array(spect_prob),
+                "spect_error": spect_error,
+            },
         )
 
     return data
