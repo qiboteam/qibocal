@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from scipy.ndimage import median_filter
 from scipy.signal import find_peaks
 
 from qibocal.calibration import CalibrationPlatform
@@ -21,7 +22,6 @@ from ..utils import (
 from . import utils
 
 __all__ = ["ResonatorFluxParameters", "resonator_flux"]
-
 
 # approximate width of a peak in the resonator spectroscopy in Hz
 APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.2e6
@@ -169,21 +169,28 @@ def _extract_peak_coordinates(
     """Extract the most prominent peaks in the resonator (flux,frequency) landscape. At
     most one peak per flux bin.
     """
-    # We remove the median signal per frequency since in the case of the resonator
-    # there is a frequency-dependent but flux-independent background signal.
-    # sometimes there are bright spots for a given bias. Not sure what causes them,
-    # but this hopefully gets rid of them.
-    median_per_flux = np.median(signal, axis=1, keepdims=True)
-    median_per_frequency = np.median(signal, axis=0, keepdims=True)
-    global_median = np.median(signal)
-    centered_signal = signal - median_per_flux - median_per_frequency + global_median
+    # Sometimes there are bright spots for a given bias. Not sure what causes them,
+    # but this should get rid of them.
+    median_per_bias = np.median(signal, axis=1, keepdims=True)
+    centered_signal = signal - median_per_bias
 
     bias_pts, freq_pts = [], []
     is_peak = []
     for bias_val, row in zip(bias, centered_signal):
+        # There may be fluctuations along the frequency axis caused by elements such
+        # cables or amplifiers. In principle this is bias independent, so we do the same
+        # as we did before, and subtract the median per frequency. However, the arc may
+        # be very flat and take up the majority of the window (perhaps together with
+        # another background feature of the same extremum), in which case we end up
+        # subtracting the arc rather than background. To avoid this, we use
+        # median_filter.
+        samples_per_peak = np.ceil(APPROXIMATE_RESONATOR_PEAK_WIDTH / np.diff(freq)[0])
+        baseline = median_filter(row, size=int(20 * samples_per_peak), mode="mirror")
+        residual = baseline - np.median(baseline)
+
         # Detect both peaks and dips by finding prominent extrema in the absolute
         # residual
-        peaks, props = find_peaks(np.abs(row), prominence=0)
+        peaks, props = find_peaks(np.abs(residual), prominence=0)
         if len(peaks) == 0:
             continue
 
