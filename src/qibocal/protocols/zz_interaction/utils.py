@@ -112,7 +112,7 @@ def signal_plot(
 
     delays = np.unique(signal.delay)
 
-    signal_style = dict(color="red" if label == "I" else "blue")
+    signal_style = {"color": "red" if label == "I" else "blue"}
 
     target_scatters.append(
         go.Scatter(
