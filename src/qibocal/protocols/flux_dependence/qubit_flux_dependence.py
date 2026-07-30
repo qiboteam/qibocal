@@ -306,7 +306,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
             sweetspot[qubit] = utils.select_sweetspot(
-                popt[2], popt[1], (np.min(qubit_data.bias), np.max(qubit_data.bias))
+                popt[2],
+                popt[1],
+                (np.min(qubit_data.bias), np.max(qubit_data.bias)),
+                max_distance=0.3,
             )
             matrix_element[qubit] = popt[1]
             successful_fit[qubit] = True

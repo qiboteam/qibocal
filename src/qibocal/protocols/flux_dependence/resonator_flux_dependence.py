@@ -31,6 +31,9 @@ APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.2e6
 class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
     """ResonatorFlux runcard inputs."""
 
+    bias_center: float | None = None
+    freq_center: float | None = None
+
 
 @dataclass
 class ResonatorFluxResults(Results):
@@ -166,21 +169,21 @@ def _extract_peak_coordinates(
     """Extract the most prominent peaks in the resonator (flux,frequency) landscape. At
     most one peak per flux bin.
     """
-    # First we remove the median signal per frequency since in the case of the resonator
-    # there is a frequency-dependent but flux-independent background signal .
-    median_per_freq = np.median(signal, axis=0, keepdims=True)
-    centered_signal = signal - median_per_freq
+    # We remove the median signal per frequency since in the case of the resonator
+    # there is a frequency-dependent but flux-independent background signal.
+    # sometimes there are bright spots for a given bias. Not sure what causes them,
+    # but this hopefully gets rid of them.
+    median_per_flux = np.median(signal, axis=1, keepdims=True)
+    median_per_frequency = np.median(signal, axis=0, keepdims=True)
+    global_median = np.median(signal)
 
+    centered_signal = signal - median_per_flux - median_per_frequency + global_median
     bias_pts, freq_pts = [], []
     is_peak = []
     for bias_val, row in zip(bias, centered_signal):
-        # sometimes there are bright spots for a given bias. Not sure what causes them,
-        # but this hopefully gets rid of them.
-        residual = row - np.median(row)
-
         # Detect both peaks and dips by finding prominent extrema in the absolute
         # residual
-        peaks, props = find_peaks(np.abs(residual), prominence=0)
+        peaks, props = find_peaks(np.abs(row), prominence=0)
         if len(peaks) == 0:
             continue
 
@@ -189,7 +192,7 @@ def _extract_peak_coordinates(
         best = peaks[np.argmax(props["prominences"])]
         bias_pts.append(bias_val)
         freq_pts.append(freq[best])
-        is_peak.append(residual[best] > 0)
+        is_peak.append(row[best] > 0)
 
     # Keep only the dominant extremum type and ignore extrema of the opposite feature
     select_peaks = sum(is_peak) >= (len(is_peak) / 2)
@@ -298,7 +301,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             }
             matrix_element[qubit] = popt[3]
             sweetspot[qubit] = utils.select_sweetspot(
-                popt[2], popt[3], (np.min(data[qubit].bias), np.max(data[qubit].bias))
+                popt[2],
+                popt[3],
+                (np.min(data[qubit].bias), np.max(data[qubit].bias)),
+                max_distance=0.3,
             )
             resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]

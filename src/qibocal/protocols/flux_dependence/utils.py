@@ -392,11 +392,19 @@ def _function_dof(fit_function) -> int:
     return len(params) - 1
 
 
-def select_sweetspot(offset: float, normalization: float, bias_window: npt.ArrayLike):
+def select_sweetspot(
+    offset: float,
+    normalization: float,
+    bias_window: npt.ArrayLike,
+    max_distance: float = 0,
+):
     """Select the closest flux sweetspot that lies in the acquired bias window.
 
     The fitted model is periodic in the reduced flux, so every integer ``n`` gives
     a candidate ``(n - offset) / normalization``.
+
+    If no sweetspot lies inside the acquired bias window, the closest sweetspot
+    outside the window is selected unless it is farther than ``max_distance``.
     """
     low, high = np.sort(np.asarray(bias_window, dtype=float))
 
@@ -409,14 +417,20 @@ def select_sweetspot(offset: float, normalization: float, bias_window: npt.Array
             candidates.append(candidate)
 
     if candidates:
-        # If there is at least one sweetspot in the data range, take the bias with abs
+        # If there is at least one sweetspot in the bias window, take the bias with abs
         # closest to 0.0
-        sweetspot = min(candidates, key=abs)
-    else:
-        # If there is no sweetspot in the data range, calculate the sweetspot closest to
-        # zero from the fitted model
-        n = int(np.floor(offset + 0.5))
-        sweetspot = (n - offset) / normalization
+        return min(candidates, key=abs)
+
+    # No sweetspot lies inside the acquired window. Find the closest one to the window.
+    n = int(np.floor(offset + 0.5))
+    sweetspot = (n - offset) / normalization
+
+    # If the nearest sweetspot is outside the window, its distance to the acquired data
+    # is measured from the closest window boundary.
+    distance = max(low - sweetspot, 0, sweetspot - high)
+
+    if distance > max_distance:
+        raise ValueError("No fitted sweetspot lies inside the acquired bias window.")
 
     return sweetspot
 
