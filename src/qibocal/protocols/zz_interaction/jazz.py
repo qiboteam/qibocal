@@ -173,6 +173,83 @@ def _acquisition(
     return data
 
 
+def _jazz_fitting_process(probs, delays, err):
+    """Fit the JAZZ probability curve using a damped sinusoidal model.
+
+    This function prepares initial parameter guesses for fitting a
+    damped sinusoidal model to JAZZ experiment data. It performs the
+    following steps:
+
+    1. Min-max normalizes the input probability (probs) and delay
+       (delays) arrays to the range [0, 1]. Measurement errors (err) are
+       scaled consistently with the probability normalization.
+    2. Estimates an initial angular frequency (omega) using the
+       quinn_fernandes_algorithm on the normalized data.
+    3. Computes estimates for offset and amplitude from the data
+       quantiles and median, and assembles an initial parameter vector
+       p0 suitable for nonlinear least-squares fitting routines.
+    4. fits the data using ``curve_fit``; the assumed fitting model is
+    a damped sinusoid of the form:
+
+        f(t) = offset + A * exp(-t / tau) * sin(omega * t + phi)
+    """
+
+    # performing a min-max scaling on x and y arrays
+    probs_max = np.max(probs)
+    probs_min = np.min(probs)
+    d_max = np.max(delays)
+    d_min = np.min(delays)
+    delta_probs = probs_max - probs_min
+    delta_delay = d_max - d_min
+    min_max_probs = (probs - probs_min) / delta_probs
+    min_max_delays = (delays - d_min) / delta_delay
+    err = err / delta_probs
+
+    omega = quinn_fernandes_algorithm(min_max_probs, min_max_delays, speedup_flag=True)
+    median_sig = np.median(min_max_probs)
+    q80 = np.quantile(min_max_probs, 0.8)
+    q20 = np.quantile(min_max_probs, 0.2)
+    amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+
+    p0 = [
+        median_sig,
+        amplitude_guess,
+        omega,
+        1,
+    ]
+
+    popt, perr = curve_fit(
+        jazz_fit,
+        min_max_delays,
+        min_max_probs,
+        p0=p0,
+        maxfev=5000,
+        bounds=(
+            [0, 0, -np.inf, 0],
+            [1, 1, np.inf, np.inf],
+        ),
+        sigma=err,
+    )
+
+    # inverting the scaling
+    popt = [
+        delta_probs * popt[0] + probs_min,
+        delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
+        popt[2] / delta_delay,
+        popt[3] / delta_delay,
+    ]
+
+    perr = np.sqrt(np.diag(perr))
+
+    zz_zeta = [
+        popt[2] * GHZ_TO_HZ / (2 * np.pi),
+        # error propagating the error for delta and then converyting into frequency
+        perr[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi),
+    ]
+
+    return popt, zz_zeta
+
+
 def _fit(data: JAZZData) -> JAZZResults:
     """Post-processing for JAZZ."""
 
@@ -186,76 +263,31 @@ def _fit(data: JAZZData) -> JAZZResults:
         probs = data.data[pair]["targ_prob"]
         err = data.data[pair]["targ_error"]
 
-        # performing a min-max scaling on x and y arrays
-        probs_max = np.max(probs)
-        probs_min = np.min(probs)
-        d_max = np.max(delays)
-        d_min = np.min(delays)
-        delta_probs = probs_max - probs_min
-        delta_delay = d_max - d_min
-        min_max_probs = (probs - probs_min) / delta_probs
-        min_max_delays = (delays - d_min) / delta_delay
-        if err is not None:
-            err = err / delta_probs
-
-        omega = quinn_fernandes_algorithm(
-            min_max_probs, min_max_delays, speedup_flag=True
-        )
-        median_sig = np.median(min_max_probs)
-        q80 = np.quantile(min_max_probs, 0.8)
-        q20 = np.quantile(min_max_probs, 0.2)
-        amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
-
-        p0 = [
-            median_sig,
-            amplitude_guess,
-            omega,
-            1,
-        ]
-
         try:
-            popt, perr = curve_fit(
-                jazz_fit,
-                min_max_delays,
-                min_max_probs,
-                p0=p0,
-                maxfev=5000,
-                bounds=(
-                    [0, 0, -np.inf, 0],
-                    [1, 1, np.inf, np.inf],
-                ),
-                sigma=err,
+            popt, zz_estimated = _jazz_fitting_process(
+                probs=probs,
+                delays=delays,
+                err=err,
             )
-        except RuntimeError as e:
-            log.warning(f"JAZZ fitting failed for pair {pair} due to {e}.")
-            continue
 
-        # inverting the scaling
-        popt = [
-            delta_probs * popt[0] + probs_min,
-            delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
-            popt[2] / delta_delay,
-            popt[3] / delta_delay,
-        ]
+            fit_params |= {pair: popt}
 
-        perr = np.sqrt(np.diag(perr))
+            zz |= {pair: zz_estimated}
 
-        fit_params |= {pair: popt}
-        zz_zeta = [
-            popt[2] * GHZ_TO_HZ / (2 * np.pi),
-            # error propagating the error for delta and then converyting into frequency
-            perr[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi),
-        ]
-        zz |= {pair: zz_zeta}
+            # here we compute coupling as a frequency
+            coupling[pair] = coupling_strength(
+                omega1=data.qubit_freqs[target],
+                omega2=data.qubit_freqs[spectator],
+                anharmonicity1=data.anharmonicity[target],
+                anharmonicity2=data.anharmonicity[spectator],
+                zz=zz_estimated,
+            )
 
-        # here we compute coupling as a frequency
-        coupling[pair] = coupling_strength(
-            omega1=data.qubit_freqs[target],
-            omega2=data.qubit_freqs[spectator],
-            anharmonicity1=data.anharmonicity[target],
-            anharmonicity2=data.anharmonicity[spectator],
-            zz=zz_zeta,
-        )
+        # here we are catching two possible errors: fitting error in curve_fit
+        # call or error in estimating coupling strenght because anharmonicities
+        # are unknown
+        except (RuntimeError, ValueError) as e:
+            log.warning(f"JAZZ fit for pair {pair}: {e}.")
 
     return JAZZResults(zz=zz, coupling=coupling, fitted_parameters=fit_params)
 

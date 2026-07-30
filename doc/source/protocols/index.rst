@@ -23,6 +23,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t1/t1
     t2/t2
     t2_echo/t2_echo
+    zz_interaction/zz_interaction
     cpmg/cpmg
     flux/single
     flux/crosstalk
@@ -45,5 +46,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     chsh
     twpa_calibration/twpa
     cross_resonance/cross_resonance
-    zz_interaction/zz_interaction
     references

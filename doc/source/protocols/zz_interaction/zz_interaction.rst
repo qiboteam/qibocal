@@ -3,25 +3,24 @@ Residual ZZ Interaction
 
 In superconducting transmon quantum processors, qubits are never perfectly isolated.
 Even when no two-qubit gate is being executed, neighboring qubits experience weak
-always-on interactions mediated by the coupling network. One of the most important
+always-on interactions. One of the most important
 undesired interactions is the **residual ZZ coupling**, which produces a state-dependent
 frequency shift.
 
-For two coupled qubits, restricted to the computational subspace
-:math:`\{|00\rangle, |01\rangle, |10\rangle, |11\rangle\}`, the
-effective static Hamiltonian can generally be written as
+For two coupled qubits restricted to the computational subspace
+:math:`\{|00\rangle, |01\rangle, |10\rangle, |11\rangle\}` the
+effective static Hamiltonian can be written as
 
 .. math::
 
-   H/\hbar = -\frac{\omega_0}{2} ZI
-           - \frac{\omega_1}{2} IZ
+   H/\hbar = -\frac{\omega_1}{2} ZI
+           - \frac{\omega_2}{2} IZ
            - \frac{\zeta}{4} ZZ,
 
-where :math:`\zeta` is the residual ZZ interaction strength.
-
-where :math:`\omega_1, \omega_2` are the (dressed) qubit frequencies
+where :math:`\zeta` is the residual ZZ interaction strength,
+:math:`\omega_1, \omega_2` are the (dressed) qubit frequencies
 and :math:`\zeta` is the residual ZZ interaction rate.
-In a simple three-level-per-qubit model, the ZZ rate can be
+In a qutrit model, the ZZ rate can be
 approximated in the **dispersive regime** as
 
 .. math::
@@ -30,19 +29,12 @@ approximated in the **dispersive regime** as
    {(\Delta_{12} - \alpha_1)(\Delta_{12} + \alpha_2)}
 
 where :math:`\Delta_{12} = \omega_1 - \omega_2` is the qubit-qubit
-detuning and :math:`\alpha_{1,2}` are the qubit anharmonicities and :math:`g` is the
-**coupling strength**, which depends on the physical capacitance of the circuits.
+detuning, :math:`\alpha_{1,2}` are the qubit anharmonicities and :math:`g` is the
+**coupling strength**. The latter is determined by the physical capacitance of the circuits.
 
 The ZZ term shifts the transition frequency of one qubit depending on the state of
-its neighbor:
-
-.. math::
-
-   \omega_\mathrm{target}^{(|1\rangle)}
-   - \omega_\mathrm{target}^{(|0\rangle)}
-   = \zeta.
-
-Consequences include:
+its neighbor.
+ZZ coupling is a relevant effect that we need to account for durning calibration because neglecting to do so may result in:
 
 * coherent phase accumulation during idle periods;
 * reduced gate fidelity;
@@ -52,30 +44,30 @@ Consequences include:
 Estimating Residual ZZ
 ----------------------
 
-Two common characterization experiments are JAZZ and Ramsey ZZ.
-Both experiments described below exploit the same basic idea: put one
+Two common characterization experiments are JAZZ and Ramsey ZZ :cite:p:`Manenti:2023zzn {Sec. 14.8.1}`.
+Both experiments are described below and exploit the same basic idea: put one
 qubit (the "spectator" or "control") in :math:`|0\rangle` or
 :math:`|1\rangle`, and use a Ramsey-type measurement on the other
-qubit (the "target") to detect the resulting frequency shift.
+qubit (the "target") to detect the state-dependent frequency shift.
 
 
 Ramsey ZZ (Conditional Ramsey)
-------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Given that through a Ramsey experiment we can measure carefully the frequency of the qubit,
-by repeating it while putting one of the neighbor qubits in
-state :math:`\ket{1}` we can have an estimate on the ZZ coupling :math:`\zeta`.
-For a more detailed discussion about Ramsey experiment see :ref:`ramsey`.
+Given that through a Ramsey experiment we can carefully measure the frequency of the qubit,
+we can have estimate the ZZ coupling :math:`\zeta` by repeating the experiment while preparing one of the
+neighboring qubits in state :math:`\ket{1}`.
+For a more detailed discussion of the Ramsey experiment see :ref:`ramsey`.
 
 Parameters
-^^^^^^^^^^
+""""""""""
 
 .. autoclass:: qibocal.protocols.zz_interaction.ramsey_zz.RamseyZZParameters
     :noindex:
 
 
 Example
-^^^^^^^
+"""""""
 
 .. code-block:: yaml
 
@@ -96,7 +88,7 @@ From :ref:`ramsey` we know that both signals oscillates according to
    P_{|1\rangle}(t) = \frac{1}{2}\Big[1 + e^{-t/T_2^{*}}
    \cos\big(\Omega{c} \, t + \phi_0\big)\Big]
 
-where :math:`\delta_c` is the target frequenncy conditioned on
+where :math:`\delta_c` is the target frequency conditioned on
 the control state :math:`c \in \{0, 1\}`.
 The residual ZZ rate is simply the difference between the two conditional fringe frequencies:
 
@@ -106,7 +98,7 @@ The residual ZZ rate is simply the difference between the two conditional fringe
 
 
 JAZZ (Joint Amplification of ZZ)
----------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 JAZZ is an echo-based variant which combines a Ramsey-with-echo sequence on
@@ -120,14 +112,14 @@ Finally a :math:`RY(\pi/2)` is applied to the target qubit and the signal is mea
 
 
 Parameters
-^^^^^^^^^^
+""""""""""
 
 .. autoclass:: qibocal.protocols.zz_interaction.utils.ZZInteractionParameters
     :noindex:
 
 
 Example
-^^^^^^^
+"""""""
 
 .. code-block:: yaml
 

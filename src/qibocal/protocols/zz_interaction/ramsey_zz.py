@@ -232,34 +232,37 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
                     perr[2] * GHZ_TO_HZ / (2 * np.pi),
                 ]
                 setup_param_dict[setup] = popt
-        except RuntimeError as e:
+
+            popts[pair] = setup_param_dict
+            # compute zz and qq coupling
+            # zz the difference in frequency between the two measurement
+            zz[pair] = [
+                float(
+                    delta_fitting_measure[target, spectator, "X"][0]
+                    - delta_fitting_measure[target, spectator, "I"][0]
+                ),
+                float(
+                    np.sqrt(
+                        delta_fitting_measure[target, spectator, "X"][1] ** 2
+                        + delta_fitting_measure[target, spectator, "I"][1] ** 2
+                    )
+                ),
+            ]
+
+            # here we compute coupling as a frequency
+            coupling[pair] = coupling_strength(
+                omega1=data.qubit_freqs[target],
+                omega2=data.qubit_freqs[spectator],
+                anharmonicity1=data.anharmonicity[target],
+                anharmonicity2=data.anharmonicity[spectator],
+                zz=zz[pair],
+            )
+
+        # here we are catching two possible errors: fitting error in curve_fit
+        # call or error in estimating coupling strenght because anharmonicities
+        # are unknown
+        except (RuntimeError, ValueError) as e:
             log.warning(f"Ramsey fitting failed for qubit pair {pair} due to {e}.")
-            continue
-
-        popts[pair] = setup_param_dict
-        # compute zz and qq coupling
-        # zz the difference in frequency between the two measurement
-        zz[pair] = [
-            float(
-                delta_fitting_measure[target, spectator, "X"][0]
-                - delta_fitting_measure[target, spectator, "I"][0]
-            ),
-            float(
-                np.sqrt(
-                    delta_fitting_measure[target, spectator, "X"][1] ** 2
-                    + delta_fitting_measure[target, spectator, "I"][1] ** 2
-                )
-            ),
-        ]
-
-        # here we compute coupling as a frequency
-        coupling[pair] = coupling_strength(
-            omega1=data.qubit_freqs[target],
-            omega2=data.qubit_freqs[spectator],
-            anharmonicity1=data.anharmonicity[target],
-            anharmonicity2=data.anharmonicity[spectator],
-            zz=zz[pair],
-        )
 
     return RamseyZZResults(
         fitted_parameters=popts,
