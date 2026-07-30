@@ -408,10 +408,17 @@ def select_sweetspot(offset: float, normalization: float, bias_window: npt.Array
         if low <= candidate <= high:
             candidates.append(candidate)
 
-    if not candidates:
-        raise ValueError("No fitted sweetspot lies inside the acquired bias window.")
+    if candidates:
+        # If there is at least one sweetspot in the data range, take the bias with abs
+        # closest to 0.0
+        sweetspot = min(candidates, key=abs)
+    else:
+        # If there is no sweetspot in the data range, calculate the sweetspot closest to
+        # zero from the fitted model
+        n = int(np.floor(offset + 0.5))
+        sweetspot = (n - offset) / normalization
 
-    return min(candidates, key=abs)  # take the bias with abs closest to 0.0
+    return sweetspot
 
 
 def ransac_fit(
