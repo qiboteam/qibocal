@@ -31,7 +31,7 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def check_overlap_in_input_qubits(targets: list):
+def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
     """Check that target qubits do not contain duplicates."""
 
     targ = np.asarray(targets)

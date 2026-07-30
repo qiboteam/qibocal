@@ -256,10 +256,7 @@ def readout_coupling(g: float, platform: Platform, qubit: QubitId):
 
 
 def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
-    if pair in platform.calibration.two_qubits:
-        platform.calibration.two_qubits[pair].coupling = g
-    else:
-        platform.calibration.two_qubits |= {pair: TwoQubitCalibration(coupling=g)}
+    platform.calibration.two_qubits.setdefault(TwoQubitCalibration()).coupling = g
 
 
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):

@@ -22,9 +22,6 @@ from qibocal.protocols.utils import (
 
 from .acquisition import RamseyResults
 
-MAXIMUM_FIT_POINTS = 500
-"""maximum number of points to use when plotting fit results."""
-
 DAMPED_CONSTANT = 1.5
 """See :const:`rabi.utils.QUANTILE_CONSTANT` for details.
 
@@ -167,7 +164,7 @@ def fit_plot(
 ) -> str:
     """Generate the fit trace and summary table for Ramsey data."""
 
-    fit_waits = np.linspace(min(waits), max(waits), MAXIMUM_FIT_POINTS)
+    fit_waits = np.linspace(min(waits), max(waits), 500)
     fig.add_trace(
         go.Scatter(
             x=fit_waits,
@@ -208,11 +205,10 @@ def signal_plot(
     """Create a signal scatter plot and optional fit report."""
 
     error_y = (
-        dict(
-            type="data",
-            array=error_bar,
-            visible=True,
-        )
+        {
+            "type": "data",
+            "array": error_bar,
+        }
         if error_bar is not None
         else None
     )

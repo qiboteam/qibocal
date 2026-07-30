@@ -14,7 +14,6 @@ from qibocal.auto.operation import (
     QubitPairId,
     Results,
 )
-from qibocal.protocols.ramsey.processing import MAXIMUM_FIT_POINTS
 from qibocal.protocols.utils import table_dict, table_html
 
 EPS = 1  # Hz
@@ -66,7 +65,7 @@ class ZZInteractionResults(Results):
     zz: dict[QubitPairId, list[float]] = field(default_factory=dict)
     """Estimated ZZ coupling of a qubit pair."""
     coupling: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    """Estimated coupling strenght of a qubit pair."""
+    """Estimated coupling strength of a qubit pair."""
 
 
 def coupling_strength(
@@ -119,11 +118,10 @@ def signal_plot(
         go.Scatter(
             x=delays,
             y=signal.targ_prob,
-            error_y=dict(
-                type="data",
-                array=signal.targ_error,
-                visible=True,
-            ),
+            error_y={
+                "type": "data",
+                "array": signal.targ_error,
+            },
             opacity=1,
             name="Data " + label,
             showlegend=True,
@@ -137,11 +135,10 @@ def signal_plot(
         go.Scatter(
             x=delays,
             y=signal.spect_prob,
-            error_y=dict(
-                type="data",
-                array=signal.spect_error,
-                visible=True,
-            ),
+            error_y={
+                "type": "data",
+                "array": signal.spect_error,
+            },
             opacity=1,
             name="Data " + label,
             showlegend=False,
@@ -152,7 +149,7 @@ def signal_plot(
     )
 
     if fit_params is not None:
-        fit_delays = np.linspace(min(delays), max(delays), MAXIMUM_FIT_POINTS)
+        fit_delays = np.linspace(min(delays), max(delays), 500)
         target_scatters.append(
             go.Scatter(
                 x=fit_delays,
@@ -178,8 +175,8 @@ def create_report_table(target: QubitPairId, fit: ZZInteractionResults):
                 f"Coupling with {spect} [Hz]",
             ],
             [
-                fit.zz[target] if target in fit.zz else (0, 0),
-                fit.coupling[target] if target in fit.coupling else (0, 0),
+                fit.zz.get(target, (0, 0)),
+                fit.coupling.get(target, (0, 0)),
             ],
             display_error=True,
         ),

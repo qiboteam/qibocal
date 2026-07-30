@@ -21,6 +21,7 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
+from qibocal.protocols.ramsey.processing import DAMPED_CONSTANT
 from qibocal.protocols.utils import GHZ_TO_HZ, quinn_fernandes_algorithm
 
 from .utils import (
@@ -33,9 +34,6 @@ from .utils import (
     signal_plot,
     zz_update,
 )
-
-DAMPED_CONSTANT = 1.5
-"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details."""
 
 __all__ = ["jazz"]
 
@@ -184,37 +182,38 @@ def _fit(data: JAZZData) -> JAZZResults:
     fit_params: dict[QubitPairId, list[float]] = {}
     for pair in data.pairs:
         target, spectator = pair
+
+        probs = data.data[pair]["targ_prob"]
+        err = data.data[pair]["targ_error"]
+
+        # performing a min-max scaling on x and y arrays
+        probs_max = np.max(probs)
+        probs_min = np.min(probs)
+        d_max = np.max(delays)
+        d_min = np.min(delays)
+        delta_probs = probs_max - probs_min
+        delta_delay = d_max - d_min
+        min_max_probs = (probs - probs_min) / delta_probs
+        min_max_delays = (delays - d_min) / delta_delay
+        if err is not None:
+            err = err / delta_probs
+
+        omega = quinn_fernandes_algorithm(
+            min_max_probs, min_max_delays, speedup_flag=True
+        )
+        median_sig = np.median(min_max_probs)
+        q80 = np.quantile(min_max_probs, 0.8)
+        q20 = np.quantile(min_max_probs, 0.2)
+        amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+
+        p0 = [
+            median_sig,
+            amplitude_guess,
+            omega,
+            1,
+        ]
+
         try:
-            probs = data.data[pair]["targ_prob"]
-            err = data.data[pair]["targ_error"]
-
-            # performing a min-max scaling on x and y arrays
-            probs_max = np.max(probs)
-            probs_min = np.min(probs)
-            d_max = np.max(delays)
-            d_min = np.min(delays)
-            delta_probs = probs_max - probs_min
-            delta_delay = d_max - d_min
-            min_max_probs = (probs - probs_min) / delta_probs
-            min_max_delays = (delays - d_min) / delta_delay
-            if err is not None:
-                err = err / delta_probs
-
-            omega = quinn_fernandes_algorithm(
-                min_max_probs, min_max_delays, speedup_flag=True
-            )
-            median_sig = np.median(min_max_probs)
-            q80 = np.quantile(min_max_probs, 0.8)
-            q20 = np.quantile(min_max_probs, 0.2)
-            amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
-
-            p0 = [
-                median_sig,
-                amplitude_guess,
-                omega,
-                1,
-            ]
-
             popt, perr = curve_fit(
                 jazz_fit,
                 min_max_delays,
@@ -227,36 +226,36 @@ def _fit(data: JAZZData) -> JAZZResults:
                 ),
                 sigma=err,
             )
-
-            # inverting the scaling
-            popt = [
-                delta_probs * popt[0] + probs_min,
-                delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
-                popt[2] / delta_delay,
-                popt[3] / delta_delay,
-            ]
-
-            perr = np.sqrt(np.diag(perr))
-
-            fit_params |= {pair: popt}
-            zz_zeta = [
-                popt[2] * GHZ_TO_HZ / (2 * np.pi),
-                # error propagating the error for delta and then converyting into frequency
-                perr[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi),
-            ]
-            zz |= {pair: zz_zeta}
-
-            # here we compute coupling as a frequency
-            coupling[pair] = coupling_strength(
-                omega1=data.qubit_freqs[target],
-                omega2=data.qubit_freqs[spectator],
-                anharmonicity1=data.anharmonicity[target],
-                anharmonicity2=data.anharmonicity[spectator],
-                zz=zz_zeta,
-            )
-
-        except Exception as e:
+        except RuntimeError as e:
             log.warning(f"JAZZ fitting failed for pair {pair} due to {e}.")
+            continue
+
+        # inverting the scaling
+        popt = [
+            delta_probs * popt[0] + probs_min,
+            delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
+            popt[2] / delta_delay,
+            popt[3] / delta_delay,
+        ]
+
+        perr = np.sqrt(np.diag(perr))
+
+        fit_params |= {pair: popt}
+        zz_zeta = [
+            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+            # error propagating the error for delta and then converyting into frequency
+            perr[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi),
+        ]
+        zz |= {pair: zz_zeta}
+
+        # here we compute coupling as a frequency
+        coupling[pair] = coupling_strength(
+            omega1=data.qubit_freqs[target],
+            omega2=data.qubit_freqs[spectator],
+            anharmonicity1=data.anharmonicity[target],
+            anharmonicity2=data.anharmonicity[spectator],
+            zz=zz_zeta,
+        )
 
     return JAZZResults(zz=zz, coupling=coupling, fitted_parameters=fit_params)
 
