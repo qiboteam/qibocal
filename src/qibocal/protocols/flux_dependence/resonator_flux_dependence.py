@@ -49,7 +49,7 @@ class ResonatorFluxResults(Results):
     """Sweetspot for each qubit."""
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """Sweetspot for each qubit."""
-    fitted_parameters: dict[QubitId, float] = field(default_factory=dict)
+    fitted_parameters: dict[QubitId, dict[str, float]] = field(default_factory=dict)
     """Optimal parameters found from the fit,"""
     successful_fit: dict[QubitId, bool] = field(default_factory=dict)
     """flag for each qubit to see whether the fit was successful."""
@@ -185,7 +185,7 @@ def _extract_peak_coordinates(
         # subtracting the arc rather than background. To avoid this, we use
         # median_filter.
         samples_per_peak = np.ceil(APPROXIMATE_RESONATOR_PEAK_WIDTH / np.diff(freq)[0])
-        baseline = median_filter(row, size=int(20 * samples_per_peak), mode="mirror")
+        baseline = median_filter(row, size=int(samples_per_peak), mode="mirror")
         residual = baseline - np.median(baseline)
 
         # Detect both peaks and dips by finding prominent extrema in the absolute
@@ -213,17 +213,17 @@ def _extract_peak_coordinates(
 def _fit_function(data: ResonatorFluxData, qubit: QubitId):
 
     def func(
-        x: float,
+        bias: float,
         g: float,
         d: float,
         offset: float,
         normalization: float,
-        freq: float,
+        resonator_freq: float,
         charging_energy: float,
     ):
         """Fit function for resonator flux dependence."""
         return utils.transmon_readout_frequency(
-            xi=x,
+            xi=bias,
             w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
             xj=0,
             d=d,
@@ -231,7 +231,7 @@ def _fit_function(data: ResonatorFluxData, qubit: QubitId):
             offset=offset,
             crosstalk_element=1,
             charging_energy=charging_energy,
-            resonator_freq=freq,
+            resonator_freq=resonator_freq,
             g=g,
         )
 
