@@ -183,14 +183,14 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 def iSWAP_duration(duration: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration duration for specific pair."""
     platform.update(
-        {f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1.duration": duration}
+        {f"native_gates.two_qubit.{_dump_pair(pair)}.iSWAP.0.1.duration": duration}
     )
 
 
 def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration amplitude for specific pair."""
     platform.update(
-        {f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1.amplitude": amp}
+        {f"native_gates.two_qubit.{_dump_pair(pair)}.iSWAP.0.1.amplitude": amp}
     )
 
 
