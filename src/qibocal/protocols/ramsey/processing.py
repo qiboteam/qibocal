@@ -22,11 +22,10 @@ from qibocal.protocols.utils import (
 
 from .acquisition import RamseyResults
 
-MAXIMUM_FIT_POINTS = 1_000
-"""maximum number of points to use when plotting fit results."""
-
-DAMPED_CONSTANT = 1.5
-"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details.
+# same constant used for rabi experiments
+# TODO: group this constant with rabi in a single file
+QUANTILE_CONSTANT_RAMSEY = 1.5
+"""See :const:`rabi.utils.QUANTILE_CONSTANT_RABI` for details.
 
 In general in Ramsey it's intended to observe the decay of the signal due to decoherence, hence we
 need to correct and decrease a little the value of :const:`rabi.utils.DAMPED_CONSTANT`;
@@ -60,7 +59,9 @@ def ramsey_fit(x, offset, amplitude, delta, phase, decay) -> NDArray | float:
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 
-def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
+def fitting(
+    x: NDArray, y: NDArray, y_err: NDArray | None = None
+) -> tuple[list[float], list[float]]:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
@@ -75,12 +76,14 @@ def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
     delta_x = x_max - x_min
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
+    if y_err is not None:
+        y_err = y_err / delta_y
 
     omega = quinn_fernandes_algorithm(y, x, speedup_flag=True)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT_RAMSEY
 
     p0 = [
         median_sig,
@@ -100,6 +103,7 @@ def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
             [0, 0, 0, -np.inf, 0],
             [1, 1, np.inf, np.inf, np.inf],
         ),
+        sigma=y_err,
     )
 
     # inverting the scaling
@@ -126,7 +130,7 @@ def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
 
 
 def process_fit(
-    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
+    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float | None
 ) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
     """Processing Ramsey fitting results."""
 
@@ -162,7 +166,7 @@ def fit_plot(
 ) -> str:
     """Generate the fit trace and summary table for Ramsey data."""
 
-    fit_waits = np.linspace(min(waits), max(waits), MAXIMUM_FIT_POINTS)
+    fit_waits = np.linspace(min(waits), max(waits), 500)
     fig.add_trace(
         go.Scatter(
             x=fit_waits,
@@ -198,8 +202,18 @@ def signal_plot(
     target: QubitId,
     fit: RamseyResults | None,
     yaxis_title: str,
+    error_bar: NDArray | None = None,
 ) -> tuple[list[go.Figure], str]:
     """Create a signal scatter plot and optional fit report."""
+
+    error_y = (
+        {
+            "type": "data",
+            "array": error_bar,
+        }
+        if error_bar is not None
+        else None
+    )
 
     fitting_report = ""
     fig = go.Figure(
@@ -207,6 +221,7 @@ def signal_plot(
             go.Scatter(
                 x=waits,
                 y=signal,
+                error_y=error_y,
                 opacity=1,
                 name=yaxis_title,
                 showlegend=True,
@@ -216,7 +231,7 @@ def signal_plot(
         ]
     )
 
-    if fit is not None:
+    if fit is not None and target in fit.fitted_parameters:
         fitting_report = fit_plot(
             target=target,
             fit=fit,

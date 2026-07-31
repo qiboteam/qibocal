@@ -15,7 +15,7 @@ from qibocal.protocols.utils import (
 )
 from qibocal.update import replace
 
-QUANTILE_CONSTANT = 1.5
+QUANTILE_CONSTANT_RABI = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
 
 Measuring intermediate quantiles is less noise sensitive then measuring extremal points
@@ -55,7 +55,7 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool):
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT_RABI
     phase_guess = np.pi if not signal else np.pi / 2
 
     if experiment == "length":
