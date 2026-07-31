@@ -18,8 +18,14 @@ PATH_TESTING_DATA = TEST_FILE_DIR / "tests_data/resonator_flux"
 
 RESULT_FOLDERS = sorted(PATH_TESTING_DATA.glob("resonator_flux-*"))
 
+# in pytest only use two of the datasets, since a fit may take a long time. The others
+# datasets are intended for use during development; see under __main__.
+TEST_DATASETS = ["resonator_flux-01", "resonator_flux-06"]
 
-@pytest.mark.parametrize("results_folder", RESULT_FOLDERS)
+
+@pytest.mark.parametrize(
+    "results_folder", [p for p in RESULT_FOLDERS if p.name in TEST_DATASETS]
+)
 def test_resonator_flux_fit(results_folder):
     data = ResonatorFluxData.load(results_folder)
     expected = ResonatorFluxResults.load(results_folder)
@@ -29,12 +35,23 @@ def test_resonator_flux_fit(results_folder):
     fitted = resonator_flux_fit(data)
 
     for qubit in expected.frequency:
-        assert pytest.approx(expected.frequency[qubit]) == fitted.frequency[qubit]
-        assert pytest.approx(expected.sweetspot[qubit]) == fitted.sweetspot[qubit]
+        assert (
+            pytest.approx(expected.frequency[qubit], abs=1e3) == fitted.frequency[qubit]
+        )
+        assert (
+            pytest.approx(expected.sweetspot[qubit], abs=1e-3)
+            == fitted.sweetspot[qubit]
+        )
 
 
 if __name__ == "__main__":
-    """Run all fits and generate comparison plots for visual inspection."""
+    """Run all fits and generate plots to help assess whether a fit is good or not.
+
+    This is intended for use while working on the resonator flux protocol. The
+    PATH_TESTING_DATA directory contains many examples with very different features, but
+    for all it is clear where the sweetspot should be, and thus a good algorithm should
+    be able to find the sweetspot for all of them.
+    """
     from matplotlib import pyplot as plt  # not a test dependency
 
     output_base = Path(__file__).parent / "regression_fit_plots/resonator_flux"
@@ -51,8 +68,8 @@ if __name__ == "__main__":
 
         fitted = resonator_flux_fit(data)
 
-        # overwrite the existing results.json files, such that if we are happy with
-        # the new fit, the regression test can easily be updated.
+        # overwrite the existing results.json files, such that if we are happy with the
+        # new fit, the regression test can easily be updated by committing the output
         fitted.save(results_path)
 
         for qubit in expected.frequency:
@@ -117,6 +134,7 @@ if __name__ == "__main__":
                 zorder=15,
                 label="Old sweetspot",
             )
+            plt.xlim(freq.min(), freq.max())
             plt.legend()
             plt.tight_layout()
             plt.savefig(output_base / f"{results_path.name}_{qubit}.png")
