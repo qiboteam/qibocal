@@ -21,7 +21,6 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.ramsey.processing import DAMPED_CONSTANT
 from qibocal.protocols.utils import GHZ_TO_HZ, quinn_fernandes_algorithm
 
 from .utils import (
@@ -36,6 +35,10 @@ from .utils import (
 )
 
 __all__ = ["jazz"]
+
+
+QUANTILE_CONSTANT = 1.5
+"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details."""
 
 
 def jazz_fit(x, offset, amplitude, delta, decay) -> np.typing.NDArray | float:
@@ -209,7 +212,7 @@ def _jazz_fitting_process(probs, delays, err):
     median_sig = np.median(min_max_probs)
     q80 = np.quantile(min_max_probs, 0.8)
     q20 = np.quantile(min_max_probs, 0.2)
-    amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
 
     p0 = [
         median_sig,
