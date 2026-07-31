@@ -2,7 +2,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from matplotlib import pyplot as plt
 
 from qibocal.protocols.flux_dependence.resonator_flux_dependence import (
     ResonatorFluxData,
@@ -36,6 +35,7 @@ def test_resonator_flux_fit(results_folder):
 
 if __name__ == "__main__":
     """Run all fits and generate comparison plots for visual inspection."""
+    from matplotlib import pyplot as plt  # not a test dependency
 
     output_base = Path(__file__).parent / "regression_fit_plots/resonator_flux"
     output_base.mkdir(parents=True, exist_ok=True)
