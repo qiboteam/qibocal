@@ -490,6 +490,10 @@ def ransac_fit(
     # https://numpy.org/doc/2.5/reference/random/legacy.html#numpy.random.RandomState
     rng = np.random.RandomState(random_state)
 
+    # TODO: The fit is much faster using Levenberg-Marquardt instead of Trust Region
+    # Reflective, but without bounds non of the RANSAC iterations fall within the bounds
+    # (even after correcting for symmetries). Possibly this is also because there
+    # poorly/non constrained parameters.
     method = "lm" if bounds is None else "trf"
     fit_kwargs: dict[str, Any] = {} if bounds is None else {"bounds": bounds}
 
