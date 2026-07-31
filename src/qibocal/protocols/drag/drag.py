@@ -311,6 +311,7 @@ def _plot(
                 x=beta_range,
                 y=drag_fit(beta_range, *fit.fitted_parameters[target]),
                 name="Fit",
+                mode="lines",
             ),
         )
         fitting_report = table_html(

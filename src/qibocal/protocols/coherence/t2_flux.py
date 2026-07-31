@@ -126,7 +126,7 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
                     name="T2",
                     showlegend=True,
                     legendgroup="T2",
-                    mode="lines",
+                    mode="markers",
                 ),
                 go.Scatter(
                     x=np.concatenate((detuning, detuning[::-1])),

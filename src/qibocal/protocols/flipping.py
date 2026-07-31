@@ -300,6 +300,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults | None = Non
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
         ),
     )
     fig.add_trace(
@@ -333,7 +334,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults | None = Non
                     float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             ),
         )
         fitting_report = table_html(

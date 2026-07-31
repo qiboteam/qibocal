@@ -176,6 +176,7 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
             x=qubit_data.duration,
             y=qubit_data.prob_1,
             name="Data",
+            mode="markers",
         )
     )
     fig.add_trace(
@@ -197,6 +198,7 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
                 x=x,
                 y=ramsey_fit(x, *fit.fitted_parameters[target]),
                 name="Fit",
+                mode="lines",
             )
         )
         fitting_report = table_html(

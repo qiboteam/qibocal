@@ -153,6 +153,7 @@ def _plot(
             name="I",
             showlegend=True,
             legendgroup="group1",
+            mode="markers",
         ),
     )
     fig.add_trace(
@@ -163,6 +164,7 @@ def _plot(
             name="Q",
             showlegend=True,
             legendgroup="group1",
+            mode="markers",
         ),
     )
 

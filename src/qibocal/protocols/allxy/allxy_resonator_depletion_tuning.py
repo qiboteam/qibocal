@@ -125,7 +125,7 @@ def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults 
             go.Scatter(
                 x=delay_param_data.gate,
                 y=delay_param_data.prob,
-                mode="markers+lines",
+                mode="markers",
                 opacity=0.5,
                 name=f"Delay {delay_param}",
                 showlegend=True,
