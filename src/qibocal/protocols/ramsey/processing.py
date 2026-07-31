@@ -22,8 +22,10 @@ from qibocal.protocols.utils import (
 
 from .acquisition import RamseyResults
 
-QUANTILE_CONSTANT = 1.5
-"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details.
+# same constant used for rabi experiments
+# TODO: group this constant with rabi in a single file
+QUANTILE_CONSTANT_RAMSEY = 1.5
+"""See :const:`rabi.utils.QUANTILE_CONSTANT_RABI` for details.
 
 In general in Ramsey it's intended to observe the decay of the signal due to decoherence, hence we
 need to correct and decrease a little the value of :const:`rabi.utils.DAMPED_CONSTANT`;
@@ -81,7 +83,7 @@ def fitting(
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT_RAMSEY
 
     p0 = [
         median_sig,

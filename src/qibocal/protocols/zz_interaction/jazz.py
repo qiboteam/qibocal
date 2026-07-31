@@ -37,8 +37,10 @@ from .utils import (
 __all__ = ["jazz"]
 
 
-QUANTILE_CONSTANT = 1.5
-"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details."""
+# same constant used for rabi experiments
+# TODO: group this constant with rabi in a single file
+QUANTILE_CONSTANT_JAZZ = 1.5
+"""See :const:`rabi.utils.QUANTILE_CONSTANT_JAZZ` for details."""
 
 
 def jazz_fit(x, offset, amplitude, delta, decay) -> np.typing.NDArray | float:
@@ -212,7 +214,7 @@ def _jazz_fitting_process(probs, delays, err):
     median_sig = np.median(min_max_probs)
     q80 = np.quantile(min_max_probs, 0.8)
     q20 = np.quantile(min_max_probs, 0.2)
-    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT_JAZZ
 
     p0 = [
         median_sig,
