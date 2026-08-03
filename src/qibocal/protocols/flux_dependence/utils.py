@@ -565,8 +565,8 @@ def ransac_fit(
             unique_y_count,
         )
 
-        # Accept as a new best if it has a better continuity score and at least matches
-        # the minimal sample size.
+        # Prefer fits with long consecutive inlier runs (high continuity) over many
+        # scattered inliers, making noisy fits less likely to be selected.
         if inliers.sum() >= len(subset) and score > best_score:
             best_inliers = inliers
             best_params = popt
@@ -579,8 +579,8 @@ def ransac_fit(
     if best_params is None:
         raise RuntimeError(
             f"RANSAC failed to find a valid fit after {ransac_iterations} iterations: "
-            f"no sample of size {function_dof} produced at least {function_dof} inliers "
-            f"(residual_threshold={residual_threshold})."
+            f"no sample of size {function_dof} produced at least {function_dof} "
+            f"inliers (residual_threshold={residual_threshold})."
         )
 
     # Finally optimize by doing a least-squares fit to the best set of inliers.
