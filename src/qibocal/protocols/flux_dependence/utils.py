@@ -400,16 +400,19 @@ def select_sweetspot(
 ):
     """Select the closest flux sweetspot that lies in the acquired bias window.
 
-    The fitted model is periodic in the reduced flux, so every integer ``n`` gives
-    a candidate ``(n - offset) / normalization``.
+    The fitted model is periodic in ``offset + normalization * bias``. There is a
+    sweetspot for every integer ``n`` at ``bias = (n - offset) / normalization``.
 
-    If no sweetspot lies inside the acquired bias window, the closest sweetspot
-    outside the window is selected unless it is farther than ``max_distance``.
+    If no sweetspot lies inside the acquired bias window, the closest sweetspot outside
+    the window is selected unless it is farther than ``max_distance``.
     """
     low, high = np.sort(np.asarray(bias_window, dtype=float))
 
-    n_low = int(np.ceil(offset + normalization * low))
-    n_high = int(np.floor(offset + normalization * high))
+    reduced_bias_low = offset + normalization * low
+    reduced_bias_high = offset + normalization * high
+
+    n_low = int(np.ceil(reduced_bias_low))
+    n_high = int(np.floor(reduced_bias_high))
     candidates = []
     for n in range(min(n_low, n_high), max(n_low, n_high) + 1):
         candidate = (n - offset) / normalization
@@ -421,15 +424,17 @@ def select_sweetspot(
         # closest to 0.0
         return min(candidates, key=abs)
 
-    # No sweetspot lies inside the acquired window. Find the closest one to the window.
-    n = int(np.floor(offset + 0.5))
-    sweetspot = (n - offset) / normalization
+    # If candidates is empty then n_low == n_high + 1. These are the two integers
+    # immediately outside the bias acquisition window.
+    sweetspot_below = (n_low - offset) / normalization
+    sweetspot_above = (n_high - offset) / normalization
 
-    # If the nearest sweetspot is outside the window, its distance to the acquired data
-    # is measured from the closest window boundary.
-    distance = max(low - sweetspot, 0, sweetspot - high)
+    def distance_to_window(c):
+        return max(low - c, 0, c - high)
 
-    if distance > max_distance:
+    sweetspot = min(sweetspot_below, sweetspot_above, key=distance_to_window)
+
+    if distance_to_window(sweetspot) > max_distance:
         raise ValueError("No fitted sweetspot lies inside the acquired bias window.")
 
     return sweetspot
