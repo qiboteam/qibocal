@@ -14,19 +14,12 @@ from qibocal.protocols.flux_dependence.qubit_flux_dependence import (
 from qibocal.protocols.utils import GHZ_TO_HZ
 
 TEST_FILE_DIR = Path(__file__).resolve().parent
-PATH_TESTING_DATA = TEST_FILE_DIR / "tests_data/qubit_flux"
+PATH_TESTING_DATA = TEST_FILE_DIR / "tests_data"
 
 RESULT_FOLDERS = sorted(PATH_TESTING_DATA.glob("qubit_flux-*"))
 
 
-# in pytest only use two of the datasets, since a fit may take a long time. The others
-# datasets are intended for use during development; see under __main__.
-TEST_DATASETS = ["qubit_flux-01", "qubit_flux-02"]
-
-
-@pytest.mark.parametrize(
-    "results_folder", [p for p in RESULT_FOLDERS if p.name in TEST_DATASETS]
-)
+@pytest.mark.parametrize("results_folder", [p for p in RESULT_FOLDERS])
 def test_qubit_flux_fit(results_folder):
     data = QubitFluxData.load(results_folder)
     expected = QubitFluxResults.load(results_folder)
