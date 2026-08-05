@@ -142,6 +142,7 @@ def _plot(
             z=data.normalized_signal(target).ravel(),
             colorbar={"title": "Normalized signal"},
             colorscale="Viridis",
+            colorbar_x=1.01,
         )
     )
 

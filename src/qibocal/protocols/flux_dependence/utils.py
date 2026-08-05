@@ -66,6 +66,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             z=qubit_data.signal,
             colorbar={"title": "Signal [a.u.]"},
             colorscale="Viridis",
+            colorbar_x=1.01,
         ),
     )
 
