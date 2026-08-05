@@ -203,7 +203,7 @@ def _plot(data: QubitVzData, target: QubitId, fit: QubitVzResults = None):
                 opacity=1,
                 name="Raw data",
                 showlegend=True,
-                mode="lines",
+                mode="markers",
             ),
         ]
     )
@@ -223,7 +223,7 @@ def _plot(data: QubitVzData, target: QubitId, fit: QubitVzResults = None):
                 x=phi,
                 y=_fit_function(phi, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
                 marker_color="rgb(255, 130, 67)",
             ),
         )

@@ -209,6 +209,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
                     x=data.thetas,
                     y=fit.chsh[target[0], target[1], bell_state],
                     name="Bare",
+                    mode="lines",
                 )
             )
             if fit.chsh_mitigated:
@@ -217,6 +218,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
                         x=data.thetas,
                         y=fit.chsh_mitigated[target[0], target[1], bell_state],
                         name="Mitigated",
+                        mode="lines",
                     )
                 )
 

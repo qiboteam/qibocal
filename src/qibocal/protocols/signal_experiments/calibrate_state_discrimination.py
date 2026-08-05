@@ -204,6 +204,7 @@ def _plot(
                 opacity=1,
                 name="Real",
                 showlegend=True,
+                mode="lines",
             )
         )
 
@@ -214,6 +215,7 @@ def _plot(
                 opacity=1,
                 name="Imag",
                 showlegend=True,
+                mode="lines",
             )
         )
 

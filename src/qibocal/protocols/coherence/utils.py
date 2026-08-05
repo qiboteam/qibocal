@@ -225,7 +225,7 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
                 name="Probability of 1",
                 showlegend=True,
                 legendgroup="Probability of 1",
-                mode="lines",
+                mode="markers",
             ),
             go.Scatter(
                 x=np.concatenate((waits, waits[::-1])),
@@ -252,7 +252,7 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
                 x=waitrange,
                 y=exp_decay(waitrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             ),
         )
         fitting_report = table_html(

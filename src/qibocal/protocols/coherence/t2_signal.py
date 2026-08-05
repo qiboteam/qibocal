@@ -141,6 +141,7 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
         )
     )
 
@@ -161,7 +162,7 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
                     *params,
                 ),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(

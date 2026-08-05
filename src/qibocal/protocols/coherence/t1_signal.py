@@ -193,6 +193,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
         )
     )
 
@@ -209,7 +210,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
                 x=waitrange,
                 y=utils.exp_decay(waitrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(

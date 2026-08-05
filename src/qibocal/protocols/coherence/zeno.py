@@ -144,7 +144,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 name="Probability of 1",
                 showlegend=True,
                 legendgroup="Probability of 1",
-                mode="lines",
+                mode="markers",
             ),
             go.Scatter(
                 x=np.concatenate((readouts, readouts[::-1])),
@@ -171,7 +171,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 x=waitrange,
                 y=utils.exp_decay(waitrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(

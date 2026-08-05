@@ -209,6 +209,7 @@ def _plot(
                 y=data[target]["assignment_fidelity"],
                 opacity=opacity,
                 showlegend=True,
+                mode="markers",
             ),
             row=1,
             col=1,

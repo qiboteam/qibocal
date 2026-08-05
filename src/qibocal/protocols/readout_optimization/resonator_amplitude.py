@@ -174,7 +174,7 @@ def _plot(
                 y=data[target]["error"],
                 opacity=opacity,
                 showlegend=True,
-                mode="lines+markers",
+                mode="markers",
             ),
             row=1,
             col=1,
