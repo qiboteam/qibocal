@@ -77,14 +77,37 @@ class Executor(BaseModel):
         protocol: Protocol,
         parameters: Action,
         mode: ExecutionMode = AUTOCALIBRATION,
-        output: Path | None = None,
     ) -> Completed:
-        """Run single protocol in ExecutionMode mode."""
+        """Run a calibration protocol and record the completed task.
+
+        The executor preserves the execution history and chooses the platform
+        instance used for the task based on the requested mode. If acquisition is
+        requested, the current live platform is used. If only fitting or analysis
+        is required, the platform is reconstructed from the output folder so that
+        the exact experiment configuration is reused.
+        If the mode contains :class:`ExecutionMode.FIT`, and the action is
+        configured to update the platform, it is updated using the fitted parameters.
+        """
+
+        output = self.path
 
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
         completed = task.run(
-            platform=self.platform,
+            platform=(
+                # if I need to acquire data I need to create from scratch
+                # the platform with all its hardware configurations;
+                # when executor is just fitting I need to create the exact same
+                # platform of the experiment (saved in the experiment folder), and here
+                # the hardware configuration is unnecessary.
+                self.platform
+                if ExecutionMode.ACQUIRE in mode
+                else CalibrationPlatform.from_datafolder(
+                    folder_path=output,
+                    platform_name=self.platform.name,
+                    dummy_hardware=True,
+                )
+            ),
             targets=self.targets,
             mode=mode,
             folder=self.history.task_path(
@@ -167,9 +190,7 @@ class Executor(BaseModel):
                     "parameters": params | positional | kwargs,
                 }
             )
-            return self.run_protocol(
-                protocol, parameters=action, mode=mode, output=self.path
-            )
+            return self.run_protocol(protocol, parameters=action, mode=mode)
 
         return wrapper
 
