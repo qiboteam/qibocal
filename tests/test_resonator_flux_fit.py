@@ -12,9 +12,9 @@ from qibocal.protocols.flux_dependence.resonator_flux_dependence import (
 RESULT_FOLDERS = sorted(PATH_TESTING_DATA.glob("resonator_flux-*"))
 
 
-# Regression test based on example experimental data
 @pytest.mark.parametrize("results_folder", [p for p in RESULT_FOLDERS])
 def test_resonator_flux_fit(results_folder):
+    """Regression test based on example experimental data"""
     data = ResonatorFluxData.load(results_folder)
     expected = ResonatorFluxResults.load(results_folder)
 
