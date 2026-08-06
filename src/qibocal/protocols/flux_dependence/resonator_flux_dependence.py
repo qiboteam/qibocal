@@ -178,17 +178,20 @@ def _extract_peak_coordinates(
     is_peak = []
     for bias_val, row in zip(bias, centered_signal):
         # There may be fluctuations along the frequency axis caused by elements such
-        # cables or amplifiers. In principle this is bias independent, so we do the same
-        # as we did before, and subtract the median per frequency. However, the arc may
-        # be very flat and take up the majority of the window (perhaps together with
-        # another background feature of the same extremum), in which case we end up
-        # subtracting the arc rather than background. To avoid this, we use
-        # median_filter.
+        # cables or amplifiers. In principle this is bias independent, so ideally we
+        # would do the same as we did before and subtract the median per frequency.
+        # However, the arc may be very flat and take up the majority of the window
+        # (perhaps together with another background feature of the same extremum), in
+        # which case we end up subtracting the arc rather than background.
+        #
+        # Instead, estimate the background with a median filter whose window is much
+        # wider than twice the expected resonator peak. This removes slowly varying
+        # background features while preserving the resonator peak.
         samples_per_peak = np.ceil(
             APPROXIMATE_RESONATOR_PEAK_WIDTH / (freq[1] - freq[0])
         )
-        baseline = median_filter(row, size=int(samples_per_peak), mode="mirror")
-        residual = baseline - np.median(baseline)
+        baseline = median_filter(row, size=5 * int(samples_per_peak), mode="mirror")
+        residual = row - np.median(baseline)
 
         # Detect both peaks and dips by finding prominent extrema in the absolute
         # residual
@@ -201,7 +204,7 @@ def _extract_peak_coordinates(
         best = peaks[np.argmax(props["prominences"])]
         bias_pts.append(bias_val)
         freq_pts.append(freq[best])
-        is_peak.append(row[best] > 0)
+        is_peak.append(residual[best] > 0)
 
     # Keep only the dominant extremum type and ignore extrema of the opposite feature
     select_peaks = sum(is_peak) >= (len(is_peak) / 2)
