@@ -145,6 +145,3 @@ dmypy.json
 
 # Marimo
 __marimo__
-
-# Plots to visually confirm regression fit is good, they are not for CI testing
-regression_fit_plots/
