@@ -184,7 +184,9 @@ def _extract_peak_coordinates(
         # another background feature of the same extremum), in which case we end up
         # subtracting the arc rather than background. To avoid this, we use
         # median_filter.
-        samples_per_peak = np.ceil(APPROXIMATE_RESONATOR_PEAK_WIDTH / np.diff(freq)[0])
+        samples_per_peak = np.ceil(
+            APPROXIMATE_RESONATOR_PEAK_WIDTH / (freq[1] - freq[0])
+        )
         baseline = median_filter(row, size=int(samples_per_peak), mode="mirror")
         residual = baseline - np.median(baseline)
 
