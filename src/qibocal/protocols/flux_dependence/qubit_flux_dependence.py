@@ -10,9 +10,7 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
-from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
-from scipy.special import erfinv
 
 from qibocal.auto.operation import Data, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -184,30 +182,16 @@ def _extract_peak_coordinates(
     one peak per flux bin.
     """
 
-    # Sometimes we observe bright lines for certain bias values that are constant in
-    # frequency
-    centred_signal = signal - np.median(signal, axis=1, keepdims=True)
+    filtered_signal = utils.filter_data(signal)
+    scaled_signal = utils.minmax_scaling(filtered_signal, axis=1)
 
     peak_biases, peak_frequencies = [], []
-    for bias, signal_row in zip(biases, centred_signal):
-        # The Gaussian filter reduces noise in the background and helps make a noisy
-        # peak into a stronger signal.
-        smoothed_row = gaussian_filter1d(signal_row, sigma=2)
-
-        # The standard deviation is computed from the median absolute deviation instead
-        # of the standard deviation itself to avoid the peaks in the arc from affecting
-        # the estimate of the background noise. While this prominence threshold is
-        # somewhat motivated, it is still a choice and it has been observed that the
-        # result is not very sensitive to it and probably it is even fine to set the
-        # threshold to 0.
-        row_mad = np.median(np.abs(smoothed_row - np.median(smoothed_row)))
-        row_std = 1.0 / (np.sqrt(2) * erfinv(0.5)) * row_mad
-
+    for bias, row in zip(biases, scaled_signal):
         # Use find_peaks instead of argmax because there may be nothing in a row. Try
         # both peak and dip per row, since this may differ per row due to moving of the
         # resonator frequency.
-        peaks, peak_props = find_peaks(smoothed_row, prominence=row_std)
-        dips, dip_props = find_peaks(-smoothed_row, prominence=row_std)
+        peaks, peak_props = find_peaks(row, prominence=0.2)
+        dips, dip_props = find_peaks(-row, prominence=0.2)
         if len(peaks) == 0 and len(dips) == 0:
             continue
         # Keep only the feature with the largest prominence per bias.
@@ -265,10 +249,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        freq, freq_idx = np.unique(qubit_data.freq, return_inverse=True)
-        bias, bias_idx = np.unique(qubit_data.bias, return_inverse=True)
-        signal = np.full((len(bias), len(freq)), np.nan)
-        signal[bias_idx, freq_idx] = qubit_data.signal
+        freq = np.unique(qubit_data.freq)
+        bias = np.unique(qubit_data.bias)
+        signal = qubit_data.signal.reshape(len(bias), len(freq))
 
         peak_biases, peak_frequencies = _extract_peak_coordinates(
             frequencies=freq,
