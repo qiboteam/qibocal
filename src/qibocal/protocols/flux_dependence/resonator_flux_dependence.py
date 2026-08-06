@@ -206,7 +206,9 @@ def _extract_peak_coordinates(
         freq_pts.append(freq[best])
         is_peak.append(residual[best] > 0)
 
-    # Keep only the dominant extremum type and ignore extrema of the opposite feature
+    # Keep only the dominant extremum type and ignore extrema of the opposite feature.
+    # This is because it depends on the measurement setup (transition or reflection) and
+    # does not change with the bias point.
     select_peaks = sum(is_peak) >= (len(is_peak) / 2)
     mask = np.equal(is_peak, select_peaks)
     bias_pts = np.asarray(bias_pts)[mask]
