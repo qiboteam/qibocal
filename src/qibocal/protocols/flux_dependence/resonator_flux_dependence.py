@@ -267,10 +267,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     for qubit in data.qubits:
         qubit_data = data[qubit]
 
-        freq, freq_idx = np.unique(qubit_data.freq, return_inverse=True)
-        bias, bias_idx = np.unique(qubit_data.bias, return_inverse=True)
-        signal = np.full((len(bias), len(freq)), np.nan)
-        signal[bias_idx, freq_idx] = qubit_data.signal
+        freq = np.unique(qubit_data.freq)
+        bias = np.unique(qubit_data.bias)
+        signal = qubit_data.signal.reshape(len(bias), len(freq))
 
         peak_biases, peak_frequencies = _extract_peak_coordinates(
             freq=freq,
