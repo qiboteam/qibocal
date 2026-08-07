@@ -1,9 +1,15 @@
+import inspect
+import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import ndimage
+from scipy.optimize import OptimizeWarning, curve_fit
 
 from ...auto.operation import Parameters
 from ..utils import (
@@ -53,7 +59,14 @@ def create_data_array(freq, bias, signal, dtype):
     return np.rec.array(ar)
 
 
-def flux_dependence_plot(data, fit, qubit, fit_function=None):
+def flux_dependence_plot(
+    data,
+    fit,
+    qubit,
+    inliers,
+    outliers,
+    fit_function,
+):
     figures = []
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
@@ -68,19 +81,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             colorscale="Viridis",
         ),
     )
-
-    filtered_freq, filtered_bias = data.filtered_data(qubit)
-
-    if filtered_freq is not None and filtered_bias is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=filtered_freq * HZ_TO_GHZ,
-                y=filtered_bias,
-                name="Estimated points",
-                mode="markers",
-                marker={"color": "rgb(248, 248, 248)"},
-            )
-        )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
@@ -118,6 +118,39 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 showlegend=True,
             ),
         )
+
+        # Inliers and outliers plotting for debugging purposes
+        if len(inliers) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=inliers[:, 1] * HZ_TO_GHZ,  # frequency
+                    y=inliers[:, 0],  # bias
+                    mode="markers",
+                    marker={
+                        "size": 6,
+                        "color": "white",
+                    },
+                    name="Inliers",
+                    showlegend=True,
+                    visible="legendonly",
+                ),
+            )
+
+        if len(outliers) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=outliers[:, 1] * HZ_TO_GHZ,  # frequency
+                    y=outliers[:, 0],  # bias
+                    mode="markers",
+                    marker={
+                        "size": 6,
+                        "color": "green",
+                    },
+                    name="Outliers",
+                    showlegend=True,
+                    visible="legendonly",
+                ),
+            )
 
     fig.update_xaxes(
         title_text="Frequency [GHz]",
@@ -314,22 +347,6 @@ def transmon_readout_frequency(
     )
 
 
-def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
-    """Returns bounds for qubit flux fit."""
-    return (
-        [
-            qubit_frequency * HZ_TO_GHZ - 1,
-            0,
-            -1,
-        ],
-        [
-            qubit_frequency * HZ_TO_GHZ + 1,
-            np.inf,
-            1,
-        ],
-    )
-
-
 def filter_data(matrix_z: np.ndarray):
     """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
 
@@ -397,3 +414,229 @@ def flux_extract_feature(
     signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
 
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
+
+
+def _function_dof(fit_function) -> int:
+    sig = inspect.signature(fit_function)
+
+    # Filter for positional parameters without defaults
+    params = [
+        p
+        for p in sig.parameters.values()
+        if p.kind
+        in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        and p.default is inspect.Parameter.empty
+    ]
+
+    # Subtract 1 for the independent variable
+    return len(params) - 1
+
+
+def select_sweetspot(
+    offset: float,
+    normalization: float,
+    bias_window: npt.ArrayLike,
+    max_distance: float = 0,
+):
+    """Select the closest flux sweetspot that lies in the acquired bias window.
+
+    The fitted model is periodic in ``offset + normalization * bias``. There is a
+    sweetspot for every integer ``n`` at ``bias = (n - offset) / normalization``.
+
+    If no sweetspot lies inside the acquired bias window, the closest sweetspot outside
+    the window is selected unless it is farther than ``max_distance``.
+    """
+    low, high = np.sort(np.asarray(bias_window, dtype=float))
+
+    reduced_bias_low = offset + normalization * low
+    reduced_bias_high = offset + normalization * high
+
+    n_low = int(np.ceil(reduced_bias_low))
+    n_high = int(np.floor(reduced_bias_high))
+    candidates = []
+    for n in range(min(n_low, n_high), max(n_low, n_high) + 1):
+        candidate = (n - offset) / normalization
+        if low <= candidate <= high:
+            candidates.append(candidate)
+
+    if candidates:
+        # If there is at least one sweetspot in the bias window, take the bias with abs
+        # closest to 0.0
+        return min(candidates, key=abs)
+
+    # If candidates is empty then n_low == n_high + 1. These are the two integers
+    # immediately outside the bias acquisition window.
+    sweetspot_below = (n_low - offset) / normalization
+    sweetspot_above = (n_high - offset) / normalization
+
+    def distance_to_window(c):
+        return max(low - c, 0, c - high)
+
+    sweetspot = min(sweetspot_below, sweetspot_above, key=distance_to_window)
+
+    if distance_to_window(sweetspot) > max_distance:
+        raise ValueError("No fitted sweetspot lies inside the acquired bias window.")
+
+    return sweetspot
+
+
+def _continuity_score(
+    xvals: npt.NDArray[np.floating],
+    yvals: npt.NDArray[np.floating],
+    inliers: npt.NDArray[np.bool_],
+) -> int:
+    """Score consecutive inlier runs quadratically, counting each y-value once."""
+    order = np.argsort(xvals)  # in practice they are already ordered
+    ordered_yvals = np.asarray(yvals)[order]
+    ordered_inliers = np.asarray(inliers, dtype=bool)[order]
+
+    # pad with 0s to ensure a change if the arc starts at the boundary
+    padded = np.pad(ordered_inliers.astype(int), (1, 1))
+    changes = np.diff(padded)
+    starts = np.flatnonzero(changes == 1)
+    stops = np.flatnonzero(changes == -1)
+
+    # If multiple points are at the same y-value, count them only once. This is to
+    # deweight clusters/lines of peaks that are part of the background.
+    unique_y_counts = [
+        len(np.unique(ordered_yvals[start:stop])) for start, stop in zip(starts, stops)
+    ]
+
+    return int(np.sum(np.square(unique_y_counts)))
+
+
+def ransac_fit(
+    xvals: npt.NDArray[np.floating],
+    yvals: npt.NDArray[np.floating],
+    fit_function: Callable[..., np.ndarray],
+    residual_threshold: float,
+    min_trials: int = 100,
+    max_trials: int = 5000,
+    stop_probability: float = 0.999,
+    random_state: int = 0,
+    bounds: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.bool]]:
+    """Fit a model to data using RANSAC, ignoring outliers.
+
+    Repeatedly fits ``fit_function`` to minimal random subsets of the data (sized to the
+    function's degrees of freedom). Points with residual below ``residual_threshold``
+    are inliers. Candidate models are scored by summing the squared lengths of
+    consecutive inlier runs along the x-axis, favoring a continuous feature over
+    scattered noise.
+
+    The number of trials adapts dynamically based on the current inlier
+    ratio, following the standard RANSAC stopping criterion, and is bounded by
+    ``min_trials`` and ``max_trials``. A final least-squares refit is performed on the
+    best inlier set.
+
+    Returns:
+        Tuple of (fit parameters, boolean array of inliers).
+    """
+    # A fixed seed makes debugging and regression tests reproducible. RandomState's
+    # output is guaranteed to be stable across numpy versions:
+    # https://numpy.org/doc/2.5/reference/random/legacy.html#numpy.random.RandomState
+    rng = np.random.RandomState(random_state)
+
+    # TODO: The fit is much faster using Levenberg-Marquardt instead of Trust Region
+    # Reflective, but without bounds non of the RANSAC iterations fall within the bounds
+    # (even after correcting for symmetries). Possibly this is also because there
+    # poorly/non constrained parameters.
+    method = "lm" if bounds is None else "trf"
+    fit_kwargs: dict[str, Any] = {} if bounds is None else {"bounds": bounds}
+
+    function_dof = _function_dof(fit_function)
+
+    # N_needed is the adaptively-updated trial budget; start at infinity so the loop is
+    # initially bounded only by min_trials/max_trials.
+    N_needed = np.inf
+    ransac_iterations = 0
+    best_inliers = np.zeros(len(xvals), dtype=bool)
+    best_params = None
+    best_score = (0, 0)
+    # Track already-sampled subsets so we don't waste a trial refitting the exact same
+    # minimal sample twice.
+    tried_subsets = set()
+
+    # Standard adaptive RANSAC loop: keep going until we've hit max_trials, or until the
+    # estimated number of iterations needed to find an all-inlier sample (with
+    # probability stop_probability) drops below where we already are, although we never
+    # stop before attempting at least min_trials.
+    # https://en.wikipedia.org/wiki/Random_sample_consensus#Parameters
+    while (
+        ransac_iterations < min(N_needed, max_trials) or ransac_iterations < min_trials
+    ):
+        ransac_iterations += 1
+
+        # Draw a minimal sample because fewer samples means that the probability of all
+        # points being on the feature of interest is maximized. To perform a fit we need
+        # at least as many points as the model's dof.
+        subset = rng.choice(len(xvals), function_dof, replace=False)
+        subset_ = tuple(sorted(subset))
+        if subset_ in tried_subsets:
+            continue
+        tried_subsets.add(subset_)
+
+        try:
+            with warnings.catch_warnings():
+                # Poor fits are expected for random subsets, so suppress these warnings.
+                warnings.simplefilter("ignore", OptimizeWarning)
+                popt, _ = curve_fit(
+                    fit_function,
+                    xvals[subset],
+                    yvals[subset],
+                    method=method,
+                    **fit_kwargs,
+                )
+        except RuntimeError:
+            continue
+
+        residuals_all = np.abs(yvals - fit_function(xvals, *popt))
+        inliers = residuals_all < residual_threshold
+        if inliers.sum() == len(xvals):
+            # all points are inliers, so we cannot do better
+            best_inliers = inliers
+            best_params = popt
+            break
+
+        # Use a continuity score to reduce the sensitivity to a noisy background.
+        # Especially if the arc is only in a small part of the bias range.
+        # TODO: would be nice to have this as a callback
+        unique_y_count = len(np.unique(yvals[inliers]))
+        score = (
+            _continuity_score(xvals, yvals, inliers),
+            unique_y_count,
+        )
+
+        # Prefer fits with long consecutive inlier runs (high continuity) over many
+        # scattered inliers, making noisy fits less likely to be selected.
+        if inliers.sum() >= len(subset) and score > best_score:
+            best_inliers = inliers
+            best_params = popt
+            best_score = score
+            # Re-estimate how many trials are needed to have `stop_probability`
+            # confidence of drawing an all-inlier minimal sample.
+            denom = np.log(1 - (best_inliers.sum() / len(xvals)) ** len(subset))
+            N_needed = np.log(1 - stop_probability) / denom
+
+    if best_params is None:
+        raise RuntimeError(
+            f"RANSAC failed to find a valid fit after {ransac_iterations} iterations: "
+            f"no sample of size {function_dof} produced at least {function_dof} "
+            f"inliers (residual_threshold={residual_threshold})."
+        )
+
+    # Finally optimize by doing a least-squares fit to the best set of inliers.
+    popt, _ = curve_fit(
+        fit_function,
+        xvals[best_inliers],
+        yvals[best_inliers],
+        p0=best_params,
+        method=method,
+        maxfev=100000,
+        **fit_kwargs,
+    )
+
+    # These are for visualization in the plot only
+    inliers_mask = best_inliers
+
+    return popt, inliers_mask

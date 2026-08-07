@@ -10,7 +10,7 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
-from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -61,6 +61,13 @@ class QubitFluxResults(Results):
     """V_ii coefficient."""
     successful_fit: dict[QubitId, bool] = field(default_factory=dict)
     """flag for each qubit to see whether the fit was successful."""
+    # The attributes below are only for visualizing the inliers/outliers for debugging
+    peak_biases: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Bias of extracted peaks (for visualization)."""
+    peak_frequencies: dict[QubitId, list[int]] = field(default_factory=dict)
+    """Frequency of extracted peaks (for visualization)."""
+    inliers: dict[QubitId, list[bool]] = field(default_factory=dict)
+    """Boolean mask indicating which peaks are inliers (for visualization)."""
 
 
 QubitFluxType = np.dtype(
@@ -90,20 +97,6 @@ class QubitFluxData(Data):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
             freq, bias, signal, dtype=QubitFluxType
-        )
-
-    @property
-    def find_min(self) -> bool:
-        """Returns True if resonator_type is 2D else False otherwise."""
-        return self.resonator_type != "2D"
-
-    def filtered_data(self, qubit: QubitId) -> np.ndarray:
-        """Apply mask to specific qubit data."""
-        return utils.flux_extract_feature(
-            self.data[qubit].freq,
-            self.data[qubit].bias,
-            self.data[qubit].signal,
-            self.find_min,
         )
 
 
@@ -187,6 +180,43 @@ def _acquisition(
     return data
 
 
+def _extract_peak_coordinates(
+    frequencies: npt.NDArray[np.floating],
+    biases: npt.NDArray[np.floating],
+    signal: npt.NDArray[np.floating],
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+    """Extract the most prominent peaks in the qubit (flux,frequency) landscape. At most
+    one peak per flux bin.
+    """
+
+    filtered_signal = utils.filter_data(signal)
+    scaled_signal = utils.minmax_scaling(filtered_signal, axis=1)
+
+    peak_biases, peak_frequencies = [], []
+    for bias, row in zip(biases, scaled_signal):
+        # Use find_peaks instead of argmax because there may be nothing in a row. Try
+        # both peak and dip per row, since this may differ per row due to moving of the
+        # resonator frequency.
+        peaks, peak_props = find_peaks(row, prominence=0.2)
+        dips, dip_props = find_peaks(-row, prominence=0.2)
+        if len(peaks) == 0 and len(dips) == 0:
+            continue
+        # Keep only the feature with the largest prominence per bias.
+        if len(dips) == 0 or (
+            len(peaks) > 0
+            and peak_props["prominences"].max() >= dip_props["prominences"].max()
+        ):
+            best = peaks[np.argmax(peak_props["prominences"])]
+        else:
+            best = dips[np.argmax(dip_props["prominences"])]
+
+        # Store bias and frequency of the peak.
+        peak_biases.append(bias)
+        peak_frequencies.append(frequencies[best])
+
+    return np.asarray(peak_biases), np.asarray(peak_frequencies)
+
+
 def _fit_function(data: QubitFluxData, qubit: QubitId):
 
     def func(x, w_max, normalization, offset):
@@ -222,45 +252,73 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     matrix_element = {}
     fitted_parameters = {}
     successful_fit = {}
+    peak_biases_dict = {}
+    peak_frequencies_dict = {}
+    inliers_dict = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        # extract signal from 2D plot based on SNR mask
-        frequencies, biases = data.filtered_data(qubit)
+        freq = np.unique(qubit_data.freq)
+        bias = np.unique(qubit_data.bias)
+        signal = qubit_data.signal.reshape(len(bias), len(freq))
 
-        if frequencies is None or biases is None:
+        peak_biases, peak_frequencies = _extract_peak_coordinates(
+            frequencies=freq,
+            biases=bias,
+            signal=signal,
+        )
+
+        bounds = (
+            [
+                data.qubit_frequency[qubit] * HZ_TO_GHZ - 1,
+                0,
+                -1,
+            ],
+            [
+                data.qubit_frequency[qubit] * HZ_TO_GHZ + 1,
+                np.inf,
+                1,
+            ],
+        )
+
+        try:
+            popt, inliers_mask = utils.ransac_fit(
+                peak_biases,
+                peak_frequencies * HZ_TO_GHZ,
+                fit_function=_fit_function(data, qubit),
+                # approximate width of a peak in the qubit spectroscopy
+                residual_threshold=0.2e6 * HZ_TO_GHZ,
+                bounds=bounds,
+            )
+
+            fitted_parameters[qubit] = {
+                "w_max": popt[0],
+                "xj": 0,
+                "d": 0,
+                "normalization": popt[1],
+                "offset": popt[2],
+                "crosstalk_element": 1,
+                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+            }
+            frequency[qubit] = popt[0] * GHZ_TO_HZ
+            sweetspot[qubit] = utils.select_sweetspot(
+                popt[2],
+                popt[1],
+                (np.min(qubit_data.bias), np.max(qubit_data.bias)),
+                max_distance=0.3,
+            )
+            matrix_element[qubit] = popt[1]
+            successful_fit[qubit] = True
+
+            # Store peak coordinates and inliers/outliers for plotting
+            peak_biases_dict[qubit] = peak_biases.tolist()
+            peak_frequencies_dict[qubit] = peak_frequencies.tolist()
+            inliers_dict[qubit] = inliers_mask.tolist()
+
+        except (ValueError, RuntimeError) as e:
             successful_fit[qubit] = False
-        else:
-            try:
-                popt = curve_fit(
-                    _fit_function(data, qubit),
-                    biases,
-                    frequencies * HZ_TO_GHZ,
-                    bounds=utils.qubit_flux_dependence_fit_bounds(
-                        data.qubit_frequency[qubit],
-                    ),
-                    maxfev=100000,
-                )[0]
-                fitted_parameters[qubit] = {
-                    "w_max": popt[0],
-                    "xj": 0,
-                    "d": 0,
-                    "normalization": popt[1],
-                    "offset": popt[2],
-                    "crosstalk_element": 1,
-                    "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-                }
-                frequency[qubit] = popt[0] * GHZ_TO_HZ
-                middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
-                sweetspot[qubit] = (
-                    np.round(popt[1] * middle_bias + popt[2]) - popt[2]
-                ) / popt[1]
-                matrix_element[qubit] = popt[1]
-                successful_fit[qubit] = True
-            except ValueError as e:
-                successful_fit[qubit] = False
-                log.error(f"Error in qubit_flux protocol fit: {e}.")
+            log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
         frequency=frequency,
@@ -268,18 +326,35 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
         successful_fit=successful_fit,
+        peak_biases=peak_biases_dict,
+        peak_frequencies=peak_frequencies_dict,
+        inliers=inliers_dict,
     )
 
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     """Plotting function for QubitFlux Experiment."""
 
+    inliers_data = outliers_data = None
+    if fit is not None and target in fit.peak_biases:
+        peak_biases = np.asarray(fit.peak_biases.get(target, []))
+        peak_frequencies = np.asarray(fit.peak_frequencies.get(target, []))
+        coordinates_all_peaks = np.column_stack([peak_biases, peak_frequencies])
+
+        inliers_mask = np.asarray(fit.inliers.get(target, []), dtype=bool)
+
+        inliers_data = coordinates_all_peaks[inliers_mask]
+        outliers_data = coordinates_all_peaks[~inliers_mask]
+
     figures = utils.flux_dependence_plot(
         data,
         fit,
         target,
         fit_function=utils.transmon_frequency,
+        inliers=inliers_data,
+        outliers=outliers_data,
     )
+
     if fit is not None and fit.successful_fit[target]:
         fitting_report = table_html(
             table_dict(
