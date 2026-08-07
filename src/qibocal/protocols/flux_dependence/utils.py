@@ -456,6 +456,8 @@ def _continuity_score(
     starts = np.flatnonzero(changes == 1)
     stops = np.flatnonzero(changes == -1)
 
+    # If multiple points are at the same y-value, count them only once. This is to
+    # deweight clusters/lines of peaks that are part of the background.
     unique_y_counts = [
         len(np.unique(ordered_yvals[start:stop])) for start, stop in zip(starts, stops)
     ]
