@@ -50,9 +50,16 @@ class ResonatorFluxResults(Results):
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """Sweetspot for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]] = field(default_factory=dict)
-    """Optimal parameters found from the fit,"""
+    """Optimal parameters found from the fit."""
     successful_fit: dict[QubitId, bool] = field(default_factory=dict)
     """flag for each qubit to see whether the fit was successful."""
+    # The attributes below are only for visualizing the inliers/outliers for debugging
+    peak_biases: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Bias of extracted peaks (for visualization)."""
+    peak_frequencies: dict[QubitId, list[int]] = field(default_factory=dict)
+    """Frequency of extracted peaks (for visualization)."""
+    inliers: dict[QubitId, list[bool]] = field(default_factory=dict)
+    """Boolean mask indicating which peaks are inliers (for visualization)."""
 
 
 ResFluxType = np.dtype(
@@ -263,6 +270,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     sweetspot = {}
     matrix_element = {}
     successful_fit = {}
+    peak_biases_dict = {}
+    peak_frequencies_dict = {}
+    inliers_dict = {}
 
     for qubit in data.qubits:
         qubit_data = data[qubit]
@@ -294,7 +304,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             ],
         )
         try:
-            popt = utils.ransac_fit(
+            popt, inliers_mask = utils.ransac_fit(
                 peak_biases,
                 peak_frequencies * HZ_TO_GHZ,
                 fit_function=fit_function,
@@ -323,6 +333,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
             successful_fit[qubit] = True
+
+            # Store peak coordinates and inliers/outliers for plotting
+            peak_biases_dict[qubit] = peak_biases
+            peak_frequencies_dict[qubit] = peak_frequencies
+            inliers_dict[qubit] = inliers_mask
+
         except (ValueError, RuntimeError) as e:
             successful_fit[qubit] = False
             log.error(f"Error in resonator_flux protocol fit: {e} ")
@@ -335,13 +351,34 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         asymmetry=asymmetry,
         fitted_parameters=fitted_parameters,
         successful_fit=successful_fit,
+        peak_biases=peak_biases_dict,
+        peak_frequencies=peak_frequencies_dict,
+        inliers=inliers_dict,
     )
 
 
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
+
+    inliers_data = None
+    outliers_data = None
+    if fit is not None and target in fit.peak_biases:
+        peak_biases = np.asarray(fit.peak_biases.get(target, []))
+        peak_frequencies = np.asarray(fit.peak_frequencies.get(target, []))
+        coordinates_all_peaks = np.column_stack([peak_biases, peak_frequencies])
+
+        inliers_mask = np.asarray(fit.inliers.get(target, []), dtype=bool)
+
+        inliers_data = coordinates_all_peaks[inliers_mask]
+        outliers_data = coordinates_all_peaks[~inliers_mask]
+
     figures = utils.flux_dependence_plot(
-        data, fit, target, utils.transmon_readout_frequency
+        data,
+        fit,
+        target,
+        fit_function=utils.transmon_readout_frequency,
+        inliers=inliers_data,
+        outliers=outliers_data,
     )
 
     if fit is not None and fit.successful_fit[target]:

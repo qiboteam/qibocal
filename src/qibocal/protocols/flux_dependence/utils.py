@@ -59,7 +59,14 @@ def create_data_array(freq, bias, signal, dtype):
     return np.rec.array(ar)
 
 
-def flux_dependence_plot(data, fit, qubit, fit_function=None):
+def flux_dependence_plot(
+    data,
+    fit,
+    qubit,
+    inliers,
+    outliers,
+    fit_function,
+):
     figures = []
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
@@ -111,6 +118,39 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 showlegend=True,
             ),
         )
+
+        # Inliers and outliers plotting for debugging purposes
+        if len(inliers) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=inliers[:, 1] * HZ_TO_GHZ,  # frequency
+                    y=inliers[:, 0],  # bias
+                    mode="markers",
+                    marker={
+                        "size": 6,
+                        "color": "white",
+                    },
+                    name="Inliers",
+                    showlegend=True,
+                    visible="legendonly",
+                ),
+            )
+
+        if len(outliers) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=outliers[:, 1] * HZ_TO_GHZ,  # frequency
+                    y=outliers[:, 0],  # bias
+                    mode="markers",
+                    marker={
+                        "size": 6,
+                        "color": "green",
+                    },
+                    name="Outliers",
+                    showlegend=True,
+                    visible="legendonly",
+                ),
+            )
 
     fig.update_xaxes(
         title_text="Frequency [GHz]",
@@ -475,7 +515,7 @@ def ransac_fit(
     stop_probability: float = 0.999,
     random_state: int = 0,
     bounds: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
-):
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.bool]]:
     """Fit a model to data using RANSAC, ignoring outliers.
 
     Repeatedly fits ``fit_function`` to minimal random subsets of the data (sized to the
@@ -490,7 +530,7 @@ def ransac_fit(
     best inlier set.
 
     Returns:
-        Optimal fit parameters from the least-squares refit on the best inlier set.
+        Tuple of (fit parameters, boolean array of inliers).
     """
     # A fixed seed makes debugging and regression tests reproducible. RandomState's
     # output is guaranteed to be stable across numpy versions:
@@ -596,4 +636,7 @@ def ransac_fit(
         **fit_kwargs,
     )
 
-    return popt
+    # These are for visualization in the plot only
+    inliers_mask = best_inliers
+
+    return popt, inliers_mask
