@@ -120,14 +120,14 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=readout_frequency(q, platform) + params.frequency_range,
+                range=params.frequency_range(readout_frequency(q, platform)),
                 channels=[qubit.probe],
             )
         )
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + params.bias_range,
+                range=params.bias_range(offset0),
                 channels=[qubit.flux],
             )
         )
