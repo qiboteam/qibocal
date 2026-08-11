@@ -21,6 +21,8 @@ from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.fitting.classifier import run
+from sklearn.decomposition import PCA
+from qibocal.result import collect
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -1261,3 +1263,74 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
         step = (stop - start) / (n - 1)
         return start, stop, step
     return start, stop, spec_[-1]
+
+
+def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
+    """Plot IQ plane data with PCA analysis.
+    
+    Performs Principal Component Analysis on quadrature data and creates
+    scatter plots showing the data points, centroid, and principal axes.
+    """
+
+    scatters = []
+    qubit_data = data[qubit]
+
+    if any(name not in qubit_data.dtype.names for name in ["i", "q"]):
+        i = qubit_data.signal * np.cos(qubit_data.phase)
+        q = qubit_data.signal * np.sin(qubit_data.phase)
+    else:
+        i = qubit_data.i
+        q = qubit_data.q
+    quadratures = collect(i, q)
+
+    # initialize a PCA instance and fit it to the quadrature data 
+    pca = PCA().fit(quadratures)
+
+    # compute the principal axes and the centroid of the data
+    centroid_x, centroid_y = pca.mean_
+    axis_1, axis_2 = pca.components_
+
+    #################################################################
+    # in the first row we plot the IQ plane with the quadrature data 
+    # and the principal axes.
+    scatters.append(
+        go.Scatter(
+            x=i,
+            y=q,
+            opacity=1,
+            name="Quadrature Data",
+            showlegend=True,
+            legendgroup="Quadrature Data",
+            mode="markers",
+        )
+    )
+    scatters.append(
+            go.Scatter(
+                x=[centroid_x],
+                y=[centroid_y],
+                opacity=1,
+                name="Centroid",
+                showlegend=True,
+                legendgroup="Centroid",
+                mode="markers",
+            )
+    )
+
+    i_plot = np.linspace(np.min(i), np.max(i), 200)
+    scatters.extend(
+        [
+            go.Scatter(
+                x=i_plot,
+                y=a[1] / a[0] * (i_plot - centroid_x) + centroid_y,
+                opacity=1,
+                name="Principal Axes",
+                showlegend=i==0,
+                legendgroup="Principal Axes",
+                mode="lines",
+                marker={'color': 'black'},
+                line={"dash": "dash"},
+            ) for i, a in enumerate([axis_1, axis_2])
+        ]
+    )
+
+    return scatters
