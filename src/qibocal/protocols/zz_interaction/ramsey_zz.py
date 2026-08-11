@@ -104,6 +104,7 @@ def _acquisition(
 
     sequences: dict[Literal["I", "X"], PulseSequence] = {}
     parsweepers: dict[Literal["I", "X"], Sweeper] = {}
+    updates = {}
 
     for setup in cast(tuple[Literal["I", "X"], ...], ("I", "X")):
         setup_sequence = PulseSequence()
@@ -111,7 +112,6 @@ def _acquisition(
         for pair in targets:
             targ, spect = pair
 
-            updates = {}
             if params.detuning is not None:
                 channel = platform.qubits[targ].drive
                 f0 = platform.config(channel).frequency
