@@ -12,8 +12,11 @@ from qibocal.protocols.utils import (
     guess_period,
     table_dict,
     table_html,
+    plot_iq_pca,
 )
+from qibocal.result import collect
 from qibocal.update import replace
+from sklearn.decomposition import PCA
 
 QUANTILE_CONSTANT_RABI = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -70,44 +73,71 @@ def plot(data, qubit, fit, rx90):
     fitting_report = ""
 
     fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
+        rows=3,
+        cols=1,
+        vertical_spacing=0.15,
         subplot_titles=(
-            "Signal [a.u.]",
-            "phase [rad]",
+            "IQ Plane",
+            "Principal Axis",
+            "Second Axis",
         ),
+        row_heights=[0.5, 0.35, 0.15]
     )
 
     qubit_data = data[qubit]
+    #quadratures = collect(qubit_data.i, qubit_data.q)
+    i = qubit_data.signal * np.cos(qubit_data.phase)
+    q = qubit_data.signal * np.sin(qubit_data.phase)
+    quadratures = collect(i, q)
+
+    # initialize a PCA instance and fit it to the quadrature data 
+    pca = PCA().fit(quadratures)
+    # apply the pca rotation to the iq signal
+    pca_signal = pca.transform(quadratures)
 
     rabi_parameters = getattr(qubit_data, quantity)
+
+    #################################################################
+    # in the first row we plot the IQ plane with the quadrature data 
+    # and the principal axes.
+    fig.add_traces(
+        plot_iq_pca(data, qubit),
+        rows=1,
+        cols=1,
+    )
+
+    #################################################################
+    # in the second row we plot the signal projection along the principal axis
+    # we computed the fit on.
+    principal_signal = pca_signal[:, 0]
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.signal,
+            y=principal_signal,
             opacity=1,
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
             mode="markers",
         ),
-        row=1,
+        row=2,
         col=1,
     )
+    #################################################################
+    # in the third row we plot the signal projection along the remaining axis.
+    residual_signal = pca_signal[:, 1]
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.phase,
+            y=residual_signal,
             opacity=1,
-            name="Phase",
+            name="Residual Signal",
             showlegend=True,
-            legendgroup="Phase",
+            legendgroup="Residual Signal",
             mode="markers",
         ),
-        row=1,
-        col=2,
+        row=3,
+        col=1,
     )
 
     if fit is not None:
@@ -125,7 +155,7 @@ def plot(data, qubit, fit, rx90):
                 mode="lines",
                 marker_color="rgb(255, 130, 67)",
             ),
-            row=1,
+            row=2,
             col=1,
         )
         pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
@@ -140,11 +170,17 @@ def plot(data, qubit, fit, rx90):
 
         fig.update_layout(
             showlegend=True,
-            xaxis_title=title,
-            yaxis_title="Signal [a.u.]",
+            xaxis_title='I [a.u.]',
+            yaxis_title="Q [a.u.]",
+            yaxis2_title='Principal Axis Signal [a.u.]',
             xaxis2_title=title,
-            yaxis2_title="Phase [rad]",
+            yaxis3_title='Residual Signal [a.u.]',
+            xaxis3_title=title,
         )
+
+    fig.update_layout( 
+    height=800,
+    )
 
     figures.append(fig)
 
@@ -301,7 +337,7 @@ def sequence_length(
     platform: Platform,
     rx90: bool,
     use_align: bool = False,
-) -> tuple[PulseSequence, dict, dict, dict]:
+) -> tuple[PulseSequence, dict, dict, dict, dict]:
     """Return sequence for rabi length."""
 
     sequence = PulseSequence()
@@ -387,8 +423,8 @@ def fit_amplitude_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, -np.inf],
-            [1, 1, np.inf, np.inf],
+            [-np.inf, -np.inf, 0, -np.inf],
+            [np.inf, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
     )

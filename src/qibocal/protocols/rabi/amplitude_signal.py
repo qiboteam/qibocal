@@ -9,7 +9,8 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
-from qibocal.result import magnitude, phase
+from qibocal.result import collect
+from sklearn.decomposition import PCA
 
 from . import utils
 
@@ -54,6 +55,7 @@ class RabiAmplitudeSignalResults(Results):
 
 
 RabiAmpSignalType = np.dtype(
+    # [("amp", np.float64), ("i", np.float64), ("q", np.float64)]
     [("amp", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
@@ -115,8 +117,8 @@ def _acquisition(
             (qubit),
             {
                 "amp": sweeper.values,
-                "signal": magnitude(result),
-                "phase": phase(result),
+                "i": result[..., 0],
+                "q": result[..., 1],
             },
         )
     return data
@@ -133,24 +135,23 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        voltages = qubit_data.signal
 
-        y_min = np.min(voltages)
-        y_max = np.max(voltages)
-        x_min = np.min(rabi_parameter)
-        x_max = np.max(rabi_parameter)
-        x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
+        #quadratures = collect(qubit_data.i, qubit_data.q)
+        i = qubit_data.signal * np.cos(qubit_data.phase)
+        q = qubit_data.signal * np.sin(qubit_data.phase)
+        quadratures = collect(i, q)
 
-        pguess = utils.rabi_initial_guess(x, y, "amp", signal=True)
+        # initialize PCA instance and fit it to the quadrature data
+        # and rotate the data along the principal axes
+        principal_axis_signal = PCA().fit_transform(quadratures)[:, 0]
+
+        pguess = utils.rabi_initial_guess(rabi_parameter, principal_axis_signal, "amp", signal=True)
         try:
             popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
-                x,
-                y,
+                rabi_parameter,
+                principal_axis_signal,
                 pguess,
                 signal=True,
-                x_limits=(x_min, x_max),
-                y_limits=(y_min, y_max),
             )
             pi_pulse_amplitudes[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
