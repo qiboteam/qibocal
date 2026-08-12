@@ -7,7 +7,9 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
+    Pulse,
     PulseSequence,
+    Rectangular,
     Sweeper,
 )
 from scipy.signal import find_peaks
@@ -16,7 +18,6 @@ from qibocal.auto.operation import Data, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import magnitude
-from qibocal.update import replace
 
 from ... import update
 from ..utils import (
@@ -112,12 +113,14 @@ def _acquisition(
     freq_sweepers = []
     offset_sweepers = []
     for q in targets:
+        qd_channel = platform.qubits[q].drive
+        qd_pulse = Pulse(
+            amplitude=params.drive_amplitude,
+            duration=params.drive_duration,
+            envelope=Rectangular(),
+        )
         natives = platform.natives.single_qubit[q]
-        qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
-
-        qd_pulse = replace(qd_pulse, duration=params.drive_duration)
-        qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
 
         qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
@@ -158,7 +161,10 @@ def _acquisition(
         [sequence],
         [offset_sweepers, freq_sweepers],
         updates=[
-            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            {
+                platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)},
+                platform.qubits[q].flux: {"offset": 0.0},
+            }
             for q in targets
         ],
         nshots=params.nshots,
