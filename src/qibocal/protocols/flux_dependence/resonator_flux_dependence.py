@@ -149,6 +149,7 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [offset_sweepers, freq_sweepers],
+        updates=[{platform.qubits[q].flux: {"offset": 0.0}} for q in targets],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
