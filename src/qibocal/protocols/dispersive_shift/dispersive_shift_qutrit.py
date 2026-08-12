@@ -127,15 +127,15 @@ def _acquisition(
             data.register_qubit(
                 ResSpecType,
                 (qubit, state),
-                dict(
-                    freq=np.arange(
+                {
+                    "freq": np.arange(
                         *params.frequency_range(
                             center=readout_frequency(qubit, platform)
                         )
                     ),
-                    signal=magnitude(result),
-                    phase=phase(result),
-                ),
+                    "signal": magnitude(result),
+                    "phase": phase(result),
+                },
             )
 
     return data
