@@ -44,9 +44,9 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, float | list[float]]
+    amplitude: dict[QubitId, float] 
     """Drive amplitude for each qubit."""
-    length: dict[QubitId, float | list[float]]
+    length: dict[QubitId, float]
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
@@ -55,8 +55,7 @@ class RabiAmplitudeSignalResults(Results):
 
 
 RabiAmpSignalType = np.dtype(
-    # [("amp", np.float64), ("i", np.float64), ("q", np.float64)]
-    [("amp", np.float64), ("signal", np.float64), ("phase", np.float64)]
+    [("amp", np.float64), ("i", np.float64), ("q", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
@@ -135,11 +134,7 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-
-        #quadratures = collect(qubit_data.i, qubit_data.q)
-        i = qubit_data.signal * np.cos(qubit_data.phase)
-        q = qubit_data.signal * np.sin(qubit_data.phase)
-        quadratures = collect(i, q)
+        quadratures = collect(qubit_data.i, qubit_data.q)
 
         # initialize PCA instance and fit it to the quadrature data
         # and rotate the data along the principal axes
@@ -167,7 +162,7 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
 def _plot(
     data: RabiAmplitudeSignalData,
     target: QubitId,
-    fit: RabiAmplitudeSignalResults = None,
+    fit: RabiAmplitudeSignalResults | None = None,
 ):
     """Plotting function for RabiAmplitude."""
     return utils.plot(data, target, fit, data.rx90)
