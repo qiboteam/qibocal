@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Any, Literal
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -1128,7 +1128,9 @@ def quinn_fernandes_algorithm(
         xi = np.zeros(sig_shape)
         for t in range(2, xi.shape[-1]):
             # here the 2 extra items in the last dimension is used
-            xi[..., t] = null_mean_signal[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
+            xi[..., t] = (
+                null_mean_signal[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
+            )
 
         beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=-1) / np.sum(
             xi[..., :-1] ** 2, axis=-1
