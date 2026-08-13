@@ -409,9 +409,9 @@ def tomography_cr_fit(
                 ]
             ).reshape(len(Basis), -1)
 
-            total_omega_guess = quinn_fernandes_algorithm(
+            total_omega_guess = float(np.median(quinn_fernandes_algorithm(
                 concatenated_signal, vector_x, speedup_flag=True
-            )
+            )))
 
             if fit_with_evolution:
                 popt = dynamic_evolution_optimizer(
