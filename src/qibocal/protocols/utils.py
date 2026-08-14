@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from numpy.typing import NDArray, ArrayLike
+from numpy.typing import ArrayLike, NDArray
 from plotly.subplots import make_subplots
 from pydantic import TypeAdapter
 from scipy import constants, sparse
@@ -16,12 +16,12 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
 from sklearn.cluster import HDBSCAN
+from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.fitting.classifier import run
-from sklearn.decomposition import PCA
 from qibocal.result import collect
 
 GHZ_TO_HZ = 1e9
@@ -1090,7 +1090,7 @@ def quinn_fernandes_algorithm(
     speedup_flag: bool = False,
     iterations: int = 100,
     tol: float = 1e-8,
-) -> NDArray[float]:
+) -> NDArray:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
     We compute the signal sampling rate from :param:x, hence this function assumes x to be
     ordered.
@@ -1144,8 +1144,8 @@ def quinn_fernandes_algorithm(
         else:
             alpha = 2 * beta - alpha
 
-    alpha = np.asarray(np.clip(alpha, -2, 2))
-    omega_est = np.asarray(np.arccos(alpha / 2))
+    alpha = np.clip(alpha, -2, 2)
+    omega_est = np.arccos(alpha / 2)
 
     return omega_est * fs
 
@@ -1264,7 +1264,7 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
 
 def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
     """Plot IQ plane data with PCA analysis.
-    
+
     Performs Principal Component Analysis on quadrature data and creates
     scatter plots showing the data points, centroid, and principal axes.
     """
@@ -1280,7 +1280,7 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
         q = qubit_data.q
     quadratures = collect(i, q)
 
-    # initialize a PCA instance and fit it to the quadrature data 
+    # initialize a PCA instance and fit it to the quadrature data
     pca = PCA().fit(quadratures)
 
     # compute the principal axes and the centroid of the data
@@ -1288,7 +1288,7 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
     axis_1, axis_2 = pca.components_
 
     #################################################################
-    # in the first row we plot the IQ plane with the quadrature data 
+    # in the first row we plot the IQ plane with the quadrature data
     # and the principal axes.
     scatters.append(
         go.Scatter(
@@ -1302,15 +1302,15 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
         )
     )
     scatters.append(
-            go.Scatter(
-                x=[centroid_x],
-                y=[centroid_y],
-                opacity=1,
-                name="Centroid",
-                showlegend=True,
-                legendgroup="Centroid",
-                mode="markers",
-            )
+        go.Scatter(
+            x=[centroid_x],
+            y=[centroid_y],
+            opacity=1,
+            name="Centroid",
+            showlegend=True,
+            legendgroup="Centroid",
+            mode="markers",
+        )
     )
 
     i_plot = np.linspace(np.min(i), np.max(i), 200)
@@ -1321,12 +1321,13 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
                 y=a[1] / a[0] * (i_plot - centroid_x) + centroid_y,
                 opacity=1,
                 name="Principal Axes",
-                showlegend=i==0,
+                showlegend=i == 0,
                 legendgroup="Principal Axes",
                 mode="lines",
-                marker={'color': 'black'},
+                marker={"color": "black"},
                 line={"dash": "dash"},
-            ) for i, a in enumerate([axis_1, axis_2])
+            )
+            for i, a in enumerate([axis_1, axis_2])
         ]
     )
 
