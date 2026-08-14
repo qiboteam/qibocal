@@ -210,7 +210,7 @@ def _jazz_fitting_process(probs, delays, err):
     min_max_delays = (delays - d_min) / delta_delay
     err = err / delta_probs
 
-    omega = quinn_fernandes_algorithm(min_max_probs, min_max_delays, speedup_flag=True)
+    omega = quinn_fernandes_algorithm(min_max_probs, min_max_delays, speedup_flag=True).tolist()
     median_sig = np.median(min_max_probs)
     q80 = np.quantile(min_max_probs, 0.8)
     q20 = np.quantile(min_max_probs, 0.2)
