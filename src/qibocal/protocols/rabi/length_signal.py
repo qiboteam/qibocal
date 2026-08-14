@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from sklearn.decomposition import PCA
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -10,7 +11,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
 from qibocal.result import collect
-from sklearn.decomposition import PCA
 
 from . import utils
 
@@ -43,7 +43,7 @@ class RabiLengthSignalResults(Results):
     """Pi pulse duration for each qubit."""
     amplitude: dict[QubitId, float] | dict[QubitId, list[float]]
     """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
     rx90: bool
     """Pi or Pi_half calibration"""
@@ -132,8 +132,8 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
     """Post-processing for RabiLength experiment."""
 
     qubits = data.qubits
-    fitted_parameters = {}
-    durations = {}
+    fitted_parameters: dict[QubitId, list[float]] = {}
+    durations: dict[QubitId, float] = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -145,14 +145,15 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         # and rotate the data along the principal axes
         principal_axis_signal = PCA().fit_transform(quadratures)[:, 0]
 
-        pguess = utils.rabi_initial_guess(rabi_parameter, principal_axis_signal, "length", signal=True)
+        pguess = utils.rabi_initial_guess(
+            rabi_parameter, principal_axis_signal, "length", signal=True
+        )
 
         try:
             popt, _, pi_pulse_parameter = utils.fit_length_function(
                 rabi_parameter,
                 principal_axis_signal,
                 pguess,
-                signal=True,
             )
             durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
@@ -166,9 +167,9 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
 
 
 def _plot(
-    data: RabiLengthSignalData, 
+    data: RabiLengthSignalData,
     target: QubitId,
-    fit: RabiLengthSignalResults | None = None,    
+    fit: RabiLengthSignalResults | None = None,
 ):
     """Plotting function for RabiLength experiment."""
     return utils.plot(data, target, fit, data.rx90)
