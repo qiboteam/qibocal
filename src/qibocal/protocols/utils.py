@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from numpy.typing import NDArray
+from numpy.typing import NDArray, ArrayLike
 from plotly.subplots import make_subplots
 from pydantic import TypeAdapter
 from scipy import constants, sparse
@@ -1067,9 +1067,7 @@ def guess_frequency(x: NDArray, y: NDArray, axis: int = -1) -> NDArray:
     mags = np.abs(fft)
     mags[..., 0] = 0
 
-    selected_freqs = fft_freqs[np.argmax(mags, axis=-1)]
-
-    return selected_freqs
+    return fft_freqs[np.argmax(mags, axis=-1)]
 
 
 def fallback_frequency(frequency: NDArray) -> NDArray:
@@ -1086,13 +1084,13 @@ def fallback_frequency(frequency: NDArray) -> NDArray:
 
 
 def quinn_fernandes_algorithm(
-    signal: np.typing.ArrayLike,
-    x: np.typing.ArrayLike,
+    signal: ArrayLike,
+    x: ArrayLike,
     axis: int = -1,
     speedup_flag: bool = False,
     iterations: int = 100,
     tol: float = 1e-8,
-) -> NDArray | float:
+) -> NDArray[float]:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
     We compute the signal sampling rate from :param:x, hence this function assumes x to be
     ordered.
@@ -1111,16 +1109,13 @@ def quinn_fernandes_algorithm(
 
     fs = 1 / abs(x[0] - x[1])
 
-    if signal.ndim == 1:
-        signal = np.asarray(signal[np.newaxis, :])
-
     omegas = 2 * np.pi * fallback_frequency(guess_frequency(x, signal, axis=-1))
     alpha = 2 * np.cos(omegas)
 
     null_mean_signal = signal - np.mean(signal, axis=-1, keepdims=True)
 
     sig_shape = list(null_mean_signal.shape)
-    # adding two elements in the last dimensionto be used in the algorithm below
+    # adding two elements in the last dimension to be used in the algorithm below
     sig_shape[-1] += 2
     buffer_beta = []
 
@@ -1135,7 +1130,8 @@ def quinn_fernandes_algorithm(
         beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=-1) / np.sum(
             xi[..., :-1] ** 2, axis=-1
         )
-        beta[np.isnan(beta)] = 0
+        # np.where() works with scalars as well, so there is not need to add a dimension in 1D case
+        beta = np.where(np.isfinite(beta), beta, 0)
         if len(buffer_beta) >= 5:
             buffer_beta.pop(0)
         buffer_beta.append(beta)
@@ -1148,18 +1144,15 @@ def quinn_fernandes_algorithm(
         else:
             alpha = 2 * beta - alpha
 
-    alpha = np.clip(alpha, -2, 2)
-    omega_est = np.arccos(alpha / 2)
-
-    if omega_est.size == 1:
-        return float(omega_est) * fs
+    alpha = np.asarray(np.clip(alpha, -2, 2))
+    omega_est = np.asarray(np.arccos(alpha / 2))
 
     return omega_est * fs
 
 
 def guess_period(
     x: NDArray, y: NDArray, axis: int = -1, speedup_flag: bool = True
-) -> NDArray | float:
+) -> NDArray:
     """Estimate the period(s) of a (set of) sinusoidal signal(s).
 
     This is a thin wrapper around :func:`guess_frequency` that returns the
