@@ -165,9 +165,6 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
                 y,
                 pguess,
                 sigma=error,
-                signal=False,
-                x_limits=(x_min, x_max),
-                y_limits=(y_min, y_max),
             )
             fitted_frequencies[qubit] = frequency
             fitted_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]

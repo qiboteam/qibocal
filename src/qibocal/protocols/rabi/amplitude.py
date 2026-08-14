@@ -115,7 +115,6 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 y,
                 pguess,
                 sigma=qubit_data.error,
-                signal=False,
             )
             pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
             fitted_parameters[qubit] = popt

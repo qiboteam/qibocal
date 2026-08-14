@@ -3,20 +3,19 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
+from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Parameters, QubitId
 from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
-    angle_wrap,
     guess_period,
+    plot_iq_pca,
     table_dict,
     table_html,
-    plot_iq_pca,
 )
-from qibocal.result import collect, magnitude
+from qibocal.result import collect
 from qibocal.update import replace
-from sklearn.decomposition import PCA
 
 QUANTILE_CONSTANT_RABI = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -53,7 +52,7 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     )
 
 
-def rabi_initial_guess(x, y, experiment: str, signal: bool, axis:int=-1):
+def rabi_initial_guess(x, y, experiment: str, signal: bool, axis: int = -1):
     period = guess_period(x, y, axis=axis)
     median_sig = np.median(y, axis=axis)
     q80 = np.quantile(y, 0.8, axis=axis)
@@ -85,13 +84,13 @@ def plot(data, qubit, fit, rx90):
             "Principal Axis",
             "Second Axis",
         ),
-        row_heights=[0.5, 0.35, 0.15]
+        row_heights=[0.5, 0.35, 0.15],
     )
 
     qubit_data = data[qubit]
     quadratures = collect(qubit_data.i, qubit_data.q)
 
-    # initialize a PCA instance and fit it to the quadrature data 
+    # initialize a PCA instance and fit it to the quadrature data
     pca = PCA().fit(quadratures)
     # apply the pca rotation to the iq signal
     pca_signal = pca.transform(quadratures)
@@ -99,7 +98,7 @@ def plot(data, qubit, fit, rx90):
     rabi_parameters = getattr(qubit_data, quantity)
 
     #################################################################
-    # in the first row we plot the IQ plane with the quadrature data 
+    # in the first row we plot the IQ plane with the quadrature data
     # and the principal axes.
     fig.add_traces(
         plot_iq_pca(data, qubit),
@@ -171,16 +170,16 @@ def plot(data, qubit, fit, rx90):
 
         fig.update_layout(
             showlegend=True,
-            xaxis_title='I [a.u.]',
+            xaxis_title="I [a.u.]",
             yaxis_title="Q [a.u.]",
-            yaxis2_title='Principal Axis Signal [a.u.]',
+            yaxis2_title="Principal Axis Signal [a.u.]",
             xaxis2_title=title,
-            yaxis3_title='Residual Signal [a.u.]',
+            yaxis3_title="Residual Signal [a.u.]",
             xaxis3_title=title,
         )
 
-    fig.update_layout( 
-    height=800,
+    fig.update_layout(
+        height=800,
     )
 
     return [fig], fitting_report
@@ -369,7 +368,10 @@ def sequence_length(
 
 
 def fit_length_function(
-    x, y, guess, sigma=None, signal=True,
+    x,
+    y,
+    guess,
+    sigma=None,
 ) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_length_function,
@@ -392,7 +394,10 @@ def fit_length_function(
 
 
 def fit_amplitude_function(
-    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
+    x,
+    y,
+    guess,
+    sigma=None,
 ) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_amplitude_function,
