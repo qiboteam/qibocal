@@ -213,7 +213,9 @@ def _fit(data: DragTuningData) -> DragTuningResults:
         beta_params = qubit_data["beta"]
 
         # Guessing period using fourier transform
-        period_guess = fallback_period(guess_period(beta_params, qubit_data["prob"]).tolist())
+        period_guess = fallback_period(
+            guess_period(beta_params, qubit_data["prob"])
+        ).tolist()
         pguess = [0.5, 0.5, period_guess, 0]
         try:
             popt, _ = curve_fit(
