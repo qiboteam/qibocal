@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from sklearn.decomposition import PCA
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -10,7 +11,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
 from qibocal.result import collect
-from sklearn.decomposition import PCA
 
 from . import utils
 
@@ -44,11 +44,11 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, float] 
+    amplitude: dict[QubitId, float]
     """Drive amplitude for each qubit."""
     length: dict[QubitId, float]
     """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     rx90: bool
     """Pi or Pi_half calibration"""
@@ -127,8 +127,8 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
     """Post-processing for RabiAmplitude."""
     qubits = data.qubits
 
-    pi_pulse_amplitudes = {}
-    fitted_parameters = {}
+    pi_pulse_amplitudes: dict[QubitId, float] = {}
+    fitted_parameters: dict[QubitId, list[float]] = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -140,13 +140,14 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         # and rotate the data along the principal axes
         principal_axis_signal = PCA().fit_transform(quadratures)[:, 0]
 
-        pguess = utils.rabi_initial_guess(rabi_parameter, principal_axis_signal, "amp", signal=True)
+        pguess = utils.rabi_initial_guess(
+            rabi_parameter, principal_axis_signal, "amp", signal=True
+        )
         try:
             popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
                 rabi_parameter,
                 principal_axis_signal,
                 pguess,
-                signal=True,
             )
             pi_pulse_amplitudes[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
