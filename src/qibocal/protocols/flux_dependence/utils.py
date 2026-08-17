@@ -537,7 +537,7 @@ def ransac_fit(
     # https://numpy.org/doc/2.5/reference/random/legacy.html#numpy.random.RandomState
     rng = np.random.RandomState(random_state)
 
-    # TODO: The fit is much faster using Levenberg-Marquardt instead of Trust Region
+    # The fit is much faster using Levenberg-Marquardt instead of Trust Region
     # Reflective, but without bounds non of the RANSAC iterations fall within the bounds
     # (even after correcting for symmetries). Possibly this is also because there
     # poorly/non constrained parameters.
@@ -606,7 +606,6 @@ def ransac_fit(
 
         # Use a continuity score to reduce the sensitivity to a noisy background.
         # Especially if the arc is only in a small part of the bias range.
-        # TODO: would be nice to have this as a callback
         unique_y_count = len(np.unique(yvals[inliers]))
         score = (
             _continuity_score(xvals, yvals, inliers),
