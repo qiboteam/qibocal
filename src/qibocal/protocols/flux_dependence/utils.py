@@ -93,7 +93,7 @@ def flux_dependence_plot(
         bias = np.unique(qubit_data.bias)
         fig.add_trace(
             go.Scatter(
-                x=fit_function(bias, **params),
+                x=fit_function(bias, **params) * HZ_TO_GHZ,
                 y=bias,
                 showlegend=True,
                 name="Fit",
@@ -281,7 +281,7 @@ def transmon_frequency(
         normalization(float): diagonal crosstalk matrix element
         offset (float): phase_offset [a.u.].
         crosstalk_element(float): off-diagonal crosstalk matrix element
-        charging_energy (float): Ec / h (GHz)
+        charging_energy (float): Ec / h
 
      Returns:
          (float): qubit frequency as a function of bias.
@@ -323,9 +323,9 @@ def transmon_readout_frequency(
          normalization(float): diagonal crosstalk matrix element
          offset (float): phase_offset [a.u.].
          crosstalk_element(float): off-diagonal crosstalk matrix element
-         resonator_freq (float): bare resonator frequency [GHz]
+         resonator_freq (float): bare resonator frequency
          g (float): readout coupling.
-         charging_energy (float): Ec / h (GHz)
+         charging_energy (float): Ec / h
 
      Returns:
          (float): resonator frequency as a function of bias.

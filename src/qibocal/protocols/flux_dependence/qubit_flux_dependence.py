@@ -20,8 +20,6 @@ from qibocal.update import replace
 
 from ... import update
 from ..utils import (
-    GHZ_TO_HZ,
-    HZ_TO_GHZ,
     readout_frequency,
     table_dict,
     table_html,
@@ -237,7 +235,7 @@ def _fit_function(data: QubitFluxData, qubit: QubitId):
             normalization=normalization,
             offset=offset,
             crosstalk_element=1,
-            charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+            charging_energy=data.charging_energy[qubit],
         )
 
     return func
@@ -280,12 +278,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
         bounds = (
             [
-                data.qubit_frequency[qubit] * HZ_TO_GHZ - 1,
+                data.qubit_frequency[qubit] - 1e9,
                 0,
                 -1,
             ],
             [
-                data.qubit_frequency[qubit] * HZ_TO_GHZ + 1,
+                data.qubit_frequency[qubit] + 1e9,
                 np.inf,
                 1,
             ],
@@ -294,10 +292,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         try:
             popt, inliers_mask = utils.ransac_fit(
                 peak_biases,
-                peak_frequencies * HZ_TO_GHZ,
+                peak_frequencies,
                 fit_function=_fit_function(data, qubit),
                 # approximate width of a peak in the qubit spectroscopy
-                residual_threshold=0.2e6 * HZ_TO_GHZ,
+                residual_threshold=0.2e6,
                 bounds=bounds,
             )
 
@@ -308,9 +306,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "normalization": popt[1],
                 "offset": popt[2],
                 "crosstalk_element": 1,
-                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+                "charging_energy": data.charging_energy[qubit],
             }
-            frequency[qubit] = popt[0] * GHZ_TO_HZ
+            frequency[qubit] = popt[0]
             sweetspot[qubit] = utils.select_sweetspot(
                 popt[2],
                 popt[1],

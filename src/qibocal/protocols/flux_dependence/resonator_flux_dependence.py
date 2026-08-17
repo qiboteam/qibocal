@@ -13,8 +13,6 @@ from ...auto.operation import Data, Protocol, QubitId, Results
 from ...config import log
 from ...result import magnitude
 from ..utils import (
-    GHZ_TO_HZ,
-    HZ_TO_GHZ,
     readout_frequency,
     table_dict,
     table_html,
@@ -238,7 +236,7 @@ def _fit_function(data: ResonatorFluxData, qubit: QubitId):
         """Fit function for resonator flux dependence."""
         return utils.transmon_readout_frequency(
             xi=bias,
-            w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
+            w_max=data.qubit_frequency[qubit],
             xj=0,
             d=d,
             normalization=normalization,
@@ -287,32 +285,30 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             signal=signal,
         )
 
-        w_max = data.qubit_frequency[qubit] * HZ_TO_GHZ
         fit_function = _fit_function(data, qubit)
 
         # bounds for (g, d, offset, normalization, freq, charging_energy)
-        bare_resonator_freq = data.bare_resonator_frequency[qubit] * HZ_TO_GHZ
         bounds = (
-            [0, 0, -1, 0, bare_resonator_freq - 0.5, 0],
+            [0, 0, -1, 0, data.bare_resonator_frequency[qubit] - 0.5e9, 0],
             [
-                0.5,
+                0.5e9,
                 1,
                 1,
                 np.inf,
-                bare_resonator_freq + 0.5,
-                data.charging_energy[qubit] * HZ_TO_GHZ + 0.3,
+                data.bare_resonator_frequency[qubit] + 0.5e9,
+                data.charging_energy[qubit] + 0.3e9,
             ],
         )
         try:
             popt, inliers_mask = utils.ransac_fit(
                 peak_biases,
-                peak_frequencies * HZ_TO_GHZ,
+                peak_frequencies,
                 fit_function=fit_function,
-                residual_threshold=APPROXIMATE_RESONATOR_PEAK_WIDTH * HZ_TO_GHZ,
+                residual_threshold=APPROXIMATE_RESONATOR_PEAK_WIDTH,
                 bounds=bounds,
             )
             fitted_parameters[qubit] = {
-                "w_max": w_max,
+                "w_max": data.qubit_frequency[qubit],
                 "xj": 0,
                 "d": popt[1],
                 "normalization": popt[3],
@@ -329,15 +325,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 (np.min(data[qubit].bias), np.max(data[qubit].bias)),
                 max_distance=0.3,
             )
-            resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
+            resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt)
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
             successful_fit[qubit] = True
 
             # Store peak coordinates and inliers/outliers for plotting
-            peak_biases_dict[qubit] = peak_biases
-            peak_frequencies_dict[qubit] = peak_frequencies
-            inliers_dict[qubit] = inliers_mask
+            peak_biases_dict[qubit] = peak_biases.tolist()
+            peak_frequencies_dict[qubit] = peak_frequencies.tolist()
+            inliers_dict[qubit] = inliers_mask.tolist()
 
         except (ValueError, RuntimeError) as e:
             successful_fit[qubit] = False
@@ -386,22 +382,21 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
             table_dict(
                 target,
                 [
-                    "Coupling g [MHz]",
+                    "Coupling g [Hz]",
                     "Dressed resonator freq [Hz]",
                     "Asymmetry",
                     "Sweetspot [V]",
                     "Flux dependence [V]^-1",
-                    "Chi [MHz]",
+                    "Chi [Hz]",
                 ],
                 [
-                    np.round(fit.coupling[target] * 1e3, 2),
+                    np.round(fit.coupling[target], 2),
                     np.round(fit.frequency[target], 6),
                     np.round(fit.asymmetry[target], 3),
                     np.round(fit.sweetspot[target], 4),
                     np.round(fit.matrix_element[target], 4),
                     np.round(
-                        (data.bare_resonator_frequency[target] - fit.frequency[target])
-                        * 1e-6,
+                        (data.bare_resonator_frequency[target] - fit.frequency[target]),
                         2,
                     ),
                 ],
