@@ -42,16 +42,6 @@ __all__ = [
 ]
 
 
-QubitSpecType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("signal", np.float64),
-        ("phase", np.float64),
-    ]
-)
-"""Custom dtype for qubit spectroscopy."""
-
-
 @dataclass
 class QubitSpectroscopyParameters(Parameters):
     """QubitSpectroscopy runcard inputs."""

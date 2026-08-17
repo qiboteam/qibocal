@@ -152,7 +152,7 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
-        # average signal, phase, i and q over the number of shots defined in the runcard
+        # average i and q
         data.data[qubit] = results[ro_pulse.id]
 
     return data
