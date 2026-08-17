@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+from typing import cast
 
 import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    IqConfig,
     Parameter,
     PulseSequence,
     Sweeper,
@@ -15,7 +17,7 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
-from ..utils import HZ_TO_GHZ, Range, readout_frequency, to_range
+from ..utils import HZ_TO_GHZ, Range, RangeLike, readout_frequency, to_range
 from .qubit_spectroscopy import QubitSpectroscopyResults
 
 __all__ = ["qubit_power_spectroscopy"]
@@ -25,13 +27,13 @@ __all__ = ["qubit_power_spectroscopy"]
 class QubitPowerSpectroscopyParameters(Parameters):
     """QubitPowerSpectroscopy runcard inputs."""
 
-    frequency: Range | None = None
+    frequency: RangeLike | None = None
     """Frequencies for the sweep [Hz]."""
     freq_width: int | None = None
     """Width for frequency sweep relative  to the drive frequency [Hz]."""
     freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
-    amplitude: Range | None = None
+    amplitude: RangeLike | None = None
     """Amplitudes for the sweep [a.u.]."""
     min_amp: float | None = None
     """Minimum amplitude."""
@@ -45,25 +47,38 @@ class QubitPowerSpectroscopyParameters(Parameters):
     def frequency_range(self, q: QubitId, platform: CalibrationPlatform) -> Range:
         try:
             qd_channel = platform.qubits[q].drive
-            center = platform.config(qd_channel).frequency
+            assert qd_channel is not None
+            center = cast(IqConfig, platform.config(qd_channel)).frequency
         except KeyError:
             center = 0.0
-        assert isinstance(center, float)
-        return (
-            to_range(self.frequency, center=center)
-            if self.frequency is not None
-            else (
+
+        def legacy_range() -> Range:
+            assert self.freq_width is not None
+            assert self.freq_step is not None
+            return (
                 center - self.freq_width / 2,
                 center + self.freq_width / 2,
                 self.freq_step,
             )
+
+        assert isinstance(center, float)
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else legacy_range()
         )
 
     def amplitude_range(self) -> Range:
+        def legacy_range() -> Range:
+            assert self.min_amp is not None
+            assert self.max_amp is not None
+            assert self.step_amp is not None
+            return (self.min_amp, self.max_amp, self.step_amp)
+
         return (
-            to_range(self.amplitude, center=0.0)
+            to_range(self.amplitude, center=float("nan"))
             if self.amplitude is not None
-            else (self.min_amp, self.max_amp, self.step_amp)
+            else legacy_range()
         )
 
 
