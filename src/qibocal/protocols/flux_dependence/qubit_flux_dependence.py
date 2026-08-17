@@ -190,15 +190,24 @@ def _extract_peak_coordinates(
     """
 
     filtered_signal = utils.filter_data(signal)
-    scaled_signal = utils.minmax_scaling(filtered_signal, axis=1)
+
+    mad = np.median(
+        np.abs(filtered_signal - np.median(filtered_signal, axis=1, keepdims=True))
+    )
+    height_limit = 3.5 * mad
 
     peak_biases, peak_frequencies = [], []
-    for bias, row in zip(biases, scaled_signal):
+    for bias, row in zip(biases, filtered_signal):
         # Use find_peaks instead of argmax because there may be nothing in a row. Try
         # both peak and dip per row, since this may differ per row due to moving of the
         # resonator frequency.
-        peaks, peak_props = find_peaks(row, prominence=0.2)
-        dips, dip_props = find_peaks(-row, prominence=0.2)
+        median_subtracted = row - np.median(row)
+        peaks, peak_props = find_peaks(
+            median_subtracted, height=height_limit, prominence=0
+        )
+        dips, dip_props = find_peaks(
+            -median_subtracted, height=height_limit, prominence=0
+        )
         if len(peaks) == 0 and len(dips) == 0:
             continue
         # Keep only the feature with the largest prominence per bias.
