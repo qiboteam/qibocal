@@ -545,6 +545,12 @@ def ransac_fit(
     fit_kwargs: dict[str, Any] = {} if bounds is None else {"bounds": bounds}
 
     function_dof = _function_dof(fit_function)
+    if len(xvals) < function_dof:
+        raise ValueError(
+            f"Not enough datapoints for RANSAC: got {len(xvals)}, but the fit function"
+            f"has {function_dof} degrees of freedom, meaning at least that many"
+            f"datapoints are needed to determine its parameters."
+        )
 
     # N_needed is the adaptively-updated trial budget; start at infinity so the loop is
     # initially bounded only by min_trials/max_trials.
