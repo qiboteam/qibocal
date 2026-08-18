@@ -249,8 +249,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     :math:`x p_1 + p_2 = k`, for integers :math:`k`, where :math:`p_1` and :math:`p_2`
     are respectively the normalization and the offset, as defined in
     :mod:`qibocal.protocols.flux_dependence.utils.transmon_frequency`.
-    The code returns the sweetspot that is closest to the bias
-    in the middle of the swept interval.
+    The code returns the sweetspot that has the smallest absolute value within the data
+    window, or else the nearest outside the window if it is within max_distance.
     """
 
     qubits = data.qubits
