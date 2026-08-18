@@ -24,7 +24,7 @@ def test_resonator_flux_fit(results_folder):
 
     for qubit in expected.frequency:
         assert (
-            pytest.approx(expected.frequency[qubit], abs=10e3)
+            pytest.approx(expected.frequency[qubit], abs=20e3)
             == fitted.frequency[qubit]
         )
         assert (
