@@ -120,7 +120,7 @@ def flux_dependence_plot(
         )
 
         # Inliers and outliers plotting for debugging purposes
-        if len(inliers) > 0:
+        if inliers is not None and len(inliers) > 0:
             fig.add_trace(
                 go.Scatter(
                     x=inliers[:, 1] * HZ_TO_GHZ,  # frequency
@@ -136,7 +136,7 @@ def flux_dependence_plot(
                 ),
             )
 
-        if len(outliers) > 0:
+        if outliers is not None and len(outliers) > 0:
             fig.add_trace(
                 go.Scatter(
                     x=outliers[:, 1] * HZ_TO_GHZ,  # frequency
@@ -515,7 +515,7 @@ def ransac_fit(
     stop_probability: float = 0.999,
     random_state: int = 0,
     bounds: tuple[npt.ArrayLike, npt.ArrayLike] | None = None,
-) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.bool]]:
+) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.bool_]]:
     """Fit a model to data using RANSAC, ignoring outliers.
 
     Repeatedly fits ``fit_function`` to minimal random subsets of the data (sized to the

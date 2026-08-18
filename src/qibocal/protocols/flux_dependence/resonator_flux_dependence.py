@@ -22,7 +22,7 @@ from . import utils
 __all__ = ["ResonatorFluxParameters", "resonator_flux"]
 
 # approximate width of a peak in the resonator spectroscopy in Hz
-APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.2e6
+APPROXIMATE_RESONATOR_PEAK_WIDTH = 0.25e6
 
 
 @dataclass
@@ -196,7 +196,7 @@ def _extract_peak_coordinates(
             APPROXIMATE_RESONATOR_PEAK_WIDTH / (freq[1] - freq[0])
         )
         baseline = median_filter(row, size=5 * int(samples_per_peak), mode="mirror")
-        residual = row - np.median(baseline)
+        residual = row - baseline
 
         # Detect both peaks and dips by finding prominent extrema in the absolute
         # residual
