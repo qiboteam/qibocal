@@ -596,10 +596,13 @@ def ransac_fit(
         except RuntimeError:
             continue
 
+        # compute the number of inliers based on all datapoints, not just those in the
+        # subset.
         residuals_all = np.abs(yvals - fit_function(xvals, *popt))
         inliers = residuals_all < residual_threshold
+
+        # if all points are inliers, we cannot improve and can break the ransac loop
         if inliers.sum() == len(xvals):
-            # all points are inliers, so we cannot do better
             best_inliers = inliers
             best_params = popt
             break
