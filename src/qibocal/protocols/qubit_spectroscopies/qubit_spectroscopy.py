@@ -136,8 +136,9 @@ def _acquisition(
     drive_channels: dict[QubitId, ChannelId] = {}
     lo_channels: dict[QubitId, str | None] = {}
     for qubit in targets:
-        natives = platform.natives.single_qubit[qubit]
-        drive_channels[qubit] = platform.qubits[qubit].drive
+        drive_channel = platform.qubits[qubit].drive
+        assert drive_channel is not None
+        drive_channels[qubit] = drive_channel
 
         # Get the LO channel associated with this drive channel
         channel_obj = platform.channels[drive_channels[qubit]]
@@ -167,7 +168,7 @@ def _acquisition(
             natives = platform.natives.single_qubit[qubit]
             qd_channel = drive_channels[qubit]
             assert natives.MZ is not None
-            ro_channel, ro_pulse = natives.MZ()[0]
+            [(ro_channel, ro_pulse)] = natives.MZ()
 
             qd_pulse = Pulse(
                 amplitude=params.drive_amplitude,

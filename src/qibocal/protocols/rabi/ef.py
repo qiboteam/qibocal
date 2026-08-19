@@ -69,9 +69,9 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
         qd12_channel = platform.qubits[q].drive_extra[1, 2]
         if natives.RX12 is not None:
-            _, qd12_pulse = natives.RX12()[0]
+            [(_, qd12_pulse)] = natives.RX12()
             if params.pulse_length is not None:
-                qd12_pulse = replace(qd_pulse, duration=params.pulse_length)
+                qd12_pulse = replace(qd12_pulse, duration=params.pulse_length)
         else:
             assert params.pulse_length is not None
             qd12_pulse = Pulse(
@@ -164,12 +164,16 @@ def _update(
             )
         ]
     else:
+        amplitude = results.amplitude[target]
+        assert isinstance(amplitude, float)
+        duration = results.length[target]
+        assert isinstance(duration, float)
         rx12_seq = [
             (
                 platform.qubits[target].drive_extra[1, 2],
                 Pulse(
-                    amplitude=results.amplitude[target],
-                    duration=results.length[target],
+                    amplitude=amplitude,
+                    duration=duration,
                     envelope=Rectangular(),
                 ),
             )

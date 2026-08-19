@@ -45,12 +45,9 @@ class QubitPowerSpectroscopyParameters(Parameters):
     """Drive duration."""
 
     def frequency_range(self, q: QubitId, platform: CalibrationPlatform) -> Range:
-        try:
-            qd_channel = platform.qubits[q].drive
-            assert qd_channel is not None
-            center = cast(IqConfig, platform.config(qd_channel)).frequency
-        except KeyError:
-            center = 0.0
+        qd_channel = platform.qubits[q].drive
+        assert qd_channel is not None
+        center = cast(IqConfig, platform.config(qd_channel)).frequency
 
         def legacy_range() -> Range:
             assert self.freq_width is not None
@@ -76,9 +73,7 @@ class QubitPowerSpectroscopyParameters(Parameters):
             return (self.min_amp, self.max_amp, self.step_amp)
 
         return (
-            to_range(self.amplitude, center=float("nan"))
-            if self.amplitude is not None
-            else legacy_range()
+            to_range(self.amplitude) if self.amplitude is not None else legacy_range()
         )
 
 
