@@ -105,7 +105,9 @@ def _acquisition(
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            range=params.frequency_range(center=readout_frequency(q, platform)),
+            range=params.frequency_range(
+                center=readout_frequency(q, platform, state=1)
+            ),
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -257,7 +259,7 @@ def _plot(
                     x=freqrange,
                     y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
-                    line=go.scatter.Line(dash="dot"),
+                    mode="lines",
                 ),
                 row=1,
                 col=1,
