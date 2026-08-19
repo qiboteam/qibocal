@@ -49,7 +49,7 @@ class PaddedRectangular(BaseEnvelope):
         """Return a rectangular envelope with `padding` leading zeros."""
         if samples < self.padding:
             raise ValueError(f"samples ({samples}) must be >= padding ({self.padding})")
-        return np.concat([np.zeros(self.padding), np.ones(samples - self.padding)])
+        return np.concatenate([np.zeros(self.padding), np.ones(samples - self.padding)])
 
 
 @dataclass
@@ -64,9 +64,9 @@ class CryoscopeParameters(Parameters):
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
-    fir: int = 20
+    fir: int
     """Number of feedforward taps to be optimized after IIR."""
-    iir: bool = False
+    iir: bool
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
     """
@@ -79,6 +79,17 @@ class CryoscopeParameters(Parameters):
 
     Useful when hardware enforces a minimum pulse length.
     """
+
+    def __post_init__(self):
+        n_points = len(
+            np.arange(self.duration_min, self.duration_max, self.duration_step)
+        )
+        iir_free_parameters = self.iir * 2
+        if self.fir + iir_free_parameters > n_points:
+            raise ValueError(
+                f"Cannot fit {self.fir} FIR taps with only {n_points} duration "
+                "points: the fit would be underdetermined."
+            )
 
 
 @dataclass
@@ -212,6 +223,23 @@ class CryoscopeData(Data):
     """
 
 
+def _check_phase_can_be_unwrapped(
+    data: CryoscopeData, qubit: QubitId, duration_step: float
+) -> None:
+    """Check if the sampling rate is above the Nyquist rate."""
+    f = np.poly1d(data.flux_coefficients[qubit])
+    detuning = abs(f(data.flux_pulse_amplitude) - f(0.0))
+    cycles_per_step = detuning * duration_step
+    nyquist_cycles_per_sample = 0.5
+    if cycles_per_step > nyquist_cycles_per_sample:
+        raise ValueError(
+            f"Cannot unwrap the phase for qubit {qubit}: the expected detuning is"
+            f"{detuning:.3f} GHz, resulting in {cycles_per_step:.3f} cycles per sample "
+            f"({duration_step} ns). This is above the Nyquist limit. Reduce "
+            "flux_pulse_amplitude or duration_step."
+        )
+
+
 def _acquisition(
     params: CryoscopeParameters,
     platform: Platform,
@@ -249,6 +277,7 @@ def _acquisition(
         data.has_filters[qubit] = bool(
             platform.config(platform.qubits[qubit].flux).filters
         )
+        _check_phase_can_be_unwrapped(data, qubit, params.duration_step)
 
     duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
@@ -334,15 +363,6 @@ def filter_calc(params, sampling_rate):
     return feedback_taps.tolist(), feedforward_taps.tolist()
 
 
-def _fir_cost_function(iir_correction: npt.NDArray, baseline: float):
-
-    def cost(x):
-        yc = scipy.signal.lfilter(x, 1, iir_correction)
-        return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
-
-    return cost
-
-
 # TODO: refactor into sub-functions with smaller scopes
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
@@ -387,13 +407,14 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     for qubit in qubits:
         x = data[(qubit, "MX")].duration
-        sampling_rate = 1 / (x[1] - x[0])
+        duration_step = x[1] - x[0]
         X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
         norm_data = X_exp + 1j * Y_exp
 
         # demodulation frequency found by fitting sinusoidal
+        sampling_rate = 1 / (duration_step)
         demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi * sampling_rate
         # to be used in savgol_filter
         derivative_window_length = 7 / sampling_rate
