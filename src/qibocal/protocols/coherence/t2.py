@@ -8,7 +8,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
 from qibocal.result import probability
 
-from . import utils
+from .fitting import exponential_fit_probability
+from .plotting import plot
 from .t1 import CoherenceProbType, T1Data
 from .t2_signal import T2SignalParameters, T2SignalResults, update_t2
 
@@ -86,9 +87,9 @@ def _fit(data: T2Data) -> T2Results:
 
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters, pcovs, chi2 = utils.exponential_fit_probability(data)
+    t2s, fitted_parameters, pcovs, chi2 = exponential_fit_probability(data)
     return T2Results(t2s, fitted_parameters, pcovs, chi2)
 
 
-t2 = Protocol(_acquisition, _fit, utils.plot, update_t2)
+t2 = Protocol(_acquisition, _fit, plot, update_t2)
 """T2 Protocol object."""

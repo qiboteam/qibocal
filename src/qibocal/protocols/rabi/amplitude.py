@@ -11,8 +11,14 @@ from qibocal.config import log
 from qibocal.result import probability
 
 from ..utils import chi2_reduced
-from . import utils
+from .acquisition import sequence_amplitude
 from .amplitude_signal import RabiAmplitudeSignalParameters, RabiAmplitudeSignalResults
+from .fitting import (
+    fit_amplitude_function,
+    rabi_amplitude_function,
+    rabi_initial_guess,
+)
+from .plotting import plot_probabilities
 
 __all__ = ["rabi_amplitude"]
 
@@ -58,7 +64,7 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
+    sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
         targets, params, platform, params.rx90
     )
 
@@ -108,9 +114,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         x = qubit_data.amp
         y = qubit_data.prob
 
-        pguess = utils.rabi_initial_guess(x, y, "amp", signal=False)
+        pguess = rabi_initial_guess(x, y, "amp", signal=False)
         try:
-            popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
+            popt, perr, pi_pulse_parameter = fit_amplitude_function(
                 x,
                 y,
                 pguess,
@@ -123,7 +129,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
             chi2[qubit] = [
                 chi2_reduced(
                     y,
-                    utils.rabi_amplitude_function(x, *popt),
+                    rabi_amplitude_function(x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
@@ -138,7 +144,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
 def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    return utils.plot_probabilities(data, target, fit, data.rx90)
+    return plot_probabilities(data, target, fit, data.rx90)
 
 
 def _update(

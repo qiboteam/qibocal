@@ -11,7 +11,12 @@ from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
 from qibocal.result import magnitude, phase
 
-from . import utils
+from .acquisition import sequence_length
+from .fitting import (
+    fit_length_function,
+    rabi_initial_guess,
+)
+from .plotting import plot
 
 __all__ = ["RabiLengthSignalResults", "rabi_length_signal"]
 
@@ -77,7 +82,7 @@ def _acquisition(
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
+    sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
         targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
     sweep_range = (
@@ -146,10 +151,10 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
-        pguess = utils.rabi_initial_guess(x, y, "length", signal=True)
+        pguess = rabi_initial_guess(x, y, "length", signal=True)
 
         try:
-            popt, _, pi_pulse_parameter = utils.fit_length_function(
+            popt, _, pi_pulse_parameter = fit_length_function(
                 x,
                 y,
                 pguess,
@@ -177,7 +182,7 @@ def _update(
 
 def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, target, fit, data.rx90)
+    return plot(data, target, fit, data.rx90)
 
 
 rabi_length_signal = Protocol(_acquisition, _fit, _plot, _update)

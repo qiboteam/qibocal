@@ -10,7 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
-from . import utils
+from .fitting import exp_decay, exponential_fit_probability
 from .t1_signal import T1SignalParameters, T1SignalResults, t1_sequence, update_t1
 
 __all__ = ["CoherenceProbType", "T1Data", "t1"]
@@ -96,7 +96,7 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters, pcovs, chi2 = utils.exponential_fit_probability(data)
+    t1s, fitted_parameters, pcovs, chi2 = exponential_fit_probability(data)
     return T1Results(t1s, fitted_parameters, pcovs, chi2)
 
 
@@ -144,7 +144,7 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=utils.exp_decay(waitrange, *params),
+                y=exp_decay(waitrange, *params),
                 name="Fit",
                 mode="lines",
             )

@@ -20,7 +20,8 @@ from qibocal.result import magnitude, phase
 
 from ... import update
 from ..utils import readout_frequency, table_dict, table_html
-from . import utils
+from .acquisition import CoherenceType, average_single_shots
+from .fitting import exp_decay, exponential_fit
 
 __all__ = [
     "T1SignalData",
@@ -68,7 +69,7 @@ class T1SignalData(Data):
     @property
     def average(self):
         if len(next(iter(self.data.values())).shape) > 1:
-            return utils.average_single_shots(self.__class__, self.data)
+            return average_single_shots(self.__class__, self.data)
         return self
 
 
@@ -152,7 +153,7 @@ def _acquisition(
         else:
             _waits = ro_wait_range
         data.register_qubit(
-            utils.CoherenceType,
+            CoherenceType,
             (q),
             {"wait": _waits, "signal": signal, "phase": phase(result)},
         )
@@ -169,7 +170,7 @@ def _fit(data: T1SignalData) -> T1SignalResults:
             y = p_0-p_1 e^{-x p_2}.
     """
     data = data.average
-    t1s, fitted_parameters, pcovs = utils.exponential_fit(data)
+    t1s, fitted_parameters, pcovs = exponential_fit(data)
 
     return T1SignalResults(t1s, fitted_parameters, pcovs)
 
@@ -208,7 +209,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=utils.exp_decay(waitrange, *params),
+                y=exp_decay(waitrange, *params),
                 name="Fit",
                 mode="lines",
             )

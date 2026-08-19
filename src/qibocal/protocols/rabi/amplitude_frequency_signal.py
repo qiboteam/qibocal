@@ -20,8 +20,9 @@ from qibocal.protocols.utils import (
 )
 
 from ...result import magnitude, phase
+from .acquisition import sequence_amplitude
 from .amplitude_signal import RabiAmplitudeSignalResults
-from .utils import fit_amplitude_function, rabi_initial_guess, sequence_amplitude
+from .fitting import fit_amplitude_function, rabi_initial_guess
 
 __all__ = [
     "RabiAmplitudeFreqSignalData",

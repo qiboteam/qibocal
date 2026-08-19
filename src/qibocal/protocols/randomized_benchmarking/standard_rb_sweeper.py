@@ -15,20 +15,19 @@ from qibolab import (
 from qibocal.auto.operation import Protocol
 from qibocal.calibration.calibration import QubitId
 from qibocal.calibration.platform import CalibrationPlatform
+from qibocal.protocols.randomized_benchmarking.circuit_generation import (
+    RBGenerator,
+    add_inverse_layer,
+    layer_circuit,
+    setup_data,
+)
 from qibocal.protocols.randomized_benchmarking.standard_rb import (
     StandardRBParameters,
     _fit,
     _plot,
     _update,
 )
-from qibocal.protocols.randomized_benchmarking.utils import (
-    RBData,
-    RBGenerator,
-    RBType,
-    add_inverse_layer,
-    layer_circuit,
-    setup_data,
-)
+from qibocal.protocols.randomized_benchmarking.types import RBData, RBType
 
 __all__ = ["standard_rb_sweeper"]
 

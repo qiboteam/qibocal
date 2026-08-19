@@ -9,8 +9,9 @@ from qibocal.auto.operation import Parameters, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
-from .fitting import exp1B_func
-from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
+from .acquisition import rb_acquisition
+from .fitting import exp1B_func, fit, number_to_str
+from .types import RBData, StandardRBResult
 
 __all__ = ["RBData", "StandardRBParameters", "standard_rb"]
 

@@ -2,11 +2,16 @@
 They consist mostly of exponential decay fitting.
 """
 
+from numbers import Number
+
 import numpy as np
 from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
 
 from qibocal.config import log, raise_error
+from qibocal.protocols.utils import significant_digit
+
+from .types import StandardRBResult
 
 
 def exp1_func(x: np.ndarray, A: float, f: float) -> np.ndarray:
@@ -188,3 +193,120 @@ def fit_exp2_func(
     """
 
     return fit_expn_func(xdata, ydata, 2)
+
+
+def number_to_str(
+    value: Number,
+    uncertainty: Number | list | tuple | np.ndarray | None = None,
+    precision: int | None = None,
+):
+    """Converts a number into a string.
+
+    Args:
+        value (Number): the number to display
+        uncertainty (Number or list or tuple or np.ndarray, optional): number or 2-element
+            interval with the low and high uncertainties of ``value``. Defaults to ``None``.
+        precision (int, optional): nonnegative number of floating points of the displayed value.
+            If ``None``, defaults to the second significant digit of ``uncertainty``
+            or ``3`` if ``uncertainty`` is ``None``. Defaults to ``None``.
+
+    Returns:
+        str: The number expressed as a string, with the uncertainty if given.
+    """
+
+    # If uncertainty is not given, return the value with precision
+    if uncertainty is None:
+        precision = precision if precision is not None else 3
+        return f"{value:.{precision}f}"
+
+    if isinstance(uncertainty, Number):
+        if precision is None:
+            precision = (significant_digit(uncertainty) + 1) or 3
+        return f"{value:.{precision}f} \u00b1 {uncertainty:.{precision}f}"
+
+    # If any uncertainty is None, return the value with precision
+    if any(u is None for u in uncertainty):
+        return f"{value:.{precision if precision is not None else 3}f}"
+
+    # If precision is None, get the first significant digit of the uncertainty
+    if precision is None:
+        precision = max(significant_digit(u) + 1 for u in uncertainty) or 3
+
+    # Check if both uncertainties are equal up to precision
+    if np.round(uncertainty[0], precision) == np.round(uncertainty[1], precision):
+        return f"{value:.{precision}f} \u00b1 {uncertainty[0]:.{precision}f}"
+
+    return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
+
+
+def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
+    """Compute the uncertainties of the median (or specified) values.
+
+    Args:
+        data (list or np.ndarray): 2d array with rows containing data points
+            from which the median value is extracted.
+        method (float, optional): method of computing the method.
+            If it is `None`, computes the standard deviation, otherwise it
+            computes the corresponding confidence interval using ``np.percentile``.
+            Defaults to ``None``.
+        data_median (list or np.ndarray, optional): 1d array for computing the errors from the
+            confidence interval. If ``None``, the median values are computed from ``data``.
+        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
+            and returns ``np.ndarray``. Default is ``True``.
+
+    Returns:
+        np.ndarray: uncertainties of the data.
+    """
+    if method is None:
+        return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
+
+    percentiles = [
+        (100 - method) / 2,
+        (100 + method) / 2,
+    ]
+    percentile_interval = np.percentile(data, percentiles, axis=1)
+
+    uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
+
+    return uncertainties
+
+
+def fit(data, single_qubit: bool = True) -> StandardRBResult:
+    """Takes data, extracts the depths and the signal and fits it with an
+    exponential function y = Ap^x+B."""
+
+    if single_qubit:
+        targets = data.qubits
+        dimension = 2
+    else:
+        targets = data.pairs
+        dimension = 2**2
+
+    fidelity, pulse_fidelity = {}, {}
+    popts, perrs = {}, {}
+    error_bars = {}
+    for target in targets:
+        probs_array = np.array(
+            [
+                val["survival_probs"]
+                for key, val in data.data.items()
+                if (key[0] if single_qubit == 1 else key[:2]) == target
+            ]
+        )  # rows -> depths, cols -> iterations
+
+        sigma = np.std(probs_array, axis=1)
+        popt, perr = fit_exp1B_func(
+            data.depths, np.mean(probs_array, axis=1), sigma=sigma, bounds=[0, 1]
+        )
+
+        # Compute the fidelities
+        infidelity = (1 - popt[1]) * (dimension - 1) / dimension
+        fidelity[target] = 1 - infidelity
+        pulse_fidelity[target] = 1 - infidelity / data.npulses_per_clifford
+
+        # conversion from np.array to list/tuple
+        error_bars[target] = sigma.tolist()
+        perrs[target] = perr
+        popts[target] = popt
+
+    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_bars)

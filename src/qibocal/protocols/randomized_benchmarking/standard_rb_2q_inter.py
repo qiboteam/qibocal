@@ -9,7 +9,9 @@ from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
     StandardRB2QParameters,
 )
 
-from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
+from .acquisition import twoq_rb_acquisition
+from .fitting import fit
+from .types import RB2QInterData, StandardRBResult
 
 __all__ = ["standard_rb_2q_inter"]
 

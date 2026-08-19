@@ -7,9 +7,11 @@ from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
+from .acquisition import dynamical_decoupling_sequence
+from .fitting import exponential_fit_probability
+from .plotting import plot
 from .spin_echo import SpinEchoParameters, SpinEchoResults
 from .t1 import CoherenceProbType, T1Data
-from .utils import dynamical_decoupling_sequence, exponential_fit_probability, plot
 
 __all__ = ["cpmg"]
 

@@ -19,17 +19,17 @@ from qibocal.protocols.utils import (
 )
 
 from ...result import probability
+from .acquisition import sequence_amplitude
 from .amplitude_frequency_signal import (
     RabiAmplitudeFreqSignalData,
     RabiAmplitudeFrequencySignalParameters,
     RabiAmplitudeFrequencySignalResults,
     _update,
 )
-from .utils import (
+from .fitting import (
     fit_amplitude_function,
     rabi_amplitude_function,
     rabi_initial_guess,
-    sequence_amplitude,
 )
 
 __all__ = ["rabi_amplitude_frequency"]

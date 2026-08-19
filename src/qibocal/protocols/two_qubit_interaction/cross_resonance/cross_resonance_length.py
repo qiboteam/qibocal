@@ -18,6 +18,7 @@ from scipy.constants import kilo
 
 from qibocal.auto.operation import (
     Protocol,
+    QubitId,
     QubitPairId,
 )
 from qibocal.calibration import CalibrationPlatform
@@ -37,8 +38,7 @@ from .cross_resonance_processing import (
     tomography_cr_fit,
 )
 from .plotting import tomography_cr_plot
-from .utils import (
-    QubitId,
+from .processing import (
     cross_resonance_experiment,
     ro_delay_range,
     update_cnot_from_fit,

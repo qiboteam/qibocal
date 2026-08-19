@@ -10,13 +10,9 @@ from qibocal.result import magnitude, phase
 
 from ... import update
 from ..utils import readout_frequency, table_dict, table_html
+from .acquisition import CoherenceType, dynamical_decoupling_sequence
+from .fitting import exp_decay, exponential_fit
 from .t1_signal import T1SignalData
-from .utils import (
-    CoherenceType,
-    dynamical_decoupling_sequence,
-    exp_decay,
-    exponential_fit,
-)
 
 __all__ = [
     "SpinEchoSignalParameters",

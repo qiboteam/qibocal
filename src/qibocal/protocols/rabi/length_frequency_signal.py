@@ -16,8 +16,9 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ...result import magnitude, phase
 from ..utils import HZ_TO_GHZ, readout_frequency
+from .acquisition import sequence_length
+from .fitting import fit_length_function, rabi_initial_guess
 from .length_signal import RabiLengthSignalResults
-from .utils import fit_length_function, rabi_initial_guess, sequence_length
 
 __all__ = [
     "RabiLengthFreqSignalData",

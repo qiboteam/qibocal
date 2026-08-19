@@ -24,7 +24,11 @@ from ..utils import (
     table_dict,
     table_html,
 )
-from . import utils
+from .acquisition import create_data_array
+from .fitting import filter_data, ransac_fit, select_sweetspot
+from .parameters import FluxFrequencySweepParameters
+from .physics import transmon_frequency
+from .plotting import flux_dependence_plot
 
 __all__ = [
     "QubitFluxData",
@@ -36,7 +40,7 @@ __all__ = [
 
 
 @dataclass
-class QubitFluxParameters(utils.FluxFrequencySweepParameters):
+class QubitFluxParameters(FluxFrequencySweepParameters):
     """QubitFlux runcard inputs."""
 
     drive_amplitude: float = 0.01
@@ -93,9 +97,7 @@ class QubitFluxData(Data):
 
     def register_qubit(self, qubit, freq, bias, signal):
         """Store output for single qubit."""
-        self.data[qubit] = utils.create_data_array(
-            freq, bias, signal, dtype=QubitFluxType
-        )
+        self.data[qubit] = create_data_array(freq, bias, signal, dtype=QubitFluxType)
 
 
 def _acquisition(
@@ -187,7 +189,7 @@ def _extract_peak_coordinates(
     one peak per flux bin.
     """
 
-    filtered_signal = utils.filter_data(signal)
+    filtered_signal = filter_data(signal)
 
     mad = np.median(
         np.abs(filtered_signal - np.median(filtered_signal, axis=1, keepdims=True))
@@ -227,7 +229,7 @@ def _extract_peak_coordinates(
 def _fit_function(data: QubitFluxData, qubit: QubitId):
 
     def func(x, w_max, normalization, offset):
-        return utils.transmon_frequency(
+        return transmon_frequency(
             xi=x,
             w_max=w_max,
             xj=0,
@@ -248,7 +250,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     All possible sweetspots :math:`x` are evaluated by the function
     :math:`x p_1 + p_2 = k`, for integers :math:`k`, where :math:`p_1` and :math:`p_2`
     are respectively the normalization and the offset, as defined in
-    :mod:`qibocal.protocols.flux_dependence.utils.transmon_frequency`.
+    :mod:`qibocal.protocols.flux_dependence.transmon_frequency`.
     The code returns the sweetspot that has the smallest absolute value within the data
     window, or else the nearest outside the window if it is within max_distance.
     """
@@ -290,7 +292,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         )
 
         try:
-            popt, inliers_mask = utils.ransac_fit(
+            popt, inliers_mask = ransac_fit(
                 peak_biases,
                 peak_frequencies,
                 fit_function=_fit_function(data, qubit),
@@ -309,7 +311,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit],
             }
             frequency[qubit] = popt[0]
-            sweetspot[qubit] = utils.select_sweetspot(
+            sweetspot[qubit] = select_sweetspot(
                 popt[2],
                 popt[1],
                 (np.min(qubit_data.bias), np.max(qubit_data.bias)),
@@ -353,11 +355,11 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
         inliers_data = coordinates_all_peaks[inliers_mask]
         outliers_data = coordinates_all_peaks[~inliers_mask]
 
-    figures = utils.flux_dependence_plot(
+    figures = flux_dependence_plot(
         data,
         fit,
         target,
-        fit_function=utils.transmon_frequency,
+        fit_function=transmon_frequency,
         inliers=inliers_data,
         outliers=outliers_data,
     )

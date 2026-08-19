@@ -11,8 +11,14 @@ from qibocal.config import log
 from qibocal.result import probability
 
 from ..utils import chi2_reduced
-from . import utils
+from .acquisition import sequence_length
+from .fitting import (
+    fit_length_function,
+    rabi_initial_guess,
+    rabi_length_function,
+)
 from .length_signal import RabiLengthSignalData, RabiLengthSignalResults
+from .plotting import plot_probabilities
 
 __all__ = ["rabi_length"]
 
@@ -65,7 +71,7 @@ def _acquisition(
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
+    sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
         targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
     sweep_range = (
@@ -129,10 +135,10 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         y = qubit_data.prob
         x = (raw_x - min_x) / (max_x - min_x)
 
-        pguess = utils.rabi_initial_guess(x, y, "length", signal=False)
+        pguess = rabi_initial_guess(x, y, "length", signal=False)
 
         try:
-            popt, perr, pi_pulse_parameter = utils.fit_length_function(
+            popt, perr, pi_pulse_parameter = fit_length_function(
                 x,
                 y,
                 pguess,
@@ -146,7 +152,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
             chi2[qubit] = [
                 chi2_reduced(
                     y,
-                    utils.rabi_length_function(raw_x, *popt),
+                    rabi_length_function(raw_x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
@@ -164,7 +170,7 @@ def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: Q
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, target, fit, data.rx90)
+    return plot_probabilities(data, target, fit, data.rx90)
 
 
 rabi_length = Protocol(_acquisition, _fit, _plot, _update)

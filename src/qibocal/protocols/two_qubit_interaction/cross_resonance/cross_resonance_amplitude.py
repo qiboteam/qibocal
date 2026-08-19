@@ -32,10 +32,7 @@ from .cross_resonance_processing import (
     tomography_cr_fit,
 )
 from .plotting import tomography_cr_plot
-from .utils import (
-    cross_resonance_experiment,
-    update_cnot_from_fit,
-)
+from .processing import cross_resonance_experiment, update_cnot_from_fit
 
 __all__ = ["cr_amplitude"]
 

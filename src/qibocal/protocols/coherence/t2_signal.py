@@ -11,7 +11,8 @@ from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
 from qibocal.result import magnitude, phase
 
 from ..utils import readout_frequency, table_dict, table_html
-from . import utils
+from .acquisition import CoherenceType
+from .fitting import exp_decay, exponential_fit
 from .t1_signal import T1SignalData
 
 __all__ = ["T2SignalData", "T2SignalParameters", "t2_signal", "update_t2"]
@@ -103,7 +104,7 @@ def _acquisition(
         else:
             _waits = waits
         data.register_qubit(
-            utils.CoherenceType,
+            CoherenceType,
             (q),
             {"wait": _waits, "signal": signal, "phase": phase(result)},
         )
@@ -119,7 +120,7 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     """
     data = data.average
 
-    t2s, fitted_parameters, pcovs = utils.exponential_fit(data)
+    t2s, fitted_parameters, pcovs = exponential_fit(data)
     return T2SignalResults(t2s, fitted_parameters, pcovs)
 
 
@@ -157,7 +158,7 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=utils.exp_decay(
+                y=exp_decay(
                     waitrange,
                     *params,
                 ),

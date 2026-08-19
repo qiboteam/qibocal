@@ -16,7 +16,6 @@ from qibocal.update import replace
 from ... import update
 from ...result import magnitude, phase
 from ..utils import readout_frequency
-from . import utils
 from .amplitude_signal import (
     RabiAmplitudeSignalData,
     RabiAmplitudeSignalParameters,
@@ -24,6 +23,7 @@ from .amplitude_signal import (
     RabiAmpSignalType,
     _fit,
 )
+from .plotting import plot
 
 __all__ = ["rabi_amplitude_ef"]
 
@@ -131,7 +131,7 @@ def _plot(
     data: RabiAmplitudeEFData, target: QubitId, fit: RabiAmplitudeEFResults = None
 ):
     """Plotting function for RabiAmplitude."""
-    figures, report = utils.plot(data, target, fit, data.rx90)
+    figures, report = plot(data, target, fit, data.rx90)
     if report is not None:
         report = report.replace("Pi pulse", "Pi pulse 12")
     return figures, report

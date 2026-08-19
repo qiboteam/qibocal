@@ -10,7 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
-from . import utils
+from .fitting import exp_decay, exponential_fit_probability
 from .t1 import CoherenceProbType, T1Data
 
 
@@ -121,7 +121,7 @@ def _fit(data: ZenoData) -> ZenoResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters, pcovs, chi2 = utils.exponential_fit_probability(data)
+    t1s, fitted_parameters, pcovs, chi2 = exponential_fit_probability(data)
     return ZenoResults(t1s, fitted_parameters, pcovs, chi2)
 
 
@@ -169,7 +169,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=utils.exp_decay(waitrange, *params),
+                y=exp_decay(waitrange, *params),
                 name="Fit",
                 mode="lines",
             )

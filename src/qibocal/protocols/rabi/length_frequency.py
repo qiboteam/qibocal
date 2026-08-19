@@ -15,17 +15,17 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ...result import probability
 from ..utils import HZ_TO_GHZ, chi2_reduced
+from .acquisition import sequence_length
+from .fitting import (
+    fit_length_function,
+    rabi_initial_guess,
+    rabi_length_function,
+)
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
     RabiLengthFrequencySignalParameters,
     RabiLengthFrequencySignalResults,
     _update,
-)
-from .utils import (
-    fit_length_function,
-    rabi_initial_guess,
-    rabi_length_function,
-    sequence_length,
 )
 
 __all__ = ["rabi_length_frequency"]

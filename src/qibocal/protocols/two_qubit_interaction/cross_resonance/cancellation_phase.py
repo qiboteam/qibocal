@@ -38,7 +38,7 @@ from .cross_resonance_processing import (
     reconstruct_full_hamiltonian_terms,
 )
 from .plotting import cancellation_calibration_plot
-from .utils import (
+from .processing import (
     cross_resonance_experiment,
     cross_resonance_pulses,
     ro_delay_range,

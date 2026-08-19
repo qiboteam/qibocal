@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.randomized_benchmarking.utils import rb_acquisition
+from qibocal.protocols.randomized_benchmarking.acquisition import rb_acquisition
 from qibocal.protocols.utils import table_dict, table_html
 
 from .standard_rb import RBData, StandardRBParameters

@@ -11,8 +11,8 @@ from qibocal.result import probability
 
 from ...config import log
 from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
+from .fitting import single_exponential_fit
 from .t1_signal import t1_sequence
-from .utils import single_exponential_fit
 
 
 @dataclass

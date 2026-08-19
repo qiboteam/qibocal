@@ -11,7 +11,12 @@ from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
 from qibocal.result import magnitude, phase
 
-from . import utils
+from .acquisition import sequence_amplitude
+from .fitting import (
+    fit_amplitude_function,
+    rabi_initial_guess,
+)
+from .plotting import plot
 
 __all__ = [
     "RabiAmpSignalType",
@@ -83,7 +88,7 @@ def _acquisition(
     """
 
     # create a sequence of pulses for the experiment
-    sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
+    sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
         targets, params, platform, params.rx90
     )
 
@@ -142,9 +147,9 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min)
 
-        pguess = utils.rabi_initial_guess(x, y, "amp", signal=True)
+        pguess = rabi_initial_guess(x, y, "amp", signal=True)
         try:
-            popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
+            popt, _, pi_pulse_parameter = fit_amplitude_function(
                 x,
                 y,
                 pguess,
@@ -169,7 +174,7 @@ def _plot(
     fit: RabiAmplitudeSignalResults = None,
 ):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, target, fit, data.rx90)
+    return plot(data, target, fit, data.rx90)
 
 
 def _update(
