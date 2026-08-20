@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +12,7 @@ from qibolab import (
     AveragingMode,
     ChannelId,
     Delay,
+    IqConfig,
     Parameter,
     Pulse,
     PulseSequence,
@@ -140,10 +142,12 @@ def _acquisition(
     # Get drive channels and LO channels for each qubit
     drive_channels: dict[QubitId, ChannelId] = {}
     lo_channels: dict[QubitId, str | None] = {}
+    f0: dict[QubitId, float] = {}
     for qubit in targets:
         drive_channel = platform.qubits[qubit].drive
         assert drive_channel is not None
         drive_channels[qubit] = drive_channel
+        f0[qubit] = params.f0(cast(IqConfig, platform.config(drive_channel)).frequency)
 
         # Get the LO channel associated with this drive channel
         channel_obj = platform.channels[drive_channels[qubit]]
@@ -185,14 +189,13 @@ def _acquisition(
             sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
             sequence.append((ro_channel, ro_pulse))
 
-            f0 = params.f0(platform.config(qd_channel).frequency)
-            frange = (f0 + start, f0 + end, step)
-            freq_ranges[qubit] = frange
+            batch_range = (f0[qubit] + start, f0[qubit] + end, step)
+            freq_ranges[qubit] = batch_range
 
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    range=frange,
+                    range=batch_range,
                     channels=[qd_channel],
                 )
             )
@@ -203,15 +206,11 @@ def _acquisition(
             update_dict = {}
 
             # Update the frequency of the drive channel to avoid raising a validation an error
-            update_dict[drive_channels[qubit]] = {
-                "frequency": params.f0(platform.config(drive_channels[qubit]).frequency)
-                + lo_offset
-            }
+            update_dict[drive_channels[qubit]] = {"frequency": f0[qubit] + lo_offset}
 
             # If we're batching, update the LO
             if lo_offset != 0 and lo_channels[qubit] is not None:
-                f0 = params.f0(platform.config(drive_channels[qubit]).frequency)
-                update_dict[lo_channels[qubit]] = {"frequency": f0 + lo_offset}
+                update_dict[lo_channels[qubit]] = {"frequency": f0[qubit] + lo_offset}
 
             batch_updates.append(update_dict)
 
