@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+from typing import cast
 
-import numpy as np
 import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    IqConfig,
     Parameter,
     PulseSequence,
     Sweeper,
@@ -16,7 +17,7 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
-from ..utils import HZ_TO_GHZ, readout_frequency
+from ..utils import HZ_TO_GHZ, Range, RangeLike, readout_frequency, to_range
 from .qubit_spectroscopy import QubitSpectroscopyResults
 
 __all__ = ["qubit_power_spectroscopy"]
@@ -26,18 +27,54 @@ __all__ = ["qubit_power_spectroscopy"]
 class QubitPowerSpectroscopyParameters(Parameters):
     """QubitPowerSpectroscopy runcard inputs."""
 
-    freq_width: int
+    frequency: RangeLike | None = None
+    """Frequencies for the sweep [Hz]."""
+    freq_width: int | None = None
     """Width for frequency sweep relative  to the drive frequency [Hz]."""
-    freq_step: int
+    freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
-    min_amp: float
+    amplitude: RangeLike | None = None
+    """Amplitudes for the sweep [a.u.]."""
+    min_amp: float | None = None
     """Minimum amplitude."""
-    max_amp: float
+    max_amp: float | None = None
     """Maximum amplitude."""
-    step_amp: float
+    step_amp: float | None = None
     """Step amplitude."""
-    duration: int
+    duration: int = 4000
     """Drive duration."""
+
+    def frequency_range(self, q: QubitId, platform: CalibrationPlatform) -> Range:
+        qd_channel = platform.qubits[q].drive
+        assert qd_channel is not None
+        center = cast(IqConfig, platform.config(qd_channel)).frequency
+
+        def legacy_range() -> Range:
+            assert self.freq_width is not None
+            assert self.freq_step is not None
+            return (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
+
+        assert isinstance(center, float)
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else legacy_range()
+        )
+
+    def amplitude_range(self) -> Range:
+        def legacy_range() -> Range:
+            assert self.min_amp is not None
+            assert self.max_amp is not None
+            assert self.step_amp is not None
+            return (self.min_amp, self.max_amp, self.step_amp)
+
+        return (
+            to_range(self.amplitude) if self.amplitude is not None else legacy_range()
+        )
 
 
 @dataclass
@@ -62,9 +99,6 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     freq_sweepers = {}
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         qd_channel, qd_pulse = natives.RX()[0]
@@ -79,16 +113,15 @@ def _acquisition(
         sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
         sequence.append((ro_channel, ro_pulse))
 
-        f0 = platform.config(qd_channel).frequency
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
-            values=f0 + delta_frequency_range,
+            range=params.frequency_range(qubit, platform),
             channels=[qd_channel],
         )
 
     amp_sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
+        range=params.amplitude_range(),
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
@@ -114,7 +147,7 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
-        # average signal, phase, i and q over the number of shots defined in the runcard
+        # average i and q
         data.data[qubit] = results[ro_pulse.id]
 
     return data

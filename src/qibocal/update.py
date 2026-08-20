@@ -240,17 +240,6 @@ def frequency_12_transition(frequency: float, platform: Platform, qubit: QubitId
     platform.calibration.single_qubits[qubit].qubit.frequency_12 = frequency
 
 
-def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
-    platform.update(
-        {f"native_gates.single_qubit.{qubit}.RX12.0.1.amplitude": amplitude}
-    )
-
-
-def drive_12_duration(duration: int | tuple | list, platform: Platform, qubit: QubitId):
-    """Update drive duration value in platform for specific qubit."""
-    platform.update({f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": duration})
-
-
 def readout_coupling(g: float, platform: Platform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].readout.coupling = g
 
