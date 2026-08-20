@@ -15,6 +15,7 @@ from qibolab import (
     AveragingMode,
     BaseEnvelope,
     Delay,
+    ExponentialFilter,
     Parameter,
     Platform,
     Pulse,
@@ -330,37 +331,21 @@ def _acquisition(
     return data
 
 
-def exponential_params(step_response, acquisition_time):
-    t = np.arange(0, acquisition_time, 1)
-    init_guess = [1, 10, 1]
-    target = np.ones(len(t))
+def exponential_params(
+    step_response: npt.ArrayLike, durations: npt.ArrayLike
+) -> npt.NDArray[np.float64]:
+    """Fit an exponential distortion."""
 
-    def expmodel(t, tau, exp_amplitude, g):
-        return step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
+    def _expmodel(t, tau, exp_amplitude, g):
+        return g * (1 + exp_amplitude * np.exp(-t / tau))
 
-    popt, _ = scipy.optimize.curve_fit(expmodel, t, target, p0=init_guess)
-
-    return popt
-
-
-# TODO: this is largely a copy of qibolab._core.components.filters.ExponentialFilter._compute_filter
-def filter_calc(params, sampling_rate):
-    tau, exp_amplitude, _ = params
-    alpha = 1 - np.exp(-1 / (sampling_rate * tau * (1 + exp_amplitude)))
-    k = (
-        exp_amplitude / ((1 + exp_amplitude) * (1 - alpha))
-        if exp_amplitude < 0
-        else exp_amplitude / (1 + exp_amplitude - alpha)
+    popt, _ = scipy.optimize.curve_fit(
+        _expmodel,
+        durations,
+        step_response,
+        p0=[10.0, 1.0, 1.0],
     )
-    b0 = 1 - k + k * alpha
-    b1 = -(1 - k) * (1 - alpha)
-    a0 = 1
-    a1 = -(1 - alpha)
-
-    feedback_taps = np.array([a0, a1])
-    feedforward_taps = np.array([b0, b1])
-
-    return feedback_taps.tolist(), feedforward_taps.tolist()
+    return popt
 
 
 # TODO: refactor into sub-functions with smaller scopes
@@ -406,8 +391,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     qubits = np.unique([i[0] for i in data.data]).tolist()
 
     for qubit in qubits:
-        x = data[(qubit, "MX")].duration
-        duration_step = x[1] - x[0]
+        durations = data[(qubit, "MX")].duration
+        duration_step = durations[1] - durations[0]
         X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
@@ -422,7 +407,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * x * np.abs(demod_freq)) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * durations * np.abs(demod_freq)) * (
+            norm_data
+        )
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
@@ -450,17 +437,14 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         ).tolist()
         if not data.has_filters[qubit]:
             # Derive IIR
-            acquisition_time = len(x)
             if data.iir:
-                exp_params = exponential_params(step_response[qubit], acquisition_time)
+                exp_params = exponential_params(step_response[qubit], durations)
+                tau, exp_amplitude, _ = exp_params
+                iir_filter = ExponentialFilter(amplitude=exp_amplitude, tau=tau)
+                feedback_taps[qubit] = iir_filter.feedback
+                feedforward_taps_iir[qubit] = iir_filter.feedforward
             else:
                 exp_params = [0.0, 0.0, 1.0]
-
-            if data.iir:
-                feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(
-                    exp_params, sampling_rate
-                )
-            else:
                 feedback_taps[qubit] = [1.0]
                 feedforward_taps_iir[qubit] = [1.0]
 
