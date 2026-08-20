@@ -88,9 +88,15 @@ class CryoscopeParameters(Parameters):
         iir_free_parameters = self.iir * 2
         if self.fir + iir_free_parameters > n_points:
             raise ValueError(
-                f"Cannot fit {self.fir} FIR taps with only {n_points} duration "
-                "points: the fit would be underdetermined."
+                f"Cannot fit {self.fir} FIR taps and {iir_free_parameters} exponential "
+                f"parameters with only {n_points} duration points: the fit would be "
+                "underdetermined."
             )
+
+        # TODO: padding is in samples while duration in ns. This protocol mixes ns and
+        # samples, so only works for 1 GHz sampling.
+        if self.duration_min < self.padding:
+            raise ValueError("Ensure that duration_min >= padding.")
 
 
 @dataclass
@@ -234,7 +240,7 @@ def _check_phase_can_be_unwrapped(
     nyquist_cycles_per_sample = 0.5
     if cycles_per_step > nyquist_cycles_per_sample:
         raise ValueError(
-            f"Cannot unwrap the phase for qubit {qubit}: the expected detuning is"
+            f"Cannot unwrap the phase for qubit {qubit}: the expected detuning is "
             f"{detuning:.3f} GHz, resulting in {cycles_per_step:.3f} cycles per sample "
             f"({duration_step} ns). This is above the Nyquist limit. Reduce "
             "flux_pulse_amplitude or duration_step."
