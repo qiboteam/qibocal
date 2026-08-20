@@ -155,7 +155,7 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=platform.config(qd_channel).frequency + params.frequency_range,
+                range=params.frequency_range(platform.config(qd_channel).frequency),
                 channels=[qd_channel],
             )
         )
@@ -166,7 +166,7 @@ def _acquisition(
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + params.bias_range,
+                range=params.bias_range(offset0),
                 channels=[flux_channel],
             )
         )
