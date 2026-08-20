@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +12,7 @@ from qibolab import (
     AveragingMode,
     ChannelId,
     Delay,
+    IqConfig,
     Parameter,
     Pulse,
     PulseSequence,
@@ -72,6 +74,11 @@ class QubitSpectroscopyParameters(Parameters):
             else legacy_range()
         )
 
+    def f0(self, center: float = 0.0) -> float:
+        """Return the center frequency of the sweep."""
+        start, end, _ = self.frequency_range(center)
+        return (start + end) / 2
+
 
 @dataclass
 class QubitSpectroscopyResults(Results):
@@ -129,16 +136,18 @@ def _acquisition(
 
     # Calculate batches
     freq_range = params.frequency_range()
-    width = freq_range[1] - freq_range[0]
+    width, step = freq_range[1] - freq_range[0], freq_range[2]
     batches = _calculate_batches(freq_width=width)
 
     # Get drive channels and LO channels for each qubit
     drive_channels: dict[QubitId, ChannelId] = {}
     lo_channels: dict[QubitId, str | None] = {}
+    f0: dict[QubitId, float] = {}
     for qubit in targets:
         drive_channel = platform.qubits[qubit].drive
         assert drive_channel is not None
         drive_channels[qubit] = drive_channel
+        f0[qubit] = params.f0(cast(IqConfig, platform.config(drive_channel)).frequency)
 
         # Get the LO channel associated with this drive channel
         channel_obj = platform.channels[drive_channels[qubit]]
@@ -157,10 +166,9 @@ def _acquisition(
 
     # Execute each batch
     for start, end, lo_offset in batches:
-        delta_frequency_range = np.arange(start, end, freq_range[2])
-
         # Build the pulse sequence
         sequence = PulseSequence()
+        freq_ranges = {}
         ro_pulses = {}
         sweepers = []
 
@@ -181,11 +189,13 @@ def _acquisition(
             sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
             sequence.append((ro_channel, ro_pulse))
 
-            f0 = platform.config(qd_channel).frequency
+            batch_range = (f0[qubit] + start, f0[qubit] + end, step)
+            freq_ranges[qubit] = batch_range
+
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values=f0 + delta_frequency_range,
+                    range=batch_range,
                     channels=[qd_channel],
                 )
             )
@@ -196,15 +206,11 @@ def _acquisition(
             update_dict = {}
 
             # Update the frequency of the drive channel to avoid raising a validation an error
-            update_dict[drive_channels[qubit]] = {
-                "frequency": platform.config(drive_channels[qubit]).frequency
-                + lo_offset
-            }
+            update_dict[drive_channels[qubit]] = {"frequency": f0[qubit] + lo_offset}
 
             # If we're batching, update the LO
             if lo_offset != 0 and lo_channels[qubit] is not None:
-                f0 = platform.config(drive_channels[qubit]).frequency
-                update_dict[lo_channels[qubit]] = {"frequency": f0 + lo_offset}
+                update_dict[lo_channels[qubit]] = {"frequency": f0[qubit] + lo_offset}
 
             batch_updates.append(update_dict)
 
@@ -222,10 +228,9 @@ def _acquisition(
         # Collect results from this batch
         for qubit in targets:
             result = results[ro_pulses[qubit].id]
-            f0 = platform.config(drive_channels[qubit]).frequency
 
             # Store results with absolute frequencies
-            values[qubit]["frequency"].append(delta_frequency_range + f0)
+            values[qubit]["frequency"].append(np.arange(*freq_ranges[qubit]))
             values[qubit]["result"].append(result)
 
     freqs: dict[QubitId, list[float]] = {}

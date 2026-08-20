@@ -120,14 +120,14 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=readout_frequency(q, platform) + params.frequency_range,
+                range=params.frequency_range(readout_frequency(q, platform)),
                 channels=[qubit.probe],
             )
         )
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + params.bias_range,
+                range=params.bias_range(offset0),
                 channels=[qubit.flux],
             )
         )
@@ -149,6 +149,7 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [offset_sweepers, freq_sweepers],
+        updates=[{platform.qubits[q].flux: {"offset": 0.0}} for q in targets],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,

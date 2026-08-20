@@ -17,11 +17,14 @@ from ..utils import (
     DISTANCE_Z,
     HZ_TO_GHZ,
     FeatExtractionError,
+    Range,
+    RangeLike,
     clustering,
     merging,
     minmax_scaling,
     peaks_finder,
     reshaping_raw_signal,
+    to_range,
     zca_whiten,
 )
 
@@ -30,22 +33,48 @@ from ..utils import (
 class FluxFrequencySweepParameters(Parameters):
     """Parameters to define flux DC sweep."""
 
-    freq_width: int
+    freq_width: int | None = None
     """Width for frequency sweep relative to the readout frequency [Hz]."""
-    freq_step: int
+    freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
-    bias_width: float
+    frequency: RangeLike | None = None
+    """Frequency [Hz] range for sweep."""
+    bias_width: float | None = None
     """Width for bias sweep [a.u.]."""
-    bias_step: float
+    bias_step: float | None = None
     """Bias step for sweep [a.u.]."""
+    bias: RangeLike | None = None
+    """Bias [a.u.] range for sweep."""
 
-    @property
-    def frequency_range(self) -> np.ndarray:
-        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
+    def frequency_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.freq_width is not None and self.freq_step is not None
+            return (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
 
-    @property
-    def bias_range(self) -> np.ndarray:
-        return np.arange(-self.bias_width / 2, self.bias_width / 2, self.bias_step)
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else legacy_range()
+        )
+
+    def bias_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.bias_width is not None and self.bias_step is not None
+            return (
+                center - self.bias_width / 2,
+                center + self.bias_width / 2,
+                self.bias_step,
+            )
+
+        return (
+            to_range(self.bias, center=center)
+            if self.bias is not None
+            else legacy_range()
+        )
 
 
 def create_data_array(freq, bias, signal, dtype):
