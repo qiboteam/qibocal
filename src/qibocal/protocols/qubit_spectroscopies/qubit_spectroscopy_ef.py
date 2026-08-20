@@ -111,7 +111,8 @@ def _acquisition(
         assert isinstance(qd_config, IqConfig)
         assert isinstance(qd12_config, IqConfig)
         drive[qubit] = qd_config.frequency
-        f12_range = params.frequency_range(center=qd12_config.frequency)
+        f12 = qd12_config.frequency
+        f12_range = params.frequency_range(f12)
         drive12_ranges[qubit] = f12_range
         # TODO: it makes no sense to propagate the unraveled range, but it is to
         # match the format of the plotting function from the qubit spectroscopy
