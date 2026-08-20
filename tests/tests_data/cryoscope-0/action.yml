@@ -1,8 +1,8 @@
 id: cryoscope
 operation: cryoscope
 parameters:
-  duration_max: 80
-  duration_min: 0
+  duration_max: 70
+  duration_min: 4
   duration_step: 1
   fir: 32
   flux_pulse_amplitude: 0.2
