@@ -264,6 +264,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                     showlegend=True,
                     legendgroup=fit_group,
                     line=go.scatter.Line(color=color_map[state]),
+                    mode="lines",
                 ),
                 row=1,
                 col=1,

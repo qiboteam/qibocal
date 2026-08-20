@@ -132,7 +132,7 @@ def _acquisition(
                 {
                     "freq": np.arange(
                         *params.frequency_range(
-                            center=readout_frequency(qubit, platform)
+                            center=readout_frequency(qubit, platform, state=1)
                         )
                     ),
                     "signal": magnitude(result),
@@ -221,6 +221,7 @@ def _plot(
                 name=f"{label}",
                 showlegend=True,
                 legendgroup=f"{label}",
+                mode="markers",
             ),
             row=1,
             col=1,
@@ -232,6 +233,7 @@ def _plot(
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"{label}",
+                mode="markers",
             ),
             row=1,
             col=2,
