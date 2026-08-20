@@ -1,0 +1,14 @@
+id: cryoscope
+operation: cryoscope
+parameters:
+  duration_max: 31
+  duration_min: 0
+  duration_step: 1
+  fir: 32
+  flux_pulse_amplitude: 0.05
+  iir: false
+  nshots: 5000
+  padding: 4
+targets:
+- 0
+update: true
