@@ -408,6 +408,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         sampling_rate = 1 / (duration_step)
         demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi * sampling_rate
         # to be used in savgol_filter
+        # TODO: expose this 7 since it's a hyperparameter that, according to PycQED
+        # "Needs some playing around sometimes"
         derivative_window_length = 7 / sampling_rate
         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
         derivative_window_size += (derivative_window_size + 1) % 2
@@ -470,7 +472,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
                 toeplitz_matrix, np.full(len(iir_correction), baseline)
             )
             fir_taps[qubit] = fir.tolist()
-
             feedforward_taps[qubit] = np.convolve(
                 feedforward_taps_iir[qubit], fir
             ).tolist()
