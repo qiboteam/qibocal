@@ -281,10 +281,10 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         other_det = data.detuning[qubit]
         f = data.qubit_frequency[qubit]
         det = phase / data.flux_pulse_duration / 2 / np.pi + other_det
-        # to make sure that flux is invertible
-        det[np.abs(det) < 1e-3] = 0
+        # clip to make sure that flux is invertible
+        freq_ratio = np.minimum(((f + det) / f) ** 2, 1.0)
         # from inversion of flux dependence formula assuming negligible Ec and asymmetry
-        derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
+        derived_flux = 1 / np.pi * np.arccos(freq_ratio)
         flux[qubit] = derived_flux.tolist()
         fitted_parameters_detuning[qubit] = np.polyfit(amplitudes, det, 2).tolist()
         fitted_parameters_flux[qubit] = np.polyfit(amplitudes, derived_flux, 1).tolist()
