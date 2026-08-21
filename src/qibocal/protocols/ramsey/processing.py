@@ -223,7 +223,7 @@ def signal_plot(
                 y=signal,
                 error_y=error_y,
                 opacity=1,
-                name="data",
+                name="Data",
                 showlegend=True,
                 mode="markers",
             ),

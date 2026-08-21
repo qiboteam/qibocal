@@ -223,7 +223,7 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
                 y=probs,
                 error_y={"type": "data", "array": error_bars},
                 opacity=1,
-                name="data",
+                name="Data",
                 showlegend=True,
                 mode="markers",
             ),
