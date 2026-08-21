@@ -223,9 +223,8 @@ def signal_plot(
                 y=signal,
                 error_y=error_y,
                 opacity=1,
-                name=yaxis_title,
+                name="data",
                 showlegend=True,
-                legendgroup=yaxis_title,
                 mode="markers",
             ),
         ]

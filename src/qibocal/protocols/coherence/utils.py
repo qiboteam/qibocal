@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import QubitId
 from qibocal.config import log
 
-from ..utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 
 CoherenceType = np.dtype(
     [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
@@ -207,7 +207,7 @@ def exponential_fit_probability(data, zeno=False):
 
 
 def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
-    """Plotting function for spin-echo or CPMG protocol."""
+    """Plotting function for spin-echo, CPMG, and T2 protocols."""
 
     figures = []
     fitting_report = ""
@@ -221,20 +221,11 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
             go.Scatter(
                 x=waits,
                 y=probs,
+                error_y={"type": "data", "array": error_bars},
                 opacity=1,
-                name="Probability of 1",
+                name="data",
                 showlegend=True,
-                legendgroup="Probability of 1",
                 mode="markers",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line={"color": COLORBAND_LINE},
-                showlegend=True,
-                name="Errors",
             ),
         ]
     )
@@ -267,7 +258,7 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Probability of State 1",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)
