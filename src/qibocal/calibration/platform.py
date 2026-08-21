@@ -1,11 +1,16 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from qibolab import Platform, create_platform, locate_platform
+from qibolab import Parameters, Platform, create_platform, locate_platform
+from qibolab.platform import create_dummy
 
 from .calibration import CALIBRATION, Calibration
 
 __all__ = ["CalibrationPlatform", "create_calibration_platform"]
+
+
+PARAMETERS = "parameters.json"
+"""File containing information about platform parameters."""
 
 
 class CalibrationError(Exception):
@@ -17,7 +22,7 @@ class CalibrationError(Exception):
 class CalibrationPlatform(Platform):
     """Qibolab platform with calibration information."""
 
-    calibration: Calibration = None
+    calibration: Calibration | None = None
     """Calibration information."""
 
     def __post_init__(self):
@@ -64,11 +69,44 @@ class CalibrationPlatform(Platform):
         # TODO: this is loading twice a platform
         return cls(**vars(platform), calibration=calibration)
 
+    @classmethod
+    def from_datafolder(
+        cls, folder_path: Path, platform_name: str, dummy_hardware: bool
+    ):
+        """Create a calibration platform from a serialized data folder.
+
+        The platform is rebuilt from the configuration saved in the experiment history,
+        using the ``parameters.json`` and ``calibration.json`` files stored in the data folder
+        rather than the platform in ``QIBOLAB_PLATFORMS``.
+        A real platform or a dummy platform is created according to
+        ``dummy_hardware``, then populated with the data in ``folder_path``.
+        """
+
+        parameters = Parameters.model_validate_json(
+            (folder_path / PARAMETERS).read_text()
+        )
+
+        calibration = Calibration.model_validate_json(
+            (folder_path / CALIBRATION).read_text()
+        )
+
+        platform = create_dummy() if dummy_hardware else create_platform(platform_name)
+        platform.parameters = parameters
+        platform.name = platform_name
+
+        return cls(
+            calibration=calibration,
+            **vars(platform),
+        )
+
     def dump(self, path: Path):
         super().dump(path)
         self.calibration.dump(path)
 
 
 def create_calibration_platform(name: str) -> CalibrationPlatform:
+    """This function builds a ``CalibrationPlatform`` object which is sentitive of the hardware,
+    so it needs information about the clusters and its connection. Has to be used for acquisition.
+    """
     platform = create_platform(name)
     return CalibrationPlatform.from_platform(platform)
