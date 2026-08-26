@@ -52,7 +52,7 @@ class TwpaCalibrationParameters(Parameters):
 class TwpaCalibrationResults(Results):
     """TwpaCalibration outputs."""
 
-    data: dict[QubitId, npt.NDArray]
+    data: dict[QubitId, npt.NDArray[np.float64]]
     """Array with average gain for each qubit."""
     twpa_frequency: dict[QubitId, float]
     """TWPA frequency [GHz]."""
@@ -64,16 +64,16 @@ class TwpaCalibrationResults(Results):
 class TwpaCalibrationData(Data):
     """TwpaCalibration data acquisition."""
 
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[np.float64]] = field(default_factory=dict)
     """Raw data acquired."""
-    twpa_frequency: dict[QubitId, list[float]] = field(default=list)
+    twpa_frequency: dict[QubitId, list[float]] = field(default=dict)
     """List with twpa frequency values swept."""
-    twpa_power: dict[QubitId, list[float]] = field(default=list)
+    twpa_power: dict[QubitId, list[float]] = field(default=dict)
     """List with twpa power values swept."""
-    reference_value: dict[QubitId, list[float]] = field(default=list)
+    reference_value: dict[QubitId, list[float]] = field(default=dict)
     """Values for readout frequency sweep with TWPA off."""
 
-    def reference_value_array(self, qubit: QubitId) -> npt.NDArray:
+    def reference_value_array(self, qubit: QubitId) -> npt.NDArray[np.float64]:
         """Return reference value as a numpy array."""
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
@@ -217,9 +217,9 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
     After computing the averaged gain we select the corresponding twpa frequency and power
     that maximizes the gain for each qubit.
     """
-    gains = {}
-    twpa_frequency = {}
-    twpa_power = {}
+    gains: dict[QubitId, npt.NDArray[np.float64]] = {}
+    twpa_frequency: dict[QubitId, float] = {}
+    twpa_power: dict[QubitId, float] = {}
     for qubit in data.qubits:
         averaged_gain = 20 * np.log10(
             np.mean(magnitude(data[qubit]), axis=2)
@@ -228,8 +228,8 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
         gains[qubit] = averaged_gain
         flat_index = np.argmax(averaged_gain)
         i, j = np.unravel_index(flat_index, averaged_gain.shape)
-        twpa_frequency[qubit] = float(data.twpa_frequency[qubit][j])
-        twpa_power[qubit] = float(data.twpa_power[qubit][i])
+        twpa_frequency[qubit] = data.twpa_frequency[qubit][j]
+        twpa_power[qubit] = data.twpa_power[qubit][i]
     return TwpaCalibrationResults(
         data=gains,
         twpa_frequency=twpa_frequency,
