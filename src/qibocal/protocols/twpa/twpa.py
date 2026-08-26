@@ -268,13 +268,13 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
             x=np.array(data.twpa_frequency[target]) * HZ_TO_GHZ,
             y=data.twpa_power[target],
             z=averaged_gain,
+            colorscale="inferno",
         ),
     )
-    fig.update_xaxes(title_text="TWPA Frequency [GHz]")
-    fig.update_yaxes(title_text="TWPA Power [dBm]")
-
     fig.update_layout(
         showlegend=False,
+        xaxis_title="TWPA Frequency [GHz]",
+        yaxis_title="TWPA Power [dBm]",
     )
 
     figures.append(fig)
