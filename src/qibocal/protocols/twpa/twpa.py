@@ -35,10 +35,8 @@ class TwpaCalibrationParameters(Parameters):
     """Width for TPWA power sweep (dBm)."""
     twpa_pow_step: int
     """TPWA power step (dBm)."""
-    nshots: int | None = None
-    """Number of shots."""
-    relaxation_time: int | None = None
-    """Relaxation time (ns)."""
+    duration: float = 8e3
+    amplitude: float = 0.1
 
 
 @dataclass
@@ -83,17 +81,20 @@ def _acquisition(
     """
 
     sequence = PulseSequence()
-    for qubit in targets:
-        sequence += platform.natives.single_qubit[qubit].MZ()
-
-    twpas = {
-        platform.channels[
-            platform.qubits[qubit].acquisition
-        ].twpa_pump: platform.instruments[
-            platform.channels[platform.qubits[qubit].acquisition].twpa_pump
+    for ch in acquisition_channels:
+        sequence += [
+            (
+                ch,
+                Readout(
+                    acquisition=Acquisition(duration=params.duration),
+                    probe=Pulse(
+                        duration=params.duration,
+                        amplitude=params.amplitude,
+                        envelope=Rectangular(),
+                    ),
+                ),
+            )
         ]
-        for qubit in targets
-    }
 
     frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
