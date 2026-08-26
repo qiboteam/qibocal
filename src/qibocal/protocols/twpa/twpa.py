@@ -127,11 +127,11 @@ class TwpaCalibrationData(Data):
 
     data: dict[QubitId, npt.NDArray[np.float64]] = field(default_factory=dict)
     """Raw data acquired."""
-    twpa_frequency: dict[QubitId, list[float]] = field(default=dict)
+    twpa_frequency: dict[QubitId, list[float]] = field(default_factory=dict)
     """List with twpa frequency values swept."""
-    twpa_power: dict[QubitId, list[float]] = field(default=dict)
+    twpa_power: dict[QubitId, list[float]] = field(default_factory=dict)
     """List with twpa power values swept."""
-    reference_value: dict[QubitId, list[float]] = field(default=dict)
+    reference_value: dict[QubitId, list[float]] = field(default_factory=dict)
     """Values for readout frequency sweep with TWPA off."""
 
     def reference_value_array(self, qubit: QubitId) -> npt.NDArray[np.float64]:
@@ -320,10 +320,12 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
     )
 
 
-def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
+def _plot(
+    data: TwpaCalibrationData, fit: TwpaCalibrationResults | None, target: QubitId
+) -> tuple[list[go.Figure], str]:
     """Plotting for TwpaCalibration."""
 
-    figures = []
+    figures: list[go.Figure] = []
     fig = go.Figure()
     if fit is not None:
         fitting_report = table_html(
