@@ -1,20 +1,29 @@
 """Protocol to calibrate TWPA power and frequency for a specific probe frequency."""
 
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import (
+    Acquisition,
+    AcquisitionChannel,
     AcquisitionType,
     AveragingMode,
+    OscillatorConfig,
     Parameter,
-    Platform,
+    Pulse,
     PulseSequence,
+    Qubit,
+    Readout,
+    Rectangular,
     Sweeper,
 )
+from qibolab._core.instruments.oscillator import LocalOscillator
 
 from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
+from ...calibration.platform import CalibrationPlatform
 from ...result import magnitude
 from ..utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
@@ -71,7 +80,7 @@ class TwpaCalibrationData(Data):
 
 def _acquisition(
     params: TwpaCalibrationParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> TwpaCalibrationData:
     """Acquisition function for TwpaCalibration.
@@ -79,6 +88,20 @@ def _acquisition(
     First perform a scan over the readout probe with the TWPA off, then we sweep the TWPA power and frequency.
     The gain is computed as the norm of the complex readout signal divided the norm of the complex readout signal without TWPA.
     """
+
+    qubits: list[Qubit] = [platform.qubits[qubit] for qubit in targets]
+    acquisition_channels: list[str] = []
+    pumps: list[str] = []
+    for qubit in qubits:
+        assert qubit.acquisition is not None
+        acquisition_channels.append(qubit.acquisition)
+        pump = cast(AcquisitionChannel, platform.channels[qubit.acquisition]).twpa_pump
+        assert pump is not None
+        pumps.append(pump)
+    twpas = {pump: cast(LocalOscillator, platform.instruments[pump]) for pump in pumps}
+    twpa_configs = {
+        pump: cast(OscillatorConfig, platform.config(pump)) for pump in pumps
+    }
 
     sequence = PulseSequence()
     for ch in acquisition_channels:
@@ -99,7 +122,6 @@ def _acquisition(
     frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
-
     twpa_frequency_range = np.arange(
         -params.twpa_freq_width / 2,
         params.twpa_freq_width / 2,
@@ -108,34 +130,25 @@ def _acquisition(
     twpa_power_range = np.arange(
         -params.twpa_pow_width / 2, params.twpa_pow_width / 2, params.twpa_pow_step
     )
-
     twpa_power_ranges = {
-        qubit: (
-            twpa_power_range
-            + platform.config(
-                platform.channels[platform.qubits[qubit].acquisition].twpa_pump
-            ).power
-        ).tolist()
-        for qubit in targets
+        q: (twpa_power_range + twpa.power).tolist()
+        for q, twpa in zip(targets, twpa_configs.values())
     }
     twpa_frequency_ranges = {
-        qubit: (
-            twpa_frequency_range
-            + platform.config(
-                platform.channels[platform.qubits[qubit].acquisition].twpa_pump
-            ).frequency
-        ).tolist()
-        for qubit in targets
+        q: (twpa_frequency_range + twpa.frequency).tolist()
+        for q, twpa in zip(targets, twpa_configs.values())
     }
+
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
             values=readout_frequency(q, platform) + frequency_range,
-            channels=[platform.qubits[q].probe],
+            channels=[qubit.probe],
         )
-        for q in targets
+        for q, qubit in zip(targets, qubits)
     ]
-    reference_value = {}
+
+    reference_value: dict[QubitId, list[float]] = {}
     # reference value without twpas
     for twpa in twpas.values():
         twpa.disconnect()
@@ -148,29 +161,31 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for qubit in targets:
-        acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
-        reference_value[qubit] = results[acq_handle].tolist()
+    for q, ch in zip(targets, acquisition_channels):
+        acq_handle = list(sequence.channel(ch))[-1].id
+        reference_value[q] = results[acq_handle].tolist()
 
     for twpa in twpas.values():
         twpa.connect()
 
-    updates = []
+    updates: list[dict[str, dict[str, Any]]] = []
 
     data = TwpaCalibrationData(
         twpa_power=twpa_power_ranges,
         twpa_frequency=twpa_frequency_ranges,
         reference_value=reference_value,
     )
-    data_ = {qubit: [] for qubit in targets}
+    data_: dict[QubitId, list[npt.NDArray[np.float64]]] = {
+        qubit: [] for qubit in targets
+    }
     for _pow in twpa_power_range:
-        for twpa_channel in twpas:
-            power = _pow + platform.config(twpa_channel).power
-            updates.append({twpa_channel: {"power": power}})
+        for twpa, cfg in twpa_configs.items():
+            power = _pow + cfg.power
+            updates.append({twpa: {"power": power}})
         for freq in twpa_frequency_range:
-            for twpa_channel in twpas:
-                frequency = freq + platform.config(twpa_channel).frequency
-                updates.append({twpa_channel: {"frequency": frequency}})
+            for twpa, cfg in twpa_configs.items():
+                frequency = freq + cfg.frequency
+                updates.append({twpa: {"frequency": frequency}})
             results = platform.execute(
                 [sequence],
                 [sweepers],
@@ -180,14 +195,12 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
                 updates=updates,
             )
-            for qubit in targets:
-                acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ].id
+            for qubit, ch in zip(targets, acquisition_channels):
+                acq_handle = list(sequence.channel(ch))[-1].id
                 data_[qubit].append(results[acq_handle])
-            for _ in twpas:
+            for _ in twpa_configs:
                 updates.pop()
-        for _ in twpas:
+        for _ in twpa_configs:
             updates.pop()
     data.data = {
         qubit: np.stack(data_[qubit], axis=0).reshape(
