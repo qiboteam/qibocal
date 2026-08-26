@@ -151,7 +151,8 @@ def _acquisition(
     reference_value: dict[QubitId, list[float]] = {}
     # reference value without twpas
     for twpa in twpas.values():
-        twpa.disconnect()
+        assert twpa.device is not None
+        twpa.device.off()
 
     results = platform.execute(
         [sequence],
@@ -166,7 +167,8 @@ def _acquisition(
         reference_value[q] = results[acq_handle].tolist()
 
     for twpa in twpas.values():
-        twpa.connect()
+        assert twpa.device is not None
+        twpa.device.on()
 
     updates: list[dict[str, dict[str, Any]]] = []
 
