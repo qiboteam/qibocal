@@ -25,27 +25,86 @@ from qibolab._core.instruments.oscillator import LocalOscillator
 from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
 from ...calibration.platform import CalibrationPlatform
 from ...result import magnitude
-from ..utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
+from ..utils import (
+    HZ_TO_GHZ,
+    Range,
+    RangeLike,
+    readout_frequency,
+    table_dict,
+    table_html,
+    to_range,
+)
 
 
 @dataclass
 class TwpaCalibrationParameters(Parameters):
     """TwpaCalibration runcard inputs."""
 
-    freq_width: float
+    freq_width: float | None = None
     """Width for frequency sweep of readout pulse (Hz)."""
-    freq_step: float
+    freq_step: float | None = None
     """Frequency step for sweep of readout pulse (Hz)."""
-    twpa_freq_width: int
+    probe_frequency: RangeLike | None = None
+    """Frequency [Hz] range for sweep."""
+    probe_duration: float = 8e3
+    probe_amplitude: float = 0.1
+    twpa_freq_width: float | None = None
     """Width for TPWA frequency sweep (Hz)."""
-    twpa_freq_step: int
+    twpa_freq_step: float | None = None
     """TPWA frequency step (Hz)."""
-    twpa_pow_width: int
+    frequency: RangeLike | None = None
+    """TWPA pump frequency [Hz] range for sweep."""
+    twpa_pow_width: float | None = None
     """Width for TPWA power sweep (dBm)."""
-    twpa_pow_step: int
+    twpa_pow_step: float | None = None
     """TPWA power step (dBm)."""
-    duration: float = 8e3
-    amplitude: float = 0.1
+    power: RangeLike | None = None
+    """TWPA pump power [dBm] range for sweep."""
+
+    def probe_frequency_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.freq_width is not None and self.freq_step is not None
+            return (
+                center - self.freq_width / 2,
+                center + self.freq_width / 2,
+                self.freq_step,
+            )
+
+        return (
+            to_range(self.probe_frequency, center=center)
+            if self.probe_frequency is not None
+            else legacy_range()
+        )
+
+    def frequency_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.twpa_freq_width is not None and self.twpa_freq_step is not None
+            return (
+                center - self.twpa_freq_width / 2,
+                center + self.twpa_freq_width / 2,
+                self.twpa_freq_step,
+            )
+
+        return (
+            to_range(self.frequency, center=center)
+            if self.frequency is not None
+            else legacy_range()
+        )
+
+    def power_range(self, center: float = 0.0) -> Range:
+        def legacy_range() -> Range:
+            assert self.twpa_pow_width is not None and self.twpa_pow_step is not None
+            return (
+                center - self.twpa_pow_width / 2,
+                center + self.twpa_pow_width / 2,
+                self.twpa_pow_step,
+            )
+
+        return (
+            to_range(self.power, center=center)
+            if self.power is not None
+            else legacy_range()
+        )
 
 
 @dataclass
