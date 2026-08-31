@@ -8,7 +8,7 @@ The goal of the Standard Error Amplification experiment is to estimate the error
 An ideal :math:`CZ` gate applies a phase of :math:`\pi` to the :math:`\ket{11}` component of the two-qubit state and leaves the other computational states unchanged.
 In practice, the gate implemented on hardware applies a phase :math:`\pi + \delta`, where :math:`\delta` is a small, unknown error.
 
-The implementation of the protocol follws the on described in :cite:p:`sea`.
+The implementation of the protocol follows the one described in :cite:p:`sea`.
 
 Standard Error Amplification
 -----------------------------
