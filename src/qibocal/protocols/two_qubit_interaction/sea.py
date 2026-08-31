@@ -247,7 +247,7 @@ def _plot(
             y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
             fill="toself",
             fillcolor=COLORBAND,
-            line=dict(color=COLORBAND_LINE),
+            line={"color": COLORBAND_LINE},
             showlegend=True,
             name="Errors",
         ),
