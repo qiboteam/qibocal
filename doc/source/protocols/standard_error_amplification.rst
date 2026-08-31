@@ -25,9 +25,9 @@ The net phase accumulated by :math:`Q_a` after the full sequence is, up to known
 .. math:: \phi_n = n\,\delta .
     :label: sea_phase
 
-The final :math:`X(\pi/2)` pulse on :math:`Q_a` is the second pulse of the Ramsey pair: it converts the phase :math:`\phi_n` of :eq:`sea_phase` into a measurable excited-state population
+The final :math:`X(\pi/2)` pulse on :math:`Q_a` is the same rotation as the initial one: it converts the phase :math:`\phi_n` of :eq:`sea_phase` into a measurable excited-state population
 
-.. math:: P(\ket{1}_{Q_a}) \approx \sin^2\left(\frac{n\,\delta}{2}\right)
+.. math:: P(\ket{1}_{Q_a}) \approx \cos^2\left(\frac{n\,\delta}{2}\right)
     :label: sea_population
 
 By measuring :math:`P(\ket{1}_{Q_a})` as a function of the number of repetitions :math:`n` and fitting it to a sinusoid, it is possible to extract :math:`\delta`.
