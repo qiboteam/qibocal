@@ -47,14 +47,14 @@ def cz_sea_sequence(
 
     sequence = natives_a.R(theta=np.pi / 2)
 
-    cz_channel, cz_pulse = natives_pair.CZ()[0]
+    cz_sequence = natives_pair.CZ()
 
     qa_channel, x_pulse_a = natives_a.RX()[0]
     qb_channel, y_pulse_b = natives_b.R(theta=np.pi, phi=np.pi / 2)[0]
 
     n_cz = 2 * repetitions
     for i in range(n_cz):
-        sequence |= PulseSequence([(cz_channel, cz_pulse)])
+        sequence |= PulseSequence(cz_sequence)
         if i < n_cz - 1:
             sequence |= PulseSequence(
                 [(qa_channel, x_pulse_a), (qb_channel, y_pulse_b)]
