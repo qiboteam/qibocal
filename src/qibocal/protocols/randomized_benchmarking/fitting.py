@@ -83,8 +83,8 @@ def fit_exp1B_func(
     """Calculate an single exponential A*p^m+B fit to the given ydata.
 
     Args:
-        xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted.
+        xdata (np.ndarray | list): The x-labels.
+        ydata (np.ndarray | list): The data to be fitted.
 
     Returns:
         tuple[tuple, tuple]: The fitting parameters (A, p, B) and the estimated error
@@ -120,8 +120,8 @@ def fit_exp1_func(
     """Calculate an single exponential  A*p^m fit to the given ydata, no linear offset.
 
     Args:
-        xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted.
+        xdata (np.ndarray | list): The x-labels.
+        ydata (np.ndarray | list): The data to be fitted.
 
     Returns:
         tuple[tuple, tuple]: The fitting parameters (A, p) and the estimated error (A_err, p_err).
@@ -155,8 +155,8 @@ def fit_expn_func(
     No linear offset, the ESPRIT algorithm is used to identify ``n`` exponential decays.
 
     Args:
-        xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted.
+        xdata (np.ndarray | list): The x-labels.
+        ydata (np.ndarray | list): The data to be fitted.
         n (int): number of decays to fit. Default is 2.
 
     Returns:
@@ -168,7 +168,7 @@ def fit_expn_func(
     decays = esprit(np.array(xdata), np.array(ydata), n)
     vandermonde = np.array([decays**x for x in xdata])
     alphas = np.linalg.pinv(vandermonde) @ np.array(ydata).reshape(-1, 1).flatten()
-    return tuple([*alphas, *decays]), (0,) * (len(alphas) + len(decays))
+    return (*alphas, *decays), (0,) * (len(alphas) + len(decays))
 
 
 def fit_exp2_func(
@@ -180,8 +180,8 @@ def fit_exp2_func(
     No linear offset, the ESPRIT algorithm is used to identify the two exponential decays.
 
     Args:
-        xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted
+        xdata (np.ndarray | list): The x-labels.
+        ydata (np.ndarray | list): The data to be fitted
 
     Returns:
         tuple[tuple, tuple]: (A1, A2, f1, f2) with f* the decay parameters.

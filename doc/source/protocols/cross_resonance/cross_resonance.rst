@@ -81,7 +81,7 @@ and mitigating error sources. The three steps can be summarized as follow:
 
 
 Hamiltonian tomography and gate-length calibration
--------------------------------------
+--------------------------------------------------
 
 In the initial experiment, we sweep the duration of the CR pulse and measure the state of both the control and target qubits.
 This measurement is performed twice: first with the control qubit prepared in the :math:`|0\rangle` state, and then in the :math:`|1\rangle` state.
@@ -209,7 +209,7 @@ Post-processing
 The post-processing is the same as for the CR-duration experiment.
 
 Phase calibration of CR and cancellation pulses
-----------------------------------
+-----------------------------------------------
 
 This step aligns both the CR and cancellation pulses along the correct axis (the x-axis).
 The standard CR-duration experiment is repeated while sweeping the CR pulse phase. At each phase point, all Hamiltonian
@@ -259,7 +259,7 @@ The expected output is the following:
 
 
 Amplitude calibration of the cancellation pulse
-----------------------------------
+-----------------------------------------------
 
 This final step is necessary to cancel out the remaining single-qubit drive terms affecting the target qubit
 (IX and IY).
@@ -313,9 +313,9 @@ The expected output is the following:
 
 
 .. note::
-The ``cancellation_phase_tuning`` and ``cancellation_amplitude_tuning`` protocols support an additional
-input parameter, ``verbose_plot``. It defaults to ``False``; enabling it (``True``) generates plots of
-the measured signal for each axis at every sweeper point.
+  The ``cancellation_phase_tuning`` and ``cancellation_amplitude_tuning`` protocols support an additional
+  input parameter, ``verbose_plot``. It defaults to ``False``; enabling it (``True``) generates plots of
+  the measured signal for each axis at every sweeper point.
 
 
 Requirements

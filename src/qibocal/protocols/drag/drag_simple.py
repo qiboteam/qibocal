@@ -152,11 +152,11 @@ def _acquisition(
             data.register_qubit(
                 DragTuningType,
                 (qubit),
-                dict(
-                    prob=np.array([prob]),
-                    error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                    beta=np.array([beta]),
-                ),
+                {
+                    "prob": np.array([prob]),
+                    "error": np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
+                    "beta": np.array([beta]),
+                },
             )
 
     return data
@@ -216,17 +216,17 @@ def _plot(
             go.Scatter(
                 x=qubit_data["beta"],
                 y=qubit_data["prob"],
-                error_y=dict(
-                    type="data",
-                    array=qubit_data["error"],
-                    visible=True,
-                    color=setup_colors[setup],
-                ),
+                error_y={
+                    "type": "data",
+                    "array": qubit_data["error"],
+                    "visible": True,
+                    "color": setup_colors[setup],
+                },
                 mode="markers",
                 name=f"{setup} data",
                 showlegend=True,
                 legendgroup=f"{setup} data",
-                marker=dict(color=setup_colors[setup]),
+                marker={"color": setup_colors[setup]},
             )
         )
 
@@ -247,7 +247,7 @@ def _plot(
                     + fit.fitted_parameters[target, setup][1],
                     name=f"{setup} fit",
                     mode="lines",
-                    line=dict(color=setup_colors[setup]),
+                    line={"color": setup_colors[setup]},
                     showlegend=True,
                     legendgroup=f"{setup} fit",
                 ),

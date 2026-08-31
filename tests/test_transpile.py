@@ -68,7 +68,7 @@ def test_transpile_circuits():
 
 def test_transpile_circuits_with_string_qubit_ids():
     class PlatformStub:
-        qubits = ["q0", "q1", "q2"]
+        qubits = ("q0", "q1", "q2")
         nqubits = 3
 
     def mock_transpiler(circuit):
@@ -117,7 +117,7 @@ def test_execute_circuits_cyclic():
     compiler = build_native_gate_compiler(platform)
     circuit = Circuit(2)
     circuit.add(gates.M(0))
-    qubit_map = [list(platform.qubits)[0]]
+    qubit_map = [next(iter(platform.qubits))]
     nshots = 20
 
     [counts] = _execute_circuits(
@@ -169,7 +169,7 @@ def test_execute_circuits_cyclic_maps_readout_to_circuit_order(monkeypatch):
     circuit1 = Circuit(1)
     circuit1.add(gates.M(0))
 
-    qubit = list(platform.qubits)[0]
+    qubit = next(iter(platform.qubits))
     qubit_maps = [[qubit], [qubit]]
 
     def execute_reversed_order(sequences, averaging_mode, acquisition_type, **options):

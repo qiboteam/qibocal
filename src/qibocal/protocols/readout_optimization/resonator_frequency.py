@@ -151,12 +151,12 @@ def _acquisition(
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
-                dict(
-                    frequency=np.array([freq]),
-                    assignment_fidelity=np.array([model.assignment_fidelity]),
-                    angle=np.array([model.angle]),
-                    threshold=np.array([model.threshold]),
-                ),
+                {
+                    "frequency": np.array([freq]),
+                    "assignment_fidelity": np.array([model.assignment_fidelity]),
+                    "angle": np.array([model.angle]),
+                    "threshold": np.array([model.threshold]),
+                },
             )
 
     return data
@@ -209,6 +209,7 @@ def _plot(
                 y=data[target]["assignment_fidelity"],
                 opacity=opacity,
                 showlegend=True,
+                mode="markers",
             ),
             row=1,
             col=1,

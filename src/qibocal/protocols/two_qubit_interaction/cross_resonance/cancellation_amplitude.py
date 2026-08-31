@@ -32,7 +32,6 @@ from .cr_parent_classes import (
     HamiltonianTomographyParameters,
     HamiltonianTomographyResults,
     SetControl,
-    check_qubit_overlap,
 )
 from .cross_resonance_processing import (
     cancellation_amplitude_fit,
@@ -176,9 +175,6 @@ def _acquisition(
         verbose_plot=params.verbose_plot,
     )
 
-    # check validity of input
-    check_qubit_overlap(targets)
-
     updates = []
     control_ampls: dict[QubitPairId, float] = {}
     control_phases: dict[QubitPairId, float] = {}
@@ -310,16 +306,16 @@ def _acquisition(
                 data.register_qubit(
                     HamiltonianTomographyCANCAmplType,
                     (ctrl, targ, basis, setup),
-                    dict(
-                        x=np.arange(*params.duration_range),
-                        amp=np.arange(*params.target_ampl_range),
-                        prob_target=1 - 2 * prob_target,
-                        error_target=2
+                    {
+                        "x": np.arange(*params.duration_range),
+                        "amp": np.arange(*params.target_ampl_range),
+                        "prob_target": 1 - 2 * prob_target,
+                        "error_target": 2
                         * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
-                        prob_control=1 - 2 * prob_control,
-                        error_control=2
+                        "prob_control": 1 - 2 * prob_control,
+                        "error_control": 2
                         * np.sqrt(prob_control * (1 - prob_control) / params.nshots),
-                    ),
+                    },
                 )
 
     return data
@@ -387,11 +383,7 @@ def _plot(
                             * kilo
                             for term in HamiltonianTerm
                         ]
-                        + [
-                            fit.cr_lengths[a][target]
-                            if target in fit.cr_lengths[a]
-                            else None
-                        ]
+                        + [fit.cr_lengths[a].get(target, None)]
                         + [a],
                     )
                 )

@@ -10,8 +10,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    lorentzian,
     lorentzian_fit,
+    lorentzian_with_linear_background,
     readout_frequency,
     table_dict,
     table_html,
@@ -100,17 +100,14 @@ def _acquisition(
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
         sequence_2 += (natives.RX() + natives.RX12()) | natives.MZ()
 
-    # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=readout_frequency(q, platform, state=1) + delta_frequency_range,
+            range=params.frequency_range(
+                center=readout_frequency(q, platform, state=1)
+            ),
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -132,12 +129,15 @@ def _acquisition(
             data.register_qubit(
                 ResSpecType,
                 (qubit, state),
-                dict(
-                    freq=readout_frequency(qubit, platform, state=1)
-                    + delta_frequency_range,
-                    signal=magnitude(result),
-                    phase=phase(result),
-                ),
+                {
+                    "freq": np.arange(
+                        *params.frequency_range(
+                            center=readout_frequency(qubit, platform, state=1)
+                        )
+                    ),
+                    "signal": magnitude(result),
+                    "phase": phase(result),
+                },
             )
 
     return data
@@ -221,6 +221,7 @@ def _plot(
                 name=f"{label}",
                 showlegend=True,
                 legendgroup=f"{label}",
+                mode="markers",
             ),
             row=1,
             col=1,
@@ -232,6 +233,7 @@ def _plot(
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"{label}",
+                mode="markers",
             ),
             row=1,
             col=2,
@@ -257,9 +259,9 @@ def _plot(
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, *params),
+                    y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
-                    line=go.scatter.Line(dash="dot"),
+                    mode="lines",
                 ),
                 row=1,
                 col=1,

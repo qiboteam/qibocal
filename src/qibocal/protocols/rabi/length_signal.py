@@ -13,7 +13,7 @@ from qibocal.result import magnitude, phase
 
 from . import utils
 
-__all__ = ["rabi_length_signal", "RabiLengthSignalResults"]
+__all__ = ["RabiLengthSignalResults", "rabi_length_signal"]
 
 
 @dataclass
@@ -118,11 +118,11 @@ def _acquisition(
         data.register_qubit(
             RabiLenSignalType,
             (q),
-            dict(
-                length=sweeper.values,
-                signal=magnitude(result),
-                phase=phase(result),
-            ),
+            {
+                "length": sweeper.values,
+                "signal": magnitude(result),
+                "phase": phase(result),
+            },
         )
     return data
 

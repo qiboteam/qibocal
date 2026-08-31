@@ -27,7 +27,7 @@ CIRCUIT_PATH = "circuit.json"
 """Path where circuit is stored."""
 
 
-__all__ = ["state_tomography", "StateTomographyParameters", "plot_reconstruction"]
+__all__ = ["StateTomographyParameters", "plot_reconstruction", "state_tomography"]
 
 
 def parse_circuit(value: str | Circuit | None) -> Circuit | None:
@@ -67,7 +67,7 @@ class StateTomographyParameters(Parameters):
     # the path to a json file containing a serialized circuit. However,
     # StateTomographyParameters.circuit is either a Circuit or None, never a string.
     # This is the reason for using a setter instead of a simple attribute of the
-    # dataclass of either type Optional[Circuit] or Union[None, str, Circuit], which
+    # dataclass of either type Optional[Circuit] or None | str | Circuit, which
     # would not fully capture the difference in expected types between getting and
     # setting
     @circuit.setter
@@ -187,7 +187,7 @@ def _acquisition(
             data.register_qubit(
                 TomographyType,
                 (target, basis),
-                dict(excited_state_rate=excited_state_rate),
+                {"excited_state_rate": excited_state_rate},
             )
     return data
 
@@ -296,38 +296,46 @@ def plot_reconstruction(ideal, measured):
     plot_rho(
         fig,
         measured.real,
-        trace_options=dict(
-            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
-        ),
-        figure_options=dict(row=1, col=1),
+        trace_options={
+            "color": "rgba(255,100,0,0.1)",
+            "name": "experiment",
+            "legendgroup": "experiment",
+        },
+        figure_options={"row": 1, "col": 1},
     )
 
     plot_rho(
         fig,
         ideal.real,
-        trace_options=dict(
-            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
-        ),
-        figure_options=dict(row=1, col=1),
+        trace_options={
+            "color": "rgba(100,0,100,0.1)",
+            "name": "simulation",
+            "legendgroup": "simulation",
+        },
+        figure_options={"row": 1, "col": 1},
     )
 
     plot_rho(
         fig,
         measured.imag,
-        trace_options=dict(
-            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
-        ),
-        figure_options=dict(row=1, col=2),
+        trace_options={
+            "color": "rgba(255,100,0,0.1)",
+            "name": "experiment",
+            "legendgroup": "experiment",
+        },
+        figure_options={"row": 1, "col": 2},
         showlegend=False,
     )
 
     plot_rho(
         fig,
         ideal.imag,
-        trace_options=dict(
-            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
-        ),
-        figure_options=dict(row=1, col=2),
+        trace_options={
+            "color": "rgba(100,0,100,0.1)",
+            "name": "simulation",
+            "legendgroup": "simulation",
+        },
+        figure_options={"row": 1, "col": 2},
         showlegend=False,
     )
 
@@ -337,9 +345,9 @@ def plot_reconstruction(ideal, measured):
     else:  # two qubit tomography
         ticktext = [f"{i:02b}" for i in tickvals]
     fig.update_scenes(
-        xaxis=dict(tickvals=tickvals, ticktext=ticktext),
-        yaxis=dict(tickvals=tickvals, ticktext=ticktext),
-        zaxis=dict(range=[-1, 1]),
+        xaxis={"tickvals": tickvals, "ticktext": ticktext},
+        yaxis={"tickvals": tickvals, "ticktext": ticktext},
+        zaxis={"range": [-1, 1]},
     )
 
     return fig

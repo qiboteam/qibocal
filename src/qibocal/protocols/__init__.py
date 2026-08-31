@@ -18,6 +18,7 @@ from . import (
     tomographies,
     two_qubit_interaction,
     twpa,
+    zz_interaction,
 )
 from . import (
     dispersive_shift as dispersive_shift_,
@@ -46,6 +47,7 @@ from .signal_experiments import *
 from .tomographies import *
 from .two_qubit_interaction import *
 from .twpa import *
+from .zz_interaction import *
 
 __all__ = []
 __all__ += allxy_.__all__
@@ -67,6 +69,7 @@ __all__ += resonator_spectroscopies.__all__
 __all__ += qubit_spectroscopies.__all__
 __all__ += two_qubit_interaction.__all__
 __all__ += twpa.__all__
+__all__ += zz_interaction.__all__
 
 # TODO: This is a temporary workaround to avoid trying to import the calibrate_mixers
 # module when the optional qblox_instrument dependency is not installed (such as during

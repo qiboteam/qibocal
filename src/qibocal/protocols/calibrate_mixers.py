@@ -319,7 +319,7 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
         )
 
         # Add offset data for each output
-        for port in initial.offset_i.keys():
+        for port in initial.offset_i:
             offset_i_change = final.offset_i[port] - initial.offset_i[port]
             offset_q_change = final.offset_q[port] - initial.offset_q[port]
 
@@ -399,21 +399,23 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
         fig = go.Figure(
             data=[
                 go.Table(
-                    header=dict(
-                        values=[
+                    header={
+                        "values": [
                             "<b>Parameter</b>",
                             "<b>Initial</b>",
                             "<b>Final</b>",
                             "<b>Change</b>",
                         ],
-                        align="left",
-                        fill_color="gray",
-                        font_color="white",
-                        font=dict(size=12),
-                    ),
-                    cells=dict(
-                        values=list(zip(*table_rows)), align="left", font=dict(size=11)
-                    ),
+                        "align": "left",
+                        "fill_color": "gray",
+                        "font_color": "white",
+                        "font": {"size": 12},
+                    },
+                    cells={
+                        "values": list(zip(*table_rows)),
+                        "align": "left",
+                        "font": {"size": 11},
+                    },
                 )
             ]
         )

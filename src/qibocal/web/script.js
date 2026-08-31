@@ -1,5 +1,5 @@
 function redirectToRuncard() {
-    window.location.href = './action.yml';
+    window.location.href = './runcard.yml';
 }
 
 function redirectToPlatform() {

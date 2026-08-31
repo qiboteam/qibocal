@@ -10,8 +10,8 @@ import yaml
 from qibo import Circuit
 from qibolab import Platform
 
-from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.auto.serialize import _nested_list_to_tuples
+from qibocal.calibration.calibration import QubitId, QubitPairId
 
 from .. import protocols
 from ..config import log
@@ -21,7 +21,7 @@ from .operation import Data, DummyPars, OperationId, Protocol, Results, dummy_op
 Id = NewType("Id", str)
 """Action identifiers type."""
 
-Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+Targets = list[QubitId] | list[QubitPairId] | list[tuple[QubitId, ...]]
 """Elements to be calibrated by a single protocol."""
 
 SINGLE_ACTION = "action.yml"

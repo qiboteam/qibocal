@@ -10,10 +10,10 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
+from ..utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
-__all__ = ["resonator_punchout", "ResonatorPunchoutData"]
+__all__ = ["ResonatorPunchoutData", "resonator_punchout"]
 
 
 @dataclass
@@ -78,7 +78,7 @@ class ResonatorPunchoutData(Data):
                 len(np.unique(self.frequencies[qubit])),
             )
         )
-        return scaling_slice(signal, axis=1)
+        return minmax_scaling(signal, axis=1)
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray, np.ndarray]:
         x, y, z = self.grid(qubit)
@@ -209,7 +209,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
             z=signal_norm,
             zmin=np.percentile(signal_norm, 0.5),
             zmax=np.percentile(signal_norm, 99.5),
-            colorbar=dict(title="Raw signal"),
+            colorbar={"title": "Raw signal"},
             colorbar_x=1.01,
             colorscale="Viridis",
         ),
@@ -237,7 +237,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
                 y=filtered_y,
                 mode="markers",
                 name="Estimated points",
-                marker=dict(color="rgb(248, 248, 248)"),
+                marker={"color": "rgb(248, 248, 248)"},
                 showlegend=True,
             ),
             row=1,
@@ -256,11 +256,11 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
                     fit.readout_amplitude[target],
                 ],
                 mode="markers",
-                marker=dict(
-                    size=8,
-                    color="red",
-                    symbol="circle",
-                ),
+                marker={
+                    "size": 8,
+                    "color": "red",
+                    "symbol": "circle",
+                },
                 name="Estimated readout point",
                 showlegend=True,
             )
@@ -283,7 +283,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
 
     fig.update_layout(
         showlegend=True,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
 
     fig.update_xaxes(title_text="Frequency [GHz]")

@@ -118,8 +118,8 @@ def clifford2gates(clifford):
     clifford_list = find_cliffords(gate_list)
 
     clifford_gate = []
-    for clifford in clifford_list:
-        values_with_1, values_with_2, value_with_CZ = separator(clifford)
+    for clifford_ in clifford_list:
+        values_with_1, values_with_2, value_with_CZ = separator(clifford_)
         clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
         clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
         if value_with_CZ:
@@ -190,8 +190,8 @@ def clifford_to_pulses(clifford):
     clifford_list = find_cliffords(gate_list)
 
     pulses = 0
-    for clifford in clifford_list:
-        values_with_1, values_with_2, value_with_CZ = separator(clifford)
+    for clifford_ in clifford_list:
+        values_with_1, values_with_2, value_with_CZ = separator(clifford_)
 
         if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0).name != "id":
             pulses += 2  # This assumes a U3 transpiled into 2 pulses

@@ -74,7 +74,7 @@ def _acquisition(
         probs = probability(results[ro_pulse.id], state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
-            CoherenceProbType, (qubit), dict(wait=waits, prob=probs, error=errors)
+            CoherenceProbType, (qubit), {"wait": waits, "prob": probs, "error": errors}
         )
     return data
 

@@ -348,7 +348,7 @@ def _plot(
                         data.amplitudes[fit.best_angles_per_duration[target][i]]
                         for i in range(len(data.durations))
                     ],
-                    line=dict(color="black"),
+                    line={"color": "black"},
                     showlegend=condition,
                     name="Best CZ angle",
                     mode="markers",
@@ -394,7 +394,7 @@ def _plot(
                             for idx in fit.best_leakages_per_duration[target][i]
                         ]
                     ),
-                    line=dict(color="gray"),
+                    line={"color": "gray"},
                     showlegend=condition,
                     name="Minimum leakage",
                     mode="markers",
@@ -409,7 +409,7 @@ def _plot(
                     go.Scatter(
                         x=[fit.best_dur[target_q, control_q]],
                         y=[fit.best_amp[target_q, control_q]],
-                        line=dict(color="yellow"),
+                        line={"color": "yellow"},
                         name="Best CZ",
                         mode="markers",
                         showlegend=condition and j == 1,
@@ -421,7 +421,7 @@ def _plot(
 
             fig.update_layout(
                 showlegend=True,
-                legend=dict(orientation="h"),
+                legend={"orientation": "h"},
             )
 
             fitting_report = table_html(

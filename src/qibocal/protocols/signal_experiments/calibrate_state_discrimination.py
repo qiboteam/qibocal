@@ -102,12 +102,12 @@ def _acquisition(
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
 
-    options = dict(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.RAW,
+        "averaging_mode": AveragingMode.CYCLIC,
+    }
 
     results = platform.execute(sequences, **options)
 
@@ -127,10 +127,10 @@ def _acquisition(
             data.register_qubit(
                 CalibrateStateDiscriminationType,
                 (qubit, state),
-                dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
-                ),
+                {
+                    "i": result[..., 0],
+                    "q": result[..., 1],
+                },
             )
     return data
 
@@ -204,6 +204,7 @@ def _plot(
                 opacity=1,
                 name="Real",
                 showlegend=True,
+                mode="lines",
             )
         )
 
@@ -214,6 +215,7 @@ def _plot(
                 opacity=1,
                 name="Imag",
                 showlegend=True,
+                mode="lines",
             )
         )
 

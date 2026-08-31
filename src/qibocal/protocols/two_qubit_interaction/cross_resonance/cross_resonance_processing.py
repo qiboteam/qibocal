@@ -139,7 +139,7 @@ def numerical_root_finder(
     if res.success:
         cr_sig = min(res.x)
 
-    return cr_sig if cr_sig <= np.max(x_grid) else np.max(x_grid)
+    return min(cr_sig, np.max(x_grid))
 
 
 def compute_total_expectation_value(
@@ -226,7 +226,7 @@ def estimate_cr_param(
     R only for the acquired datapoints.
     """
 
-    if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
+    if all((pair[0], pair[1], s) in fitted_parameters for s in SetControl):
         bloch_data, _, _ = compute_bloch_vector(data, pair, fitted_parameters)
         x_range = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
         param = numerical_root_finder(

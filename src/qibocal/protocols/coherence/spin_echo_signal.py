@@ -118,11 +118,11 @@ def _acquisition(
         data.register_qubit(
             CoherenceType,
             (qubit),
-            dict(
-                wait=_wait,
-                signal=signal,
-                phase=phase(result),
-            ),
+            {
+                "wait": _wait,
+                "signal": signal,
+                "phase": phase(result),
+            },
         )
 
     return data
@@ -158,6 +158,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
         ),
     )
 
@@ -175,7 +176,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
                 x=waitrange,
                 y=exp_decay(waitrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             ),
         )
 
