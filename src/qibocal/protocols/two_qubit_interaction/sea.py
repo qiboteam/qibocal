@@ -98,8 +98,6 @@ StandardErrorAmplificationType = np.dtype(
 class StandardErrorAmplificationData(Data):
     """CZ conditional-phase SEA acquisition outputs."""
 
-    resonator_type: str
-    """Resonator type."""
     data: dict[QubitPairId, npt.NDArray[StandardErrorAmplificationType]] = field(
         default_factory=dict
     )
@@ -119,9 +117,7 @@ def _acquisition(
         platform: CalibrationPlatform
         targets: list of QubitPairId
     """
-
-    data = StandardErrorAmplificationData(resonator_type=platform.resonator_type)
-
+    data = StandardErrorAmplificationData()
     sequences: list[PulseSequence] = []
     repetitions_sweep = range(0, params.repetitions_max, params.repetitions_step)
     for repetitions in repetitions_sweep:
