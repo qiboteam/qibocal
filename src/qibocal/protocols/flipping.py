@@ -17,7 +17,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
+from .utils import chi2_reduced
 
 __all__ = ["flipping"]
 
@@ -289,28 +289,16 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults | None = Non
     fitting_report = ""
     qubit_data = data[target]
 
-    probs = qubit_data["prob"]
     error_bars = qubit_data["error"]
 
     fig.add_trace(
         go.Scatter(
             x=qubit_data["flips"],
             y=qubit_data["prob"],
-            opacity=1,
-            name="Signal",
+            error_y={"type": "data", "array": error_bars},
+            name="Data",
             showlegend=True,
-            legendgroup="Signal",
-        ),
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=np.concatenate((qubit_data["flips"], qubit_data["flips"][::-1])),
-            y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-            fill="toself",
-            fillcolor=COLORBAND,
-            line=dict(color=COLORBAND_LINE),
-            showlegend=True,
-            name="Errors",
+            mode="markers",
         ),
     )
 
@@ -318,7 +306,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults | None = Non
         flips_range = np.linspace(
             min(qubit_data["flips"]),
             max(qubit_data["flips"]),
-            2 * len(qubit_data),
+            500,
         )
 
         fig.add_trace(
@@ -333,7 +321,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults | None = Non
                     float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             ),
         )
         fitting_report = table_html(

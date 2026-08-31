@@ -54,7 +54,7 @@ class RamseyParameters(Parameters):
         return self.delay
 
     def __post_init__(self):
-        if any([d is None for d in self.delay_range]):
+        if any(d is None for d in self.delay_range):
             raise InputError("Valid delay range not inserted.")
 
 
@@ -85,8 +85,6 @@ class RamseyData(Data):
     """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
 
     @property
     def waits(self) -> npt.NDArray:

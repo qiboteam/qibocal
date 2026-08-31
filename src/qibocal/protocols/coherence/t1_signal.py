@@ -23,11 +23,11 @@ from ..utils import readout_frequency, table_dict, table_html
 from . import utils
 
 __all__ = [
-    "t1_signal",
     "T1SignalData",
     "T1SignalParameters",
     "T1SignalResults",
     "t1_sequence",
+    "t1_signal",
     "update_t1",
 ]
 
@@ -154,7 +154,7 @@ def _acquisition(
         data.register_qubit(
             utils.CoherenceType,
             (q),
-            dict(wait=_waits, signal=signal, phase=phase(result)),
+            {"wait": _waits, "signal": signal, "phase": phase(result)},
         )
 
     return data
@@ -193,6 +193,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
         )
     )
 
@@ -209,7 +210,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
                 x=waitrange,
                 y=utils.exp_decay(waitrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(

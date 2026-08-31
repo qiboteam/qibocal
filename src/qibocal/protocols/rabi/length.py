@@ -103,11 +103,11 @@ def _acquisition(
         data.register_qubit(
             RabiLenType,
             (q),
-            dict(
-                length=sweeper.values,
-                prob=prob,
-                error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
-            ),
+            {
+                "length": sweeper.values,
+                "prob": prob,
+                "error": np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+            },
         )
     return data
 

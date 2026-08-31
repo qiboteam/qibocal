@@ -81,11 +81,11 @@ def _acquisition(
         data.register_qubit(
             RamseySignalType,
             (qubit),
-            dict(
-                wait=np.arange(*params.delay_range),
-                i=i,
-                q=q,
-            ),
+            {
+                "wait": np.arange(*params.delay_range),
+                "i": i,
+                "q": q,
+            },
         )
 
     return data
@@ -109,15 +109,17 @@ def _fit(data: RamseySignalData) -> RamseyResults:
         signal = data.qubit_signal(qubit)
         try:
             popt, perr = fitting(waits, signal)
-            (
-                freq_measure[qubit],
-                t2_measure[qubit],
-                delta_phys_measure[qubit],
-                delta_fitting_measure[qubit],
-                popts[qubit],
-            ) = process_fit(popt, perr, qubit_freq, data.detuning)
-        except Exception as e:
+        except RuntimeError as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
+            continue
+
+        (
+            freq_measure[qubit],
+            t2_measure[qubit],
+            delta_phys_measure[qubit],
+            delta_fitting_measure[qubit],
+            popts[qubit],
+        ) = process_fit(popt, perr, qubit_freq, data.detuning)
 
     return RamseyResults(
         detuning=data.detuning,

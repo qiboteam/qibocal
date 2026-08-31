@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from pydantic import TypeAdapter
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -86,30 +87,35 @@ def readout_frequency(
                 return state_frequency
         except KeyError:
             pass
-    if power_level is PowerLevel.high:
-        if bare_frequency is not None:
-            return bare_frequency
+    if power_level is PowerLevel.high and bare_frequency is not None:
+        return bare_frequency
     if dressed_frequency is not None:
         return dressed_frequency
     return platform_frequency
 
 
-def lorentzian(frequency, amplitude, center, sigma, offset, slope):
+def lorentzian(frequency, amplitude, center, sigma):
     # http://openafox.com/science/peak-function-derivations.html
-    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    return (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+
+
+def lorentzian_with_linear_background(
+    frequency, amplitude, center, sigma, offset, slope
+):
+    peak = lorentzian(frequency, amplitude, center, sigma)
     background = offset + frequency * slope
     return peak + background
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
-    frequencies = data.freq * HZ_TO_GHZ
-    voltages = data.signal
+    frequencies = data.freq
+    signal = data.signal
 
     # Guess parameters for Lorentzian max or min
-    guess_slope = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
-    guess_offset = voltages[0] - guess_slope * frequencies[0]
+    guess_slope = (signal[-1] - signal[0]) / (frequencies[-1] - frequencies[0])
+    guess_offset = signal[0] - guess_slope * frequencies[0]
     guess_background = guess_offset + guess_slope * frequencies
-    voltages_no_background = voltages - guess_background
+    voltages_no_background = signal - guess_background
 
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
@@ -152,9 +158,9 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     # fit the model with the data and guessed parameters
     try:
         fit_parameters, parameters_cov = curve_fit(
-            lorentzian,
+            lorentzian_with_linear_background,
             frequencies,
-            voltages,
+            signal,
             p0=initial_parameters,
             bounds=bounds,
         )
@@ -162,7 +168,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         # so the parameters are converted to list.
         parameter_errors = np.sqrt(np.diag(parameters_cov)).tolist()
         model_parameters = fit_parameters.tolist()
-        return model_parameters[1] * GHZ_TO_HZ, model_parameters, parameter_errors
+        return model_parameters[1], model_parameters, parameter_errors
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
 
@@ -290,7 +296,7 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def eval_magnitude(value: int | float | np.number) -> int:
+def eval_magnitude(value: float | np.number) -> int:
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
         return 0
@@ -539,7 +545,7 @@ def plot_results(
                     mode="markers",
                     showlegend=True,
                     opacity=0.7,
-                    marker=dict(size=3),
+                    marker={"size": 3},
                     marker_color=COLORS[state],
                 ),
                 row=1,
@@ -554,7 +560,7 @@ def plot_results(
                     legendgroup=f"{model}: state {state}",
                     showlegend=False,
                     mode="markers",
-                    marker=dict(size=10),
+                    marker={"size": 10},
                 ),
                 row=1,
                 col=i + 1,
@@ -590,7 +596,7 @@ def plot_results(
                         name=f"{model}: state {state} hist",
                         legendgroup=f"{model}: state {state}",
                         showlegend=False,
-                        marker=dict(color=COLORS[state]),
+                        marker={"color": COLORS[state]},
                         width=(bin_centers[1] - bin_centers[0])
                         if len(bin_centers) > 1
                         else 0.1,
@@ -606,7 +612,7 @@ def plot_results(
                         mode="lines",
                         legendgroup=f"{model}: state {state}",
                         showlegend=False,
-                        line=dict(width=2, color=COLORS[state]),
+                        line={"width": 2, "color": COLORS[state]},
                     ),
                     row=2,
                     col=i + 1,
@@ -619,7 +625,7 @@ def plot_results(
                         y=[0, max(hist) * 1.1],
                         name="threshold",  # No name for legend
                         mode="lines",
-                        line=dict(color="black", width=2, dash="dot"),
+                        line={"color": "black", "width": 2, "dash": "dot"},
                         showlegend=False,
                     ),
                     row=2,
@@ -632,7 +638,7 @@ def plot_results(
             row=1,
             col=i + 1,
             autorange=False,
-            rangeslider=dict(visible=False),
+            rangeslider={"visible": False},
         )
         fig.update_yaxes(
             title_text="q [a.u.]",
@@ -647,16 +653,16 @@ def plot_results(
         autosize=False,
         height=COLUMNWIDTH,
         width=COLUMNWIDTH * len(models_name),
-        title=dict(text="Results", font=dict(size=TITLE_SIZE)),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            xanchor="left",
-            y=-0.3,
-            x=0,
-            itemsizing="constant",
-            font=dict(size=LEGEND_FONT_SIZE),
-        ),
+        title={"text": "Results", "font": {"size": TITLE_SIZE}},
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "xanchor": "left",
+            "y": -0.3,
+            "x": 0,
+            "itemsizing": "constant",
+            "font": {"size": LEGEND_FONT_SIZE},
+        },
     )
     figures.append(fig)
 
@@ -680,7 +686,7 @@ def plot_results(
                         y=[fit.benchmark_table[qubit][i][plot]],
                         mode="markers",
                         showlegend=False,
-                        marker=dict(size=10, color=get_color_state1(i)),
+                        marker={"size": 10, "color": get_color_state1(i)},
                     ),
                     row=1,
                     col=plot + 1,
@@ -692,7 +698,7 @@ def plot_results(
             autosize=False,
             height=COLUMNWIDTH,
             width=COLUMNWIDTH * 3,
-            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+            title={"text": "Benchmarks", "font": {"size": TITLE_SIZE}},
         )
 
         figures.append(fig_benchmarks)
@@ -709,7 +715,7 @@ def table_dict(
     Build a dictionary to generate HTML table with `table_html`.
 
     Args:
-        qubit (Union[list[QubitId], QubitId]): If qubit is a scalar value,
+        qubit (list[QubitId] | QubitId): If qubit is a scalar value,
         the "Qubit" entries will have only this value repeated.
         names (list[str]): List of the names of the parameters.
         values (list): List of the values of the parameters.
@@ -798,19 +804,11 @@ def zca_whiten(X):
     return X_white
 
 
-def scaling_global(sig: np.ndarray) -> np.ndarray:
-    """Min–max scaling over the whole np.ndarray (global)."""
-    return scaling_slice(sig, axis=None)
-
-
-def scaling_slice(sig: np.ndarray, axis: int | None) -> np.ndarray:
+def minmax_scaling(sig: np.ndarray, axis: int | None) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
-
-    def expand(a):
-        return np.expand_dims(a, axis) if axis is not None else a
-
-    sig_min = expand(np.min(sig, axis=axis))
-    return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
+    sig_min = np.min(sig, axis=axis, keepdims=True)
+    sig_max = np.max(sig, axis=axis, keepdims=True)
+    return (sig - sig_min) / (sig_max - sig_min)
 
 
 # not used - we can remove
@@ -828,7 +826,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     y_ = peaks_dict["y"]["idx"]
     z_ = z[y_, x_]
 
-    return np.stack((x_, y_, scaling_global(z_))).T
+    return np.stack((x_, y_, minmax_scaling(z_, axis=None))).T
 
 
 def peaks_finder(x, y, z) -> dict | None:
@@ -936,7 +934,7 @@ def merging(
         distances_list = []
         indices = []
 
-        for idx in active_clusters.keys():
+        for idx in active_clusters:
             cluster_rightmost = cluster[:, np.argmax(cluster[1, :])]
             cluster_leftmost = cluster[:, np.argmin(cluster[1, :])]
             cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
@@ -1187,3 +1185,79 @@ def fallback_period(period: NDArray) -> NDArray:
     )
 
     return np.where(np.isnan(period), 4, period)
+
+
+Range = tuple[float, float, float]
+"""Value range, corresponding to ``(start, stop, step)``."""
+
+RangeLike = (
+    tuple[float, float, float]
+    | tuple[Literal["linspace"], float, float, int]
+    | tuple[Literal["window"], float, float, float]
+    | tuple[Literal["linwindow"], float, float, int]
+    | tuple[Literal["center"], float, float]
+    | tuple[Literal["lincenter"], float, int]
+    | tuple[Literal["asym"], tuple[float, float], float]
+    | tuple[Literal["linasym"], tuple[float, float], int]
+)
+"""Range specification.
+
+The alternative options allow for multiple representations of a range, which could all
+be mapped to a sequence of evenly spaced values.
+
+The semantics of the default one is equivalent to that of the built-in :func:`range`, in
+which the three values correspond to ``(start, stop, step)``. Unlike :func:`range`, all
+values are mandatory, since the usual defaults are often unsuitable.
+
+The other variants are unambiguously discriminated by a starting label, e.g.
+``("linspace", 1.2, 1.5, 70)``.
+
+In the ``linspace`` variant, the ``step`` element is replaced with the number of steps.
+Since the step specification is always mandatory, for each of the other variants a
+further ``lin<...>`` version is also available, making the same substitution.
+
+The other variants are the following:
+
+- ``window``, which allows to specify the center and width of the window, instead of its
+  extremes, i.e. ``("window", center, width, step)``
+- ``center``, similar to the former, but assuming a default for the center, which
+  depends the chosen protocol, i.e. ``("center", width, step)``
+- ``asym``, which is also a way to build upon an implicit center, but with specifying an
+  asymmetric interval around it, i.e. ``("asim", (left-shift, right-shift), step)``
+"""
+
+_RangeLike = TypeAdapter(RangeLike)
+
+
+def to_range(spec: RangeLike, center: float | None = None) -> Range:
+    """Convert any range specification into the default representation."""
+
+    spec_ = _RangeLike.validate_python(spec)
+    mode = spec_[0]
+
+    if not isinstance(mode, str):
+        # Default case: assume it's a tuple of (start, stop, step)
+        return spec_
+
+    if any(lab in mode for lab in ("center", "asym")) and center is None:
+        raise ValueError(f"Center must be provided for '{mode}' range specification.")
+
+    if mode == "linspace":
+        start, stop = spec_[1:3]
+    elif mode.endswith("window"):
+        center_, width = spec_[1:3]
+        start, stop = center_ - width / 2, center_ + width / 2
+    elif mode.endswith("center"):
+        width = spec_[1]
+        start, stop = center - width / 2, center + width / 2
+    elif mode.endswith("asym"):
+        left_shift, right_shift = spec_[1]
+        start, stop = center - left_shift, center + right_shift
+
+    if mode.startswith("lin"):
+        n = spec_[-1]
+        if n <= 1:
+            raise ValueError(f"At least 2 steps required for {mode}, passed {n}")
+        step = (stop - start) / (n - 1)
+        return start, stop, step
+    return start, stop, spec_[-1]

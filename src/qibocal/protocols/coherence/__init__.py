@@ -11,13 +11,13 @@ from .zeno import zeno
 
 __all__ = [
     "cpmg",
-    "spin_echo_signal",
-    "t1_signal",
-    "t2_signal",
-    "t1",
-    "t2",
-    "zeno",
     "spin_echo",
+    "spin_echo_signal",
+    "t1",
     "t1_flux",
+    "t1_signal",
+    "t2",
     "t2_flux",
+    "t2_signal",
+    "zeno",
 ]

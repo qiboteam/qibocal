@@ -8,6 +8,7 @@ from pydantic import BaseModel, TypeAdapter
 from qibolab import Platform, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitId, QubitPairId
+from qibocal.calibration.calibration import TwoQubitCalibration
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -182,14 +183,14 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 def iSWAP_duration(duration: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration duration for specific pair."""
     platform.update(
-        {f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1.duration": duration}
+        {f"native_gates.two_qubit.{_dump_pair(pair)}.iSWAP.0.1.duration": duration}
     )
 
 
 def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration amplitude for specific pair."""
     platform.update(
-        {f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1.amplitude": amp}
+        {f"native_gates.two_qubit.{_dump_pair(pair)}.iSWAP.0.1.amplitude": amp}
     )
 
 
@@ -239,23 +240,12 @@ def frequency_12_transition(frequency: float, platform: Platform, qubit: QubitId
     platform.calibration.single_qubits[qubit].qubit.frequency_12 = frequency
 
 
-def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
-    platform.update(
-        {f"native_gates.single_qubit.{qubit}.RX12.0.1.amplitude": amplitude}
-    )
-
-
-def drive_12_duration(duration: int | tuple | list, platform: Platform, qubit: QubitId):
-    """Update drive duration value in platform for specific qubit."""
-    platform.update({f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": duration})
-
-
 def readout_coupling(g: float, platform: Platform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].readout.coupling = g
 
 
 def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
-    platform.calibration.two_qubits[pair].coupling = g
+    platform.calibration.two_qubits.setdefault(pair, TwoQubitCalibration()).coupling = g
 
 
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):

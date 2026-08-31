@@ -15,7 +15,7 @@ from qibocal.protocols.utils import (
 )
 from qibocal.update import replace
 
-QUANTILE_CONSTANT = 1.5
+QUANTILE_CONSTANT_RABI = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
 
 Measuring intermediate quantiles is less noise sensitive then measuring extremal points
@@ -55,7 +55,7 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool):
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT_RABI
     phase_guess = np.pi if not signal else np.pi / 2
 
     if experiment == "length":
@@ -91,6 +91,7 @@ def plot(data, qubit, fit, rx90):
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
         ),
         row=1,
         col=1,
@@ -103,6 +104,7 @@ def plot(data, qubit, fit, rx90):
             name="Phase",
             showlegend=True,
             legendgroup="Phase",
+            mode="markers",
         ),
         row=1,
         col=2,
@@ -120,7 +122,7 @@ def plot(data, qubit, fit, rx90):
                 x=rabi_parameter_range,
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
                 marker_color="rgb(255, 130, 67)",
             ),
             row=1,
@@ -167,14 +169,14 @@ def plot_probabilities(data, qubit, fit, rx90):
                 name="Probability",
                 showlegend=True,
                 legendgroup="Probability",
-                mode="lines",
+                mode="markers",
             ),
             go.Scatter(
                 x=np.concatenate((rabi_parameters, rabi_parameters[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
+                line={"color": COLORBAND_LINE},
                 showlegend=True,
                 name="Errors",
             ),
@@ -193,7 +195,7 @@ def plot_probabilities(data, qubit, fit, rx90):
                 x=rabi_parameter_range,
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
                 marker_color="rgb(255, 130, 67)",
             ),
         )

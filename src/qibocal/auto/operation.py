@@ -12,12 +12,13 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import Platform, Qubit
 
+from qibocal.calibration.calibration import QubitId, QubitPairId
+from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.config import log
 
-from ..calibration.calibration import QubitId, QubitPairId
 from .serialize import deserialize, load, serialize
 
-__all__ = ["ProtocolsCollection", "Protocol"]
+__all__ = ["Protocol", "ProtocolsCollection"]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -100,7 +101,9 @@ class Parameters:
 class AbstractData:
     """Abstract data class."""
 
-    def __init__(self, data: dict[tuple[QubitId, int] | QubitId, npt.NDArray] = None):
+    def __init__(
+        self, data: dict[tuple[QubitId, int] | QubitId, npt.NDArray] | None = None
+    ):
         self.data = data if data is not None else {}
 
     def __getitem__(self, qubit: QubitId | tuple[QubitId, int]):
@@ -186,7 +189,7 @@ class Data(AbstractData):
         return [q for q in self.data]
 
     @property
-    def pairs(self):
+    def pairs(self) -> list[QubitPairId]:
         """Access qubit pairs from data structure."""
         return list({tuple(q[:2]) for q in self.data})
 
@@ -199,7 +202,7 @@ class Data(AbstractData):
             the values are the related arrays.
         """
         # to be able to handle the non-sweeper case
-        ar = np.empty(np.shape(data_dict[list(data_dict)[0]]), dtype=dtype)
+        ar = np.empty(np.shape(data_dict[next(iter(data_dict))]), dtype=dtype)
         for key, value in data_dict.items():
             ar[key] = value
 
@@ -246,24 +249,26 @@ class Results(AbstractData):
         super().save(path, filename)
 
 
-# Internal types, in particular `_ParametersT` is used to address function
+# Internal types, in particular `_ParametersT_contra` is used to address function
 # contravariance on parameter type
-_ParametersT = TypeVar("_ParametersT", bound=Parameters, contravariant=True)
+_ParametersT_contra = TypeVar(
+    "_ParametersT_contra", bound=Parameters, contravariant=True
+)
 _DataT = TypeVar("_DataT", bound=Data)
 _ResultsT = TypeVar("_ResultsT", bound=Results)
 
 
 @dataclass
-class Protocol(Generic[_ParametersT, _DataT, _ResultsT]):
+class Protocol(Generic[_ParametersT_contra, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
-    acquisition: Callable[[_ParametersT], _DataT]
+    acquisition: Callable[[_ParametersT_contra], _DataT]
     """Data acquisition function."""
-    fit: Callable[[_DataT], _ResultsT] = None
+    fit: Callable[[_DataT], _ResultsT] | None = None
     """Post-processing function."""
-    report: Callable[[_DataT, _ResultsT], None] = None
+    report: Callable[[_DataT, _ResultsT], None] | None = None
     """Plotting function."""
-    update: Callable[[_ResultsT, Platform], None] = None
+    update: Callable[[_ResultsT, CalibrationPlatform], None] | None = None
     """Update function platform."""
     two_qubit_gates: bool | None = False
     """Flag to determine whether to allocate list of Qubits or Pairs."""

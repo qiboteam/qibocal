@@ -12,7 +12,7 @@ from ..utils import table_dict, table_html
 from .fitting import exp1B_func
 from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
 
-__all__ = ["standard_rb", "StandardRBParameters", "RBData"]
+__all__ = ["RBData", "StandardRBParameters", "standard_rb"]
 
 
 class Depthsdict(TypedDict):
@@ -128,7 +128,7 @@ def _plot(
         go.Scatter(
             x=np.hstack(raw_depths),
             y=np.hstack(raw_data),
-            line=dict(color="#6597aa"),
+            line={"color": "#6597aa"},
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
             name="iterations",
@@ -139,7 +139,7 @@ def _plot(
         go.Scatter(
             x=x,
             y=y,
-            line=dict(color="#aa6464"),
+            line={"color": "#aa6464"},
             mode="markers",
             name="average",
         )
@@ -148,11 +148,7 @@ def _plot(
     error_y_dict = None
     if fit is not None:
         popt, perr = fit.fit_parameters[qubit], fit.fit_uncertainties[qubit]
-        label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
-            number_to_str(popt[0], perr[0]),
-            number_to_str(popt[1], perr[1]),
-            number_to_str(popt[2], perr[2]),
-        )
+        label = f"Fit: y=Ap^x<br>A: {number_to_str(popt[0], perr[0])}<br>p: {number_to_str(popt[1], perr[1])}<br>B: {number_to_str(popt[2], perr[2])}"
         x_fit = np.linspace(min(x), max(x), len(x) * 20)
         y_fit = exp1B_func(x_fit, *popt)
         fig.add_trace(

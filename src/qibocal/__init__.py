@@ -9,9 +9,9 @@ from .version import __version__
 
 __all__ = [
     "Executor",
-    "protocols",
-    "command",
     "__version__",
+    "command",
     "create_calibration_platform",
+    "protocols",
 ]
 __all__ += auto.__all__

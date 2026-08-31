@@ -208,11 +208,11 @@ def _acquisition(
         params.amplitude_min, params.amplitude_max, params.amplitude_step
     )
 
-    options = dict(
-        nshots=params.nshots,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    options = {
+        "nshots": params.nshots,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.CYCLIC,
+    }
 
     for measure in ["X", "Y"]:
         sequence = PulseSequence()
@@ -254,10 +254,10 @@ def _acquisition(
             data.register_qubit(
                 FluxAmplitudeFrequencyType,
                 (qubit, measure),
-                dict(
-                    amplitude=amplitudes,
-                    prob_1=result[ro_pulse.id],
-                ),
+                {
+                    "amplitude": amplitudes,
+                    "prob_1": result[ro_pulse.id],
+                },
             )
 
     return data
@@ -281,10 +281,10 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         other_det = data.detuning[qubit]
         f = data.qubit_frequency[qubit]
         det = phase / data.flux_pulse_duration / 2 / np.pi + other_det
-        # to make sure that flux is invertible
-        det[np.abs(det) < 1e-3] = 0
+        # clip to make sure that flux is invertible
+        freq_ratio = np.minimum(((f + det) / f) ** 2, 1.0)
         # from inversion of flux dependence formula assuming negligible Ec and asymmetry
-        derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
+        derived_flux = 1 / np.pi * np.arccos(freq_ratio)
         flux[qubit] = derived_flux.tolist()
         fitted_parameters_detuning[qubit] = np.polyfit(amplitudes, det, 2).tolist()
         fitted_parameters_flux[qubit] = np.polyfit(amplitudes, derived_flux, 1).tolist()
@@ -318,6 +318,7 @@ def _plot(
                 x=amplitude,
                 y=fit.detuning[target],
                 name="Detuning",
+                mode="markers",
             ),
             row=1,
             col=1,
@@ -328,6 +329,7 @@ def _plot(
                 x=amplitude,
                 y=fit.flux[target],
                 name="Flux",
+                mode="markers",
             ),
             row=1,
             col=2,
@@ -337,6 +339,7 @@ def _plot(
                 x=amplitude,
                 y=np.polyval(fit.fitted_parameters_detuning[target], amplitude),
                 name="Fit Detuning",
+                mode="lines",
             ),
             row=1,
             col=1,
@@ -346,6 +349,7 @@ def _plot(
                 x=amplitude,
                 y=np.polyval(fit.fitted_parameters_flux[target], amplitude),
                 name="Fit Flux",
+                mode="lines",
             ),
             row=1,
             col=2,

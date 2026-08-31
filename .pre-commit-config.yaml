@@ -10,27 +10,9 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
-        args:
-          - --py310-plus
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.6.0
-    hooks:
-      - id: pycln
-        args:
-          - --config=pyproject.toml
-          - --all
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
+    rev: v0.16.4
     hooks:
-      # Run the linter.
       - id: ruff
-        args: [--fix]
-      # Sort imports
-      - id: ruff
-        args: [--select, I, --fix]
-      # Run the formatter.
+        args: [--fix, --config=pyproject.toml]
       - id: ruff-format

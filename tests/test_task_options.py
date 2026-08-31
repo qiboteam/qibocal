@@ -119,7 +119,7 @@ def test_update_argument(global_update, local_update, tmp_path, platform):
 @pytest.mark.parametrize("use_parameters", [True, False])
 def test_parameters_load(ChildClass, use_parameters):
     if use_parameters:
-        parameters = {key: 10 for key in DEFAULT_PARENT_PARAMETERS.keys()}
+        parameters = {key: 10 for key in DEFAULT_PARENT_PARAMETERS}
     else:
         parameters = {}
     parameters2 = deepcopy(parameters)

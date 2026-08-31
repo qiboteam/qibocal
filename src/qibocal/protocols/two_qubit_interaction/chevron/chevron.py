@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from scipy.optimize import curve_fit
-from sklearn.preprocessing import minmax_scale
 
 from qibocal.auto.operation import (
     DATAFILE,
@@ -21,7 +20,7 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import HZ_TO_GHZ, table_dict, table_html
+from qibocal.protocols.utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
 
 from .... import update
 from ..utils import order_pair
@@ -233,7 +232,7 @@ def _fit(data: ChevronData) -> ChevronResults:
                 popt, _ = curve_fit(
                     chevron_fit,
                     data.grid,
-                    minmax_scale(_data.T.flatten()),
+                    minmax_scaling(_data.T.flatten(), axis=None),
                     p0=[
                         data.detuning[pair] + data.anharmonicity[pair],
                         data.flux_coefficient[pair],
@@ -342,7 +341,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         yaxis2_title="Amplitude [a.u.]",
         yaxis3_title="Amplitude [a.u.]",
         yaxis4_title="Amplitude [a.u.]",
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
         coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
         coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
         height=800,

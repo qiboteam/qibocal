@@ -82,7 +82,7 @@ def _acquisition(
         data.register_qubit(
             CoherenceProbType,
             (qubit),
-            dict(wait=ro_wait_range, prob=probs, error=errors),
+            {"wait": ro_wait_range, "prob": probs, "error": errors},
         )
 
     return data
@@ -119,14 +119,14 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
                 name="Probability of 1",
                 showlegend=True,
                 legendgroup="Probability of 1",
-                mode="lines",
+                mode="markers",
             ),
             go.Scatter(
                 x=np.concatenate((waits, waits[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
+                line={"color": COLORBAND_LINE},
                 showlegend=True,
                 name="Errors",
             ),
@@ -146,7 +146,7 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
                 x=waitrange,
                 y=utils.exp_decay(waitrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(

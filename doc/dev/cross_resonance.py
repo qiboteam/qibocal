@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.23.2"
+__generated_with = "0.23.14"
 app = marimo.App(width="medium")
 
 with app.setup:
@@ -74,7 +74,6 @@ def _(delta, eta_a, eta_b, g, plot):
         ),
         # path="interactive.svg"
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -84,7 +83,6 @@ def _():
 
     IBM cancellation paper, https://arxiv.org/abs/1603.04821
     """)
-    return
 
 
 @app.cell
@@ -99,7 +97,6 @@ def _(plot):
         ),
         # path="ibm.svg"
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -107,7 +104,6 @@ def _():
     mo.md(r"""
     Our beloved QPU 167
     """)
-    return
 
 
 @app.cell
@@ -123,7 +119,6 @@ def _(plot):
         ),
         # path="qpu167.svg"
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -131,7 +126,6 @@ def _():
     mo.md(r"""
     ## Input type
     """)
-    return
 
 
 @app.class_definition
@@ -193,7 +187,6 @@ def _():
     mo.md(r"""
     ## Calculation
     """)
-    return
 
 
 @app.class_definition
@@ -293,7 +286,6 @@ def _():
     mo.md(r"""
     ## Plotting
     """)
-    return
 
 
 @app.cell
@@ -346,7 +338,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
         "",
         xy=(f01[0], 1),
         xytext=(f01[1], 1),
-        arrowprops=dict(arrowstyle="<->"),
+        arrowprops={"arrowstyle": "<->"},
     )
     ax.annotate(
         r"$\Delta$",
@@ -358,7 +350,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
         "",
         xy=(f12[0], 2),
         xytext=(f12[1], 2),
-        arrowprops=dict(arrowstyle="<->"),
+        arrowprops={"arrowstyle": "<->"},
     )
     ax.annotate(
         r"$\Delta_{12}$",
@@ -373,7 +365,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
             "",
             xy=(ef, 4 + i),
             xytext=(ge, 4 + i),
-            arrowprops=dict(arrowstyle="<->"),
+            arrowprops={"arrowstyle": "<->"},
         )
         ax.annotate(
             rf"$\eta_{chr(65 + i)}$",
@@ -386,7 +378,7 @@ def freqs(ax: Axes, f01: tuple[float, float], f12: tuple[float, float]) -> None:
             "",
             xy=(ge, 7 + i),
             xytext=(f12[j], 7 + i),
-            arrowprops=dict(arrowstyle="<->"),
+            arrowprops={"arrowstyle": "<->"},
         )
         ax.annotate(
             rf"$\tilde{{\Delta}}_{{{chr(65 + i)}{chr(65 + j)}}}$",
@@ -401,7 +393,7 @@ def detunings(ax: Axes, detunings: dict[str, float]) -> None:
     sorted_ = dict(sorted(detunings.items(), key=lambda item: item[1]))
     ax.set_xticks(
         np.abs(list(sorted_.values())),
-        labels=[f"${sym}$" for sym in sorted_.keys()],
+        labels=[f"${sym}$" for sym in sorted_],
     )
     ax.tick_params(labelbottom=True, bottom=False, labelleft=False, left=False)
     ax.margins(0)

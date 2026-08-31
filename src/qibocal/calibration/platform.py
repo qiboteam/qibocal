@@ -55,7 +55,12 @@ class CalibrationPlatform(Platform):
     def from_platform(cls, platform: Platform):
         name = platform.name
         path = locate_platform(name)
-        calibration = Calibration.model_validate_json((path / CALIBRATION).read_text())
+        try:
+            calibration = Calibration.model_validate_json(
+                (path / CALIBRATION).read_text()
+            )
+        except FileNotFoundError:
+            calibration = Calibration()
         # TODO: this is loading twice a platform
         return cls(**vars(platform), calibration=calibration)
 

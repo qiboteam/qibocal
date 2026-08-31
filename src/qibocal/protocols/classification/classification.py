@@ -39,10 +39,10 @@ ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
 
 __all__ = [
-    "single_shot_classification",
+    "ClassificationType",
     "SingleShotClassificationData",
     "SingleShotClassificationParameters",
-    "ClassificationType",
+    "single_shot_classification",
 ]
 
 
@@ -233,11 +233,11 @@ def _acquisition(
         savedir=params.savedir,
     )
 
-    options = dict(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.INTEGRATION,
+    }
 
     results = platform.execute(sequences, **options)
 
@@ -248,11 +248,11 @@ def _acquisition(
             data.register_qubit(
                 ClassificationType,
                 (qubit),
-                dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
-                    state=[state] * params.nshots,
-                ),
+                {
+                    "i": result[..., 0],
+                    "q": result[..., 1],
+                    "state": [state] * params.nshots,
+                },
             )
 
     return data
@@ -305,8 +305,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
             if model_name == "qubit_fit":
                 threshold[qubit] = models[i].threshold
                 rotation_angle[qubit] = models[i].angle
-                mean_gnd_states[qubit] = models[i].iq_mean0.tolist()
-                mean_exc_states[qubit] = models[i].iq_mean1.tolist()
+                mean_gnd_states[qubit] = models[i].iq_mean0
+                mean_exc_states[qubit] = models[i].iq_mean1
                 fidelity[qubit] = models[i].fidelity
                 snr[qubit] = evaluate_snr(data.state_zero(qubit), data.state_one(qubit))
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
@@ -353,7 +353,7 @@ def _plot(
             # Evaluate the ROC curve
             fig_roc = go.Figure()
             fig_roc.add_shape(
-                type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
+                type="line", line={"dash": "dash"}, x0=0.0, x1=1.0, y0=0.0, y1=1.0
             )
             for i, model in enumerate(models_name):
                 y_pred = fit.y_preds[target][i]
@@ -366,14 +366,14 @@ def _plot(
                         y=tpr,
                         name=name,
                         mode="lines",
-                        marker=dict(size=3, color=get_color_state0(i)),
+                        marker={"size": 3, "color": get_color_state0(i)},
                     )
                 )
             fig_roc.update_layout(
                 width=ROC_WIDTH,
                 height=ROC_LENGHT,
-                title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
-                legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
+                title={"text": "ROC curves", "font": {"size": TITLE_SIZE}},
+                legend={"font": {"size": LEGEND_FONT_SIZE}},
             )
             fig_roc.update_xaxes(
                 title_text="False Positive Rate",
