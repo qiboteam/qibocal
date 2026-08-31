@@ -1,3 +1,5 @@
+.. _standard_error_amplification:
+
 Standard Error Amplification
 ============================
 
