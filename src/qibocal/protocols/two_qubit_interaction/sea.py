@@ -54,12 +54,14 @@ def cz_sea_sequence(
 
     n_cz = 2 * repetitions
     for i in range(n_cz):
-        sequence.extend([(cz_channel, cz_pulse)])
+        sequence |= PulseSequence([(cz_channel, cz_pulse)])
         if i < n_cz - 1:
-            sequence.extend([(qa_channel, x_pulse_a), (qb_channel, y_pulse_b)])
+            sequence |= PulseSequence(
+                [(qa_channel, x_pulse_a), (qb_channel, y_pulse_b)]
+            )
 
     final_channel, final_pulse = natives_a.R(theta=np.pi / 2)[0]
-    sequence.extend([(final_channel, final_pulse)])
+    sequence |= PulseSequence([(final_channel, final_pulse)])
 
     sequence |= natives_a.MZ()
 
