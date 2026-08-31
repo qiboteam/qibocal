@@ -202,7 +202,7 @@ def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResu
                 ),
                 np.sqrt(2 / len(x)),
             ]
-        except Exception as e:
+        except RuntimeError as e:
             log.warning(
                 f"Error in CZ conditional-phase SEA fit for pair {pair} due to {e}."
             )
