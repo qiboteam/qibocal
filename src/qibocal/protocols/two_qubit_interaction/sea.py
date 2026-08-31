@@ -160,7 +160,9 @@ def _acquisition(
 
 
 def sea_fit(x, offset, amplitude, omega, phase, gamma):
-    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
+    return (
+        amplitude * np.cos((x * omega + phase) / 2) ** 2 * np.exp(-x * gamma) + offset
+    )
 
 
 def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResults:
@@ -175,7 +177,7 @@ def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResu
         x = pair_data["repetitions"]
 
         period = fallback_period(guess_period(x, y))
-        pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
+        pguess = [0, 1, 2 * np.pi / period, 0, 0]
 
         try:
             popt, perr = curve_fit(
@@ -185,8 +187,8 @@ def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResu
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0.4, 0.4, -np.inf, -np.pi / 4, 0],
-                    [0.6, 0.6, np.inf, np.pi / 4, np.inf],
+                    [-0.1, 0.85, -np.inf, -np.pi / 8, 0],
+                    [0.15, 1.15, np.inf, np.pi / 8, np.inf],
                 ),
                 sigma=pair_data["error"],
             )
