@@ -469,7 +469,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             taps = data.fir
             baseline = g[qubit]
 
-            # toeplitz_matrix @ taps == lfilter(taps, [1], iir_correction)
+            # The Toeplitz matrix is lower triangular, with zeros in the upper triangle.
+            # Its diagonals contain successive shifts of iir_correction, so multiplying
+            # by the matrix implements the discrete convolution with the FIR taps.
             toeplitz_matrix = scipy.linalg.toeplitz(iir_correction, np.zeros(taps))
             # solve: toeplitz_matrix @ fir == baseline
             fir, _, _, _ = np.linalg.lstsq(
