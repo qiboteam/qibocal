@@ -33,6 +33,13 @@ from qibocal.protocols.utils import table_dict, table_html
 __all__ = ["CryoscopeData", "CryoscopeResults", "cryoscope"]
 
 
+NYQUIST_CYCLES_PER_SAMPLE = 0.5
+"""Cycles per sample at the Nyquist limit
+
+Nyquist frequency = NYQUIST_CYCLES_PER_SAMPLE * sampling rate
+"""
+
+
 class PaddedRectangular(BaseEnvelope):
     """Rectangular envelope with a fixed number of leading zero samples.
 
@@ -128,8 +135,7 @@ class CryoscopeResults(Results):
     feedback_taps: dict[QubitId, list[float]] = field(default_factory=dict)
     """feedback taps"""
 
-    # TODO: we only need this because params is not passed to the fit function, probably
-    # it makes sense to make the input parameters also accessible for the fit function.
+    # TODO: we only need this because params is not passed to the fit function
     iir: bool = False
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
@@ -222,8 +228,7 @@ class CryoscopeData(Data):
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
-    # TODO: we only need this because params is not passed to the fit function, probably
-    # it makes sense to make the input parameters also accessible for the fit function.
+    # TODO: we only need this because params is not passed to the fit function
     iir: bool = False
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
@@ -236,12 +241,11 @@ def _check_phase_can_be_unwrapped(
     """Check if the sampling rate is above the Nyquist rate."""
     f = np.poly1d(data.flux_coefficients[qubit])
     detuning = abs(f(data.flux_pulse_amplitude) - f(0.0))
-    cycles_per_step = detuning * duration_step
-    nyquist_cycles_per_sample = 0.5
-    if cycles_per_step > nyquist_cycles_per_sample:
+    cycles_per_sample = detuning * duration_step
+    if cycles_per_sample > NYQUIST_CYCLES_PER_SAMPLE:
         raise ValueError(
             f"Cannot unwrap the phase for qubit {qubit}: the expected detuning is "
-            f"{detuning:.3f} GHz, resulting in {cycles_per_step:.3f} cycles per sample "
+            f"{detuning:.3f} GHz, resulting in {cycles_per_sample:.3f} cycles per sample "
             f"({duration_step} ns). This is above the Nyquist limit. Reduce "
             "flux_pulse_amplitude or duration_step."
         )
@@ -349,7 +353,6 @@ def exponential_params(
         _expmodel,
         durations,
         step_response,
-        p0=[10.0, 1.0, 1.0],
     )
     return popt
 
@@ -410,6 +413,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         # to be used in savgol_filter
         # TODO: expose this 7 since it's a hyperparameter that, according to PycQED
         # "Needs some playing around sometimes"
+        # https://github.com/DiCarloLab-Delft/PycQED_py3/blob/dcf05e699608ea434ddd727fe538ce7cfd9ece68/pycqed/analysis/tools/cryoscope_tools.py#L97
         derivative_window_length = 7 / sampling_rate
         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
         derivative_window_size += (derivative_window_size + 1) % 2
