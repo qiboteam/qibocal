@@ -39,37 +39,65 @@ NYQUIST_CYCLES_PER_SAMPLE = 0.5
 Nyquist frequency = NYQUIST_CYCLES_PER_SAMPLE * sampling rate
 """
 
+BUFFER_TIME = 100
+"""Extra time in ns between the two pi/2 pulses.
+
+Set to 100 ns following the Cryoscope paper https://arxiv.org/abs/1907.04818
+"""
+# TODO: According to PycQED this "needs some playing around sometimes", so perhaps
+# should be exposed to the user as an input parameter. See
+# https://github.com/DiCarloLab-Delft/PycQED_py3/blob/dcf05e699608ea434ddd727fe538ce7cfd9ece68/pycqed/analysis/tools/cryoscope_tools.py#L97
+
+DERIVATIVE_WINDOW_SIZE = 7
+"""Size, in samples, of the Savitzky-Golay window used for the derivative."""
+
+
+def to_samples(duration: float, sampling_rate: float) -> int:
+    """Convert a duration in ns to the number of samples.
+
+    Raises an error if the duration does not correspond to an integer number of samples
+    at the given sampling rate [GSps].
+    """
+    exact = duration * sampling_rate
+    rounded = round(exact)
+    if not np.isclose(exact, rounded):
+        raise ValueError(
+            f"A duration of {duration} ns is not a whole number of samples at a "
+            f"sampling rate of {sampling_rate} GSps: it corresponds to {exact} samples."
+        )
+    return rounded
+
 
 class PaddedRectangular(BaseEnvelope):
     """Rectangular envelope with a fixed number of leading zero samples.
 
-    The waveform consists of ``padding`` zeros followed by unit-amplitude
-    samples. This allows short flux pulses to be represented at the waveform
-    level, even when the hardware's pulse scheduling granularity is coarser
-    than the desired pulse duration.
+    The waveform consists of ``padding_samples`` zeros followed by unit-amplitude
+    samples. This allows short flux pulses to be represented at the waveform level, even
+    when the hardware's pulse scheduling granularity is coarser than the desired pulse
+    duration.
     """
 
     kind: Literal["padded_rectangular"] = "padded_rectangular"
-    padding: int
+    padding_samples: int
     """Number of leading zero samples."""
 
     def i(self, samples: int) -> Waveform:
-        """Return a rectangular envelope with `padding` leading zeros."""
-        if samples < self.padding:
-            raise ValueError(f"samples ({samples}) must be >= padding ({self.padding})")
-        return np.concatenate([np.zeros(self.padding), np.ones(samples - self.padding)])
+        """Return a rectangular envelope with `padding_samples` leading zeros."""
+        if samples < self.padding_samples:
+            raise ValueError(
+                f"samples ({samples}) must be >= padding ({self.padding_samples})"
+            )
+        return np.concatenate(
+            [np.zeros(self.padding_samples), np.ones(samples - self.padding_samples)]
+        )
 
 
 @dataclass
 class CryoscopeParameters(Parameters):
     """Cryoscope user inputs."""
 
-    duration_min: float
-    """Minimum flux pulse duration."""
     duration_max: float
-    """Maximum flux duration start."""
-    duration_step: float
-    """Flux pulse duration step."""
+    """Maximum flux pulse duration [ns]."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
     fir: int
@@ -78,32 +106,15 @@ class CryoscopeParameters(Parameters):
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
     """
-    padding: int = 0
-    """Leading zero samples in the flux pulse.
+    padding_duration: float = 0
+    """Duration in ns of the leading zeros in the flux pulse.
 
     Padding is fixed during the duration sweep and added before the pulse. The waveform
-    consists of `padding` zeros followed by `duration` rectangular samples, for a total
-    length of `padding + duration`.
+    consists of `padding_duration` ns of zeros followed by `duration` ns of rectangular
+    samples, for a total length of `padding_duration + duration`.
 
     Useful when hardware enforces a minimum pulse length.
     """
-
-    def __post_init__(self):
-        n_points = len(
-            np.arange(self.duration_min, self.duration_max, self.duration_step)
-        )
-        iir_free_parameters = self.iir * 2
-        if self.fir + iir_free_parameters > n_points:
-            raise ValueError(
-                f"Cannot fit {self.fir} FIR taps and {iir_free_parameters} exponential "
-                f"parameters with only {n_points} duration points: the fit would be "
-                "underdetermined."
-            )
-
-        # TODO: padding is in samples while duration in ns. This protocol mixes ns and
-        # samples, so only works for 1 GHz sampling.
-        if self.duration_min < self.padding:
-            raise ValueError("Ensure that duration_min >= padding.")
 
 
 @dataclass
@@ -123,7 +134,7 @@ class CryoscopeResults(Results):
     exp_amplitude: dict[QubitId, float] = field(default_factory=dict)
     """A parameters for the exp decay approximation"""
     tau: dict[QubitId, float] = field(default_factory=dict)
-    """time decay constant in exp decay approximation"""
+    """Time decay constant in exp decay approximation [ns]."""
     fir_taps: dict[QubitId, list[float]] = field(default_factory=dict)
     """FIR feedforward taps"""
 
@@ -168,11 +179,17 @@ def generate_sequences(
 
     # model_construct skips validation because PaddedRectangular is not a supported
     # qibolab envelope. The pulse is not serialized, so this is acceptable here.
+    assert isinstance(platform.sampling_rate, float)
     flux_pulse = Pulse.model_construct(
-        duration=params.padding,
+        duration=params.padding_duration,
         amplitude=params.flux_pulse_amplitude,
-        envelope=PaddedRectangular(padding=params.padding),
+        envelope=PaddedRectangular(
+            padding_samples=to_samples(params.padding_duration, platform.sampling_rate)
+        ),
     )
+
+    # the two pi/2 pulses are separated by a fixed separation time
+    separation_time = params.duration_max + params.padding_duration + BUFFER_TIME
 
     # create the sequences
     sequence_x, sequence_y = PulseSequence(), PulseSequence()
@@ -182,13 +199,11 @@ def generate_sequences(
             (drive_channel, ry90),
             (flux_channel, Delay(duration=ry90.duration)),
             (flux_channel, flux_pulse),
-            (drive_channel, Delay(duration=params.duration_max + 100)),
+            (drive_channel, Delay(duration=separation_time)),
             (drive_channel, ry90),
             (
                 ro_channel,
-                Delay(
-                    duration=ry90.duration + params.duration_max + 100 + ry90.duration
-                ),
+                Delay(duration=ry90.duration + separation_time + ry90.duration),
             ),
             (ro_channel, ro_pulse_x),
         ]
@@ -199,13 +214,11 @@ def generate_sequences(
             (drive_channel, ry90),
             (flux_channel, Delay(duration=rx90.duration)),
             (flux_channel, flux_pulse),
-            (drive_channel, Delay(duration=params.duration_max + 100)),
+            (drive_channel, Delay(duration=separation_time)),
             (drive_channel, rx90),
             (
                 ro_channel,
-                Delay(
-                    duration=ry90.duration + params.duration_max + 100 + rx90.duration
-                ),
+                Delay(duration=ry90.duration + separation_time + rx90.duration),
             ),
             (ro_channel, ro_pulse_y),
         ]
@@ -221,6 +234,8 @@ class CryoscopeData(Data):
     """Flux pulse amplitude."""
     fir: int
     """Number of feedforward taps to be optimized after IIR."""
+    sampling_rate: float
+    """Sampling rate of the instrument [GSps]."""
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
     has_filters: dict[QubitId, bool] = field(default_factory=dict)
@@ -235,19 +250,17 @@ class CryoscopeData(Data):
     """
 
 
-def _check_phase_can_be_unwrapped(
-    data: CryoscopeData, qubit: QubitId, duration_step: float
-) -> None:
+def _check_phase_can_be_unwrapped(data: CryoscopeData, qubit: QubitId) -> None:
     """Check if the sampling rate is above the Nyquist rate."""
     f = np.poly1d(data.flux_coefficients[qubit])
-    detuning = abs(f(data.flux_pulse_amplitude) - f(0.0))
-    cycles_per_sample = detuning * duration_step
+    detuning = abs(f(data.flux_pulse_amplitude) - f(0.0))  # GHz
+    cycles_per_sample = detuning / data.sampling_rate
     if cycles_per_sample > NYQUIST_CYCLES_PER_SAMPLE:
         raise ValueError(
             f"Cannot unwrap the phase for qubit {qubit}: the expected detuning is "
-            f"{detuning:.3f} GHz, resulting in {cycles_per_sample:.3f} cycles per sample "
-            f"({duration_step} ns). This is above the Nyquist limit. Reduce "
-            "flux_pulse_amplitude or duration_step."
+            f"{detuning:.3f} GHz, resulting in {cycles_per_sample:.3f} cycles per "
+            f"sample ({1 / data.sampling_rate} ns). This is above the Nyquist limit. "
+            "Reduce flux_pulse_amplitude."
         )
 
 
@@ -266,13 +279,31 @@ def _acquisition(
 
     The previous sequence measures <X>, to measure <Y> the second drive pulse
     is replaced with RX90.
-    The delay between the two pi/2 pulses is fixed at t_max (maximum duration of flux pulse)
-    + 100 ns (following the paper).
+    The delay between the two pi/2 pulses is fixed at the maximum length of the flux
+    pulse (padding included) + 100 ns (following the paper).
     """
+    sampling_rate = platform.sampling_rate
+    assert isinstance(sampling_rate, float)
+    # the duration is swept one sample at a time, starting from the first sample after
+    # the step edge, since the filters are defined on consecutive samples counted from
+    # the beginning of the pulse
+    durations = (
+        np.arange(1, to_samples(params.duration_max, sampling_rate)) / sampling_rate
+    )
+
+    iir_free_parameters = params.iir * 2
+    if params.fir + iir_free_parameters > len(durations):
+        raise ValueError(
+            f"Cannot fit {params.fir} FIR taps and {iir_free_parameters} exponential "
+            f"parameters with only {len(durations)} duration points: the fit would be "
+            "underdetermined."
+        )
+
     data = CryoscopeData(
         fir=params.fir,
         flux_pulse_amplitude=params.flux_pulse_amplitude,
         iir=params.iir,
+        sampling_rate=sampling_rate,
     )
 
     for qubit in targets:
@@ -288,11 +319,7 @@ def _acquisition(
         data.has_filters[qubit] = bool(
             platform.config(platform.qubits[qubit].flux).filters
         )
-        _check_phase_can_be_unwrapped(data, qubit, params.duration_step)
-
-    duration_range = np.arange(
-        params.duration_min, params.duration_max, params.duration_step
-    )
+        _check_phase_can_be_unwrapped(data, qubit)
 
     sequence_x = PulseSequence()
     sequence_y = PulseSequence()
@@ -315,7 +342,7 @@ def _acquisition(
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=duration_range + params.padding,
+        values=durations + params.padding_duration,
         pulses=flux_pulses,
     )
 
@@ -333,7 +360,7 @@ def _acquisition(
                 CryoscopeType,
                 (qubit, measure),
                 {
-                    "duration": duration_range,
+                    "duration": durations,
                     "prob_1": results[ro_ids[qubit]],
                 },
             )
@@ -399,23 +426,18 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     qubits = np.unique([i[0] for i in data.data]).tolist()
 
+    sampling_rate = data.sampling_rate
     for qubit in qubits:
         durations = data[(qubit, "MX")].duration
-        duration_step = durations[1] - durations[0]
         X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
         norm_data = X_exp + 1j * Y_exp
 
         # demodulation frequency found by fitting sinusoidal
-        sampling_rate = 1 / (duration_step)
         demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi * sampling_rate
         # to be used in savgol_filter
-        # TODO: expose this 7 since it's a hyperparameter that, according to PycQED
-        # "Needs some playing around sometimes"
-        # https://github.com/DiCarloLab-Delft/PycQED_py3/blob/dcf05e699608ea434ddd727fe538ce7cfd9ece68/pycqed/analysis/tools/cryoscope_tools.py#L97
-        derivative_window_length = 7 / sampling_rate
-        derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
+        derivative_window_size = max(3, DERIVATIVE_WINDOW_SIZE)
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
@@ -452,7 +474,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             if data.iir:
                 exp_params = exponential_params(step_response[qubit], durations)
                 tau, exp_amplitude, _ = exp_params
-                iir_filter = ExponentialFilter(amplitude=exp_amplitude, tau=tau)
+                iir_filter = ExponentialFilter(
+                    amplitude=exp_amplitude, tau=tau * sampling_rate
+                )
                 feedback_taps[qubit] = iir_filter.feedback
                 feedforward_taps_iir[qubit] = iir_filter.feedforward
             else:
@@ -588,7 +612,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             fitting_report = table_html(
                 table_dict(
                     target,
-                    ["A", "tau"],
+                    ["A", "tau [ns]"],
                     [
                         exp_amplitude,
                         tau,
@@ -616,7 +640,7 @@ def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
                 {
                     "kind": "exp",
                     "amplitude": results.exp_amplitude[target],
-                    "tau": results.tau[target],
+                    "tau": results.tau[target] * platform.sampling_rate,
                 }
             )
         platform.update({f"configs.{platform.qubits[target].flux}.filters": filters})
