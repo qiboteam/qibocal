@@ -641,20 +641,24 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    try:
-        filters = [{"kind": "fir", "coefficients": results.fir_taps[target]}]
-        # TODO: multiple iir filters?
-        if results.iir:
-            filters.append(
-                {
-                    "kind": "exp",
-                    "amplitude": results.exp_amplitude[target],
-                    "tau": results.tau[target] * platform.sampling_rate,
-                }
-            )
-        platform.update({f"configs.{platform.qubits[target].flux}.filters": filters})
-    except KeyError:
-        log.info(f"Skipping filters update on qubit {target}.")
+    if platform.config(platform.qubits[target].flux).filters:
+        log.info(
+            f"Qubit {target} already has filters on its flux channel, "
+            "skipping the filters update."
+        )
+        return
+
+    filters = [{"kind": "fir", "coefficients": results.fir_taps[target]}]
+    # TODO: multiple iir filters?
+    if results.iir:
+        filters.append(
+            {
+                "kind": "exp",
+                "amplitude": results.exp_amplitude[target],
+                "tau": results.tau[target] * platform.sampling_rate,
+            }
+        )
+    platform.update({f"configs.{platform.qubits[target].flux}.filters": filters})
 
 
 cryoscope = Protocol(_acquisition, _fit, _plot, _update)
