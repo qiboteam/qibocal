@@ -334,14 +334,14 @@ def _acquisition(
         )
         _check_phase_can_be_unwrapped(data, qubit)
 
-    xy_sequences = {
+    qubit_to_xy_sequences = {
         qubit: generate_sequences(platform, qubit, params) for qubit in targets
     }
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
         values=durations + params.padding_duration,
-        pulses=[qs.flux_pulse for qs in xy_sequences.values()],
+        pulses=[qs.flux_pulse for qs in qubit_to_xy_sequences.values()],
     )
 
     options = {
@@ -352,14 +352,17 @@ def _acquisition(
 
     results = platform.execute(
         [
-            sum((qs.sequences[meas] for qs in xy_sequences.values()), PulseSequence())
+            sum(
+                (qs.sequences[meas] for qs in qubit_to_xy_sequences.values()),
+                PulseSequence(),
+            )
             for meas in ["MX", "MY"]
         ],
         [[sweeper]],
         **options,
     )
 
-    for qubit, qs in xy_sequences.items():
+    for qubit, qs in qubit_to_xy_sequences.items():
         for measure, readout_id in qs.readout_ids.items():
             data.data[qubit, measure] = results[readout_id]
 
