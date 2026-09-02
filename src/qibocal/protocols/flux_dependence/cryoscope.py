@@ -262,16 +262,21 @@ class CryoscopeData(Data):
     """
 
 
-def _check_phase_can_be_unwrapped(data: CryoscopeData, qubit: QubitId) -> None:
+def _check_phase_can_be_unwrapped(
+    flux_coefficients: list[float],
+    flux_pulse_amplitude: float,
+    sampling_rate: float,
+    qubit: QubitId,
+) -> None:
     """Check if the sampling rate is above the Nyquist rate."""
-    f = np.poly1d(data.flux_coefficients[qubit])
-    detuning = abs(f(data.flux_pulse_amplitude) - f(0.0))  # GHz
-    cycles_per_sample = detuning / data.sampling_rate
+    f = np.poly1d(flux_coefficients)
+    detuning = abs(f(flux_pulse_amplitude) - f(0.0))  # GHz
+    cycles_per_sample = detuning / sampling_rate
     if cycles_per_sample > NYQUIST_CYCLES_PER_SAMPLE:
         raise ValueError(
             f"Cannot unwrap the phase for qubit {qubit}: the expected detuning is "
             f"{detuning:.3f} GHz, resulting in {cycles_per_sample:.3f} cycles per "
-            f"sample ({1 / data.sampling_rate} ns). This is above the Nyquist limit. "
+            f"sample ({1 / sampling_rate} ns). This is above the Nyquist limit. "
             "Reduce flux_pulse_amplitude."
         )
 
@@ -332,7 +337,12 @@ def _acquisition(
         data.has_filters[qubit] = bool(
             platform.config(platform.qubits[qubit].flux).filters
         )
-        _check_phase_can_be_unwrapped(data, qubit)
+        _check_phase_can_be_unwrapped(
+            data.flux_coefficients[qubit],
+            data.flux_pulse_amplitude,
+            data.sampling_rate,
+            qubit,
+        )
 
     qubit_to_xy_sequences = {
         qubit: generate_sequences(platform, qubit, params) for qubit in targets
