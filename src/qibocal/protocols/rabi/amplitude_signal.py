@@ -44,10 +44,10 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, float]
-    """Drive amplitude for each qubit."""
-    length: dict[QubitId, float]
-    """Drive pulse duration. Same for all qubits."""
+    length: dict[QubitId, float] | dict[QubitId, list[float]]
+    """Pulse duration for each qubit."""
+    amplitude: dict[QubitId, float] | dict[QubitId, list[float]]
+    """Pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     rx90: bool

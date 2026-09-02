@@ -63,7 +63,7 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool, axis: int = -1):
     zeros = 0
     if not np.isscalar(period):
         zeros = np.zeros_like(period)
-        phase_guess = np.zeros_like(period) * phase_guess
+        phase_guess = np.full_like(period, phase_guess)
 
     if experiment == "length":
         return [median_sig, amplitude_guess, period, phase_guess, zeros]
@@ -144,7 +144,7 @@ def plot(data, qubit, fit, rx90):
         rabi_parameter_range = np.linspace(
             min(rabi_parameters),
             max(rabi_parameters),
-            2 * len(rabi_parameters),
+            500,
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -220,7 +220,7 @@ def plot_probabilities(data, qubit, fit, rx90):
         rabi_parameter_range = np.linspace(
             min(rabi_parameters),
             max(rabi_parameters),
-            2 * len(rabi_parameters),
+            500,
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(

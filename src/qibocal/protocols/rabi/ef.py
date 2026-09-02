@@ -11,12 +11,11 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.update import replace
+from qibocal.protocols.utils import readout_frequency
 
-from ...result import magnitude, phase
-from ..utils import readout_frequency
 from . import utils
 from .amplitude_signal import (
     RabiAmplitudeSignalData,
@@ -67,6 +66,7 @@ def _acquisition(
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
+<<<<<<< HEAD
         qd12_channel = platform.qubits[q].drive_extra[1, 2]
         if natives.RX12 is not None:
             [(_, qd12_pulse)] = natives.RX12()
@@ -77,6 +77,11 @@ def _acquisition(
             qd12_pulse = Pulse(
                 amplitude=1.0, duration=params.pulse_length, envelope=Rectangular()
             )
+=======
+
+        if params.pulse_length is not None:
+            qd12_pulse = update.replace(qd_pulse, duration=params.pulse_length)
+>>>>>>> 0c603db87 (resolving errors found by copilot during PR review)
 
         durations[q] = qd12_pulse.duration
         qd_pulses[q] = qd12_pulse
@@ -127,15 +132,17 @@ def _acquisition(
             (qubit),
             {
                 "amp": sweeper.values,
-                "signal": magnitude(result),
-                "phase": phase(result),
+                "i": result[..., 0],
+                "q": result[..., 1],
             },
         )
     return data
 
 
 def _plot(
-    data: RabiAmplitudeEFData, target: QubitId, fit: RabiAmplitudeEFResults = None
+    data: RabiAmplitudeEFData,
+    target: QubitId,
+    fit: RabiAmplitudeEFResults | None = None,
 ):
     """Plotting function for RabiAmplitude."""
     figures, report = utils.plot(data, target, fit, data.rx90)

@@ -73,65 +73,41 @@ def test_rabi_fit():
             with open(results_file) as file1:
                 results = json.load(file1)
 
-            if "signal in str_sub":
-                signal_flag = True
-            elif "freq" in str_sub:
+            signal_flag = "signal" in str_sub
+
+            if "freq" in str_sub:
                 sig_min = np.min(raw_signal)
                 sig_max = np.max(raw_signal)
                 x_min = np.min(raw_x)
                 x_max = np.max(raw_x)
                 x = (raw_x - x_min) / (x_max - x_min)
                 signal = (raw_signal - sig_min) / (sig_max - sig_min)
-                x_lims = (x_min, x_max)
-                signal_lims = (sig_min, sig_max)
-                signal_flag = True
             else:
                 signal = raw_signal
                 x = raw_x
-                x_lims = (None, None)
-                signal_lims = (None, None)
-                signal_flag = False
 
-            if "amp" in str_sub:
-                pguess = rabi_initial_guess(x, signal, "amplitude", signal_flag)
+            rabi_flag = "amplitude" if "amp" in str_sub else "length"
+            fit_param = '"amplitude' if "amp" in str_sub else '"duration"'
+            fit_func = (
+                rabi_fit_amplitude_function
+                if rabi_flag == "amplitude"
+                else rabi_fit_length_function
+            )
 
-                _fit_params, _, pi_pulse_parameter = rabi_fit_amplitude_function(
-                    x,
-                    signal,
-                    pguess,
-                    sigma=errors,
-                    signal=signal_flag,
-                    x_limits=x_lims,
-                    y_limits=signal_lims,
-                )
+            pguess = rabi_initial_guess(x, signal, rabi_flag, signal_flag)
 
-                if isinstance(pi_pulse_parameter, list):
-                    new_amplitude = pi_pulse_parameter[0]
-                    true_amplitude = results['"amplitude"'][f][0]
-                else:
-                    new_amplitude = pi_pulse_parameter
-                    true_amplitude = results['"amplitude"'][f]
+            _fit_params, _, pi_pulse_parameter = fit_func(
+                x,
+                signal,
+                pguess,
+                sigma=errors,
+            )
 
-                assert math.isclose(true_amplitude, new_amplitude, rel_tol=2.5e-2)
+            if isinstance(pi_pulse_parameter, list):
+                new_param = pi_pulse_parameter[0]
+                true_param = results[fit_param][f][0]
+            else:
+                new_param = pi_pulse_parameter
+                true_param = results[fit_param][f]
 
-            if "length" in str_sub:
-                pguess = rabi_initial_guess(x, signal, "length", signal_flag)
-
-                _fit_params, _, pi_pulse_parameter = rabi_fit_length_function(
-                    x,
-                    signal,
-                    pguess,
-                    sigma=errors,
-                    signal=signal_flag,
-                    x_limits=x_lims,
-                    y_limits=signal_lims,
-                )
-
-                if isinstance(pi_pulse_parameter, list):
-                    new_duration = pi_pulse_parameter[0]
-                    true_duration = results['"duration"'][f][0]
-                else:
-                    new_duration = pi_pulse_parameter
-                    true_duration = results['"duration"'][f]
-
-                assert math.isclose(true_duration, new_duration, rel_tol=2.5e-2)
+            assert math.isclose(new_param, true_param, rel_tol=2.5e-2)
