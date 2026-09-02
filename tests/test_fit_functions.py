@@ -73,10 +73,9 @@ def test_rabi_fit():
             with open(results_file) as file1:
                 results = json.load(file1)
 
-            if 'signal in str_sub':
-                
+            if "signal in str_sub":
                 signal_flag = True
-            elif 'freq' in str_sub:
+            elif "freq" in str_sub:
                 sig_min = np.min(raw_signal)
                 sig_max = np.max(raw_signal)
                 x_min = np.min(raw_x)
