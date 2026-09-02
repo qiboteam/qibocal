@@ -40,9 +40,9 @@ class RabiLengthSignalResults(Results):
     """RabiLengthSignal outputs."""
 
     length: dict[QubitId, float] | dict[QubitId, list[float]]
-    """Pi pulse duration for each qubit."""
+    """Pulse duration for each qubit."""
     amplitude: dict[QubitId, float] | dict[QubitId, list[float]]
-    """Pi pulse amplitude. Same for all qubits."""
+    """Pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
     rx90: bool
