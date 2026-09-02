@@ -66,8 +66,10 @@ The expected output is the following:
 
 .. note::
   In the case where there are no filters the protocol will compute the FIR and the IIR
-  filters. If the filters are already present the computation of the filters will be skipped
-  and only the reconstructed waveform will be shown.
+  filters and update the platform. If the filters are already present the computation of
+  the filters will be skipped, the existing filters will be left untouched and only the
+  reconstructed waveform will be shown. This makes it possible to run the protocol a
+  second time to validate the previously determined filters without overwriting them.
 
 
 Requirements
