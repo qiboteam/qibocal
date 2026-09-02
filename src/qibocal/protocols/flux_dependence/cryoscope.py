@@ -156,10 +156,6 @@ class CryoscopeResults(Results):
         return key in self.detuning
 
 
-CryoscopeType = np.dtype([("duration", float), ("prob_1", np.float64)])
-"""Custom dtype for Cryoscope."""
-
-
 def generate_sequences(
     platform: Platform,
     qubit: QubitId,
@@ -236,11 +232,13 @@ class CryoscopeData(Data):
     """Number of feedforward taps to be optimized after IIR."""
     sampling_rate: float
     """Sampling rate of the instrument [GSps]."""
+    flux_pulse_durations: list[float]
+    """Durations of the flux pulses [ns]. Same for all qubits."""
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
     has_filters: dict[QubitId, bool] = field(default_factory=dict)
     """Check if there are filters already."""
-    data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
+    data: dict[tuple[QubitId, str], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
     # TODO: we only need this because params is not passed to the fit function
@@ -304,6 +302,7 @@ def _acquisition(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
         iir=params.iir,
         sampling_rate=sampling_rate,
+        flux_pulse_durations=durations.tolist(),
     )
 
     for qubit in targets:
@@ -356,14 +355,7 @@ def _acquisition(
 
     for measure, ro_ids in zip(["MX", "MY"], [ro_ids_x, ro_ids_y]):
         for qubit in targets:
-            data.register_qubit(
-                CryoscopeType,
-                (qubit, measure),
-                {
-                    "duration": durations,
-                    "prob_1": results[ro_ids[qubit]],
-                },
-            )
+            data.data[qubit, measure] = results[ro_ids[qubit]]
 
     return data
 
@@ -416,11 +408,10 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     feedforward_taps = {}
     fir_taps = {}
     feedback_taps = {}
+    durations = np.array(data.flux_pulse_durations)
     for qubit, setup in data.data:
-        qubit_data = data[qubit, setup]
-        x = qubit_data.duration
-        y = 1 - 2 * qubit_data.prob_1
-        popt, _ = fitting(x, y)
+        y = 1 - 2 * data[qubit, setup]
+        popt, _ = fitting(durations, y)
 
         fitted_parameters[qubit, setup] = popt
 
@@ -428,9 +419,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     sampling_rate = data.sampling_rate
     for qubit in qubits:
-        durations = data[(qubit, "MX")].duration
-        X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
-        Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
+        X_exp = 2 * data[(qubit, "MX")] - 1
+        Y_exp = 1 - 2 * data[(qubit, "MY")]
 
         norm_data = X_exp + 1j * Y_exp
 
@@ -530,12 +520,12 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
     )
-    duration = data[(target, "MX")].duration
+    duration = data.flux_pulse_durations
 
     fig.add_trace(
         go.Scatter(
             x=duration,
-            y=2 * data[(target, "MX")].prob_1 - 1,
+            y=2 * data[(target, "MX")] - 1,
             name="X",
             legendgroup="1",
             mode="markers",
@@ -546,7 +536,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=duration,
-            y=1 - 2 * data[(target, "MY")].prob_1,
+            y=1 - 2 * data[(target, "MY")],
             name="Y",
             legendgroup="1",
             mode="markers",

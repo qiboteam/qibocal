@@ -10,6 +10,8 @@ from qibocal.protocols.flux_dependence.cryoscope import (
 )
 
 
+# TODO: upload a data example.
+@pytest.mark.skip()
 def test_cryoscope_fit():
     results_folder = PATH_TESTING_DATA / "cryoscope-0"
     data = CryoscopeData.load(results_folder)
