@@ -156,11 +156,23 @@ class CryoscopeResults(Results):
         return key in self.detuning
 
 
+@dataclass(frozen=True)
+class XYSequences:
+    """Sequences to be executed for a single qubit."""
+
+    sequences: dict[str, PulseSequence]
+    """Sequences for measuring both the X and Y coordinates."""
+    readout_ids: dict[str, PulseId]
+    """Id of the readout pulse of each sequences, to retrieve its results."""
+    flux_pulse: Pulse
+    """Flux pulse shared by the two sequences."""
+
+
 def generate_sequences(
     platform: Platform,
     qubit: QubitId,
     params: CryoscopeParameters,
-) -> tuple[PulseSequence, PulseSequence, PulseId, PulseId, Pulse]:
+) -> XYSequences:
     """Compute sequences for <X> and <Y> with a flux pulse ready for duration sweep."""
     native = platform.natives.single_qubit[qubit]
 
@@ -175,7 +187,7 @@ def generate_sequences(
 
     # model_construct skips validation because PaddedRectangular is not a supported
     # qibolab envelope. The pulse is not serialized, so this is acceptable here.
-    assert isinstance(platform.sampling_rate, float)
+    assert platform.sampling_rate is not None
     flux_pulse = Pulse.model_construct(
         duration=params.padding_duration,
         amplitude=params.flux_pulse_amplitude,
@@ -188,9 +200,7 @@ def generate_sequences(
     separation_time = params.duration_max + params.padding_duration + BUFFER_TIME
 
     # create the sequences
-    sequence_x, sequence_y = PulseSequence(), PulseSequence()
-
-    sequence_x.extend(
+    sequence_x = PulseSequence(
         [
             (drive_channel, ry90),
             (flux_channel, Delay(duration=ry90.duration)),
@@ -205,7 +215,7 @@ def generate_sequences(
         ]
     )
 
-    sequence_y.extend(
+    sequence_y = PulseSequence(
         [
             (drive_channel, ry90),
             (flux_channel, Delay(duration=rx90.duration)),
@@ -219,7 +229,11 @@ def generate_sequences(
             (ro_channel, ro_pulse_y),
         ]
     )
-    return sequence_x, sequence_y, ro_pulse_x.id, ro_pulse_y.id, flux_pulse
+    return XYSequences(
+        sequences={"MX": sequence_x, "MY": sequence_y},
+        readout_ids={"MX": ro_pulse_x.id, "MY": ro_pulse_y.id},
+        flux_pulse=flux_pulse,
+    )
 
 
 @dataclass
@@ -281,7 +295,7 @@ def _acquisition(
     pulse (padding included) + 100 ns (following the paper).
     """
     sampling_rate = platform.sampling_rate
-    assert isinstance(sampling_rate, float)
+    assert sampling_rate is not None
     # the duration is swept one sample at a time, starting from the first sample after
     # the step edge, since the filters are defined on consecutive samples counted from
     # the beginning of the pulse
@@ -320,29 +334,14 @@ def _acquisition(
         )
         _check_phase_can_be_unwrapped(data, qubit)
 
-    sequence_x = PulseSequence()
-    sequence_y = PulseSequence()
-    ro_ids_x = {}
-    ro_ids_y = {}
-    flux_pulses = []
-    for qubit in targets:
-        (
-            qubit_sequence_x,
-            qubit_sequence_y,
-            ro_pulse_id_x,
-            ro_pulse_id_y,
-            flux_pulse,
-        ) = generate_sequences(platform, qubit, params)
-        sequence_x += qubit_sequence_x
-        sequence_y += qubit_sequence_y
-        flux_pulses.append(flux_pulse)
-        ro_ids_x[qubit] = ro_pulse_id_x
-        ro_ids_y[qubit] = ro_pulse_id_y
+    xy_sequences = {
+        qubit: generate_sequences(platform, qubit, params) for qubit in targets
+    }
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
         values=durations + params.padding_duration,
-        pulses=flux_pulses,
+        pulses=[qs.flux_pulse for qs in xy_sequences.values()],
     )
 
     options = {
@@ -351,11 +350,18 @@ def _acquisition(
         "averaging_mode": AveragingMode.CYCLIC,
     }
 
-    results = platform.execute([sequence_x, sequence_y], [[sweeper]], **options)
+    results = platform.execute(
+        [
+            sum((qs.sequences[meas] for qs in xy_sequences.values()), PulseSequence())
+            for meas in ["MX", "MY"]
+        ],
+        [[sweeper]],
+        **options,
+    )
 
-    for measure, ro_ids in zip(["MX", "MY"], [ro_ids_x, ro_ids_y]):
-        for qubit in targets:
-            data.data[qubit, measure] = results[ro_ids[qubit]]
+    for qubit, qs in xy_sequences.items():
+        for measure, readout_id in qs.readout_ids.items():
+            data.data[qubit, measure] = results[readout_id]
 
     return data
 
