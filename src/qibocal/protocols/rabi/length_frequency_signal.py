@@ -64,7 +64,7 @@ class RabiLengthFrequencySignalResults(RabiLengthSignalResults):
 
 RabiLenFreqSignalType = np.dtype(
     [
-        ("len", np.float64),
+        ("length", np.float64),
         ("freq", np.float64),
         ("i", np.float64),
         ("q", np.float64),
@@ -86,20 +86,20 @@ class RabiLengthFreqSignalData(Data):
     )
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, lens, signal, phase):
+    def register_qubit(self, qubit, freq, lens, i, q):
         """Store output for single qubit."""
         size = len(freq) * len(lens)
         frequency, length = np.meshgrid(freq, lens)
         data = np.empty(size, dtype=RabiLenFreqSignalType)
         data["freq"] = frequency.ravel()
-        data["len"] = length.ravel()
-        data["signal"] = signal.ravel()
-        data["phase"] = phase.ravel()
+        data["length"] = length.ravel()
+        data["i"] = i.ravel()
+        data["q"] = q.ravel()
         self.data[qubit] = np.rec.array(data)
 
     def durations(self, qubit) -> npt.NDArray:
         """Unique qubit lengths."""
-        return np.unique(self[qubit].len)
+        return np.unique(self[qubit].length)
 
     def frequencies(self, qubit) -> npt.NDArray:
         """Unique qubit frequency."""
@@ -186,8 +186,8 @@ def _acquisition(
             qubit=qubit,
             freq=freq_sweepers[qubit].values,
             lens=len_sweeper.values,
-            signal=result[..., 0],
-            phase=result[..., 1],
+            i=result[..., 0],
+            q=result[..., 1],
         )
     return data
 
@@ -258,23 +258,23 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
+    frequencies = data.frequencies(target) * HZ_TO_GHZ
+    durations = data.durations(target)
     qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    durations = qubit_data.len
 
     quadratures_matrix = collect(qubit_data.i, qubit_data.q).reshape(
-        len(data.durations(target)), len(data.frequencies(target)), -1
+        len(durations), len(frequencies), -1
     )
     quadratures_matrix = np.moveaxis(quadratures_matrix, 0, 1)
 
     # computing PCA for each frequency value and only take the most relevant component
-    pc_matrix = np.asarray([PCA().fit_transform(x)[:, 0] for x in quadratures_matrix]).T
+    pc_matrix = np.asarray([PCA().fit_transform(x)[:, 0] for x in quadratures_matrix])
 
     fig.add_trace(
         go.Heatmap(
             x=durations,
             y=frequencies,
-            z=pc_matrix.ravel(),
+            z=pc_matrix,
             colorbar_x=1.0,
         ),
     )
