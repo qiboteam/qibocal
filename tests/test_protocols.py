@@ -156,7 +156,7 @@ def test_fit_command(runcard, update, tmp_path, platform):
 def test_extract_rabi():
     assert extract_rabi(RabiAmplitudeData(rx90=False)) == (
         "amp",
-        "Amplitude [dimensionless]",
+        "Amplitude [a.u.]",
         rabi_amplitude_function,
     )
     assert extract_rabi(RabiLengthData(rx90=False)) == (
@@ -171,7 +171,7 @@ def test_extract_rabi():
 def test_extract_rabi_rx90():
     assert extract_rabi(RabiAmplitudeData(rx90=True)) == (
         "amp",
-        "Amplitude [dimensionless]",
+        "Amplitude [a.u.]",
         rabi_amplitude_function,
     )
     assert extract_rabi(RabiLengthData(rx90=True)) == (

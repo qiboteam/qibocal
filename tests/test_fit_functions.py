@@ -86,11 +86,11 @@ def test_rabi_fit():
                 signal = raw_signal
                 x = raw_x
 
-            rabi_flag = "amplitude" if "amp" in str_sub else "length"
-            fit_param = '"amplitude' if "amp" in str_sub else '"duration"'
+            rabi_flag = "amp" if "amp" in str_sub else "length"
+            fit_param = '"amplitude"' if "amp" in str_sub else '"length"'
             fit_func = (
                 rabi_fit_amplitude_function
-                if rabi_flag == "amplitude"
+                if rabi_flag == "amp"
                 else rabi_fit_length_function
             )
 
