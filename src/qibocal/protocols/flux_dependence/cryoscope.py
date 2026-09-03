@@ -414,6 +414,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     For some of the manipulations see: https://github.com/DiCarloLab-Delft/PycQED_py3/blob/c4279cbebd97748dc47127e56f6225021f169257/pycqed/analysis/tools/cryoscope_tools.py#L73
     """
 
+    # The check in _check_phase_can_be_unwrapped ensures that nyquist_order = 0 is
+    # always true.
     nyquist_order = 0
 
     fitted_parameters = {}
@@ -443,8 +445,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
         norm_data = X_exp + 1j * Y_exp
 
-        # demodulation frequency found by fitting sinusoidal
-        demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi * sampling_rate
+        # demodulation frequency in GHz found by fitting sinusoidal
+        demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi
         # to be used in savgol_filter
         derivative_window_size = max(3, DERIVATIVE_WINDOW_SIZE)
         derivative_window_size += (derivative_window_size + 1) % 2
@@ -457,7 +459,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
         phase -= phase[0]
-        # compute detuning
+        # compute detuning in GHz
         raw_detuning = (
             scipy.signal.savgol_filter(
                 phase / (2 * np.pi),
@@ -484,7 +486,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
                 exp_params = exponential_params(step_response[qubit], durations)
                 tau, exp_amplitude, _ = exp_params
                 iir_filter = ExponentialFilter(
-                    amplitude=exp_amplitude, tau=tau * sampling_rate
+                    amplitude=exp_amplitude, tau=round(tau * sampling_rate)
                 )
                 feedback_taps[qubit] = iir_filter.feedback
                 feedforward_taps_iir[qubit] = iir_filter.feedforward
@@ -651,6 +653,7 @@ def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
     filters = [{"kind": "fir", "coefficients": results.fir_taps[target]}]
     # TODO: multiple iir filters?
     if results.iir:
+        assert platform.sampling_rate is not None
         filters.append(
             {
                 "kind": "exp",
