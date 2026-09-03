@@ -219,12 +219,11 @@ def _plot(
     durations = data.durations(target)
     qubit_data = data[target]
 
-    probabilities = qubit_data.prob.reshape(len(durations), len(frequencies)).T
     fig.add_trace(
         go.Heatmap(
             x=durations,
             y=frequencies,
-            z=probabilities,
+            z=qubit_data.prob.reshape(len(durations), len(frequencies)).T,
             colorbar_x=1.0,
         ),
     )
