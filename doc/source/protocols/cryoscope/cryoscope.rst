@@ -53,9 +53,9 @@ A possible runcard to launch a Cryoscope experiment could be the following:
     operation: cryoscope
     parameters:
       duration_max: 80
-      duration_min: 1
-      duration_step: 1
       flux_pulse_amplitude: 0.7
+      fir: 32
+      iir: true
       relaxation_time: 50000
 
 
@@ -63,11 +63,17 @@ The expected output is the following:
 
 .. image:: cryoscope.png
 
-
 .. note::
-  In the case where there are no filters the protocol will compute the FIR and the IIR
-  filters. If the filters are already present the computation of the filters will be skipped
-  and only the reconstructed waveform will be shown.
+  The flux pulse duration is swept one sample at a time, from a single sample up to
+  ``duration_max``. Set ``iir: false`` to determine only an FIR filter. On instruments
+  that enforce a minimum pulse duration (e.g. Qblox), use ``padding_duration`` to
+  prepend leading zeros to the flux pulse, so that also flux pulses below that limit can
+  be executed.
+
+  If no filters are configured, the protocol computes the FIR and IIR filters and
+  updates the platform. If filters are already present, they are left untouched and only
+  the reconstructed waveform is shown. This makes it possible to run the protocol a
+  second time to validate the previously determined filters.
 
 
 Requirements
