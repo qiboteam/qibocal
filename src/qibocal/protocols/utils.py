@@ -1313,12 +1313,14 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
         )
     )
 
-    i_plot = np.linspace(np.min(i), np.max(i), 200)
+    axis_plot = np.linspace(
+        -max(np.ptp(i), np.ptp(q)) / 2, max(np.ptp(i), np.ptp(q)) / 2, 200
+    )
     scatters.extend(
         [
             go.Scatter(
-                x=i_plot,
-                y=a[1] / a[0] * (i_plot - centroid_x) + centroid_y,
+                x=centroid_x + a[0] * axis_plot,
+                y=centroid_y + a[1] * axis_plot,
                 opacity=1,
                 name="Principal Axes",
                 showlegend=i == 0,
