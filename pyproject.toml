@@ -4,10 +4,15 @@ version = "0.2.7"
 description = "Qibo's quantum calibration, characterization and validation module."
 authors = [{name = "The Qibo team"}]
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 readme = "README.md"
 keywords = []
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Physics",
 ]
 requires-python = ">=3.10,<3.14"
@@ -61,7 +66,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.11.7,<0.12"]
+requires = ["uv_build>=0.12.9,<0.13"]
 build-backend = "uv_build"
 
 [tool.ruff]
