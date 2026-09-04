@@ -159,7 +159,7 @@ def readout_fit(data: ReadoutData) -> ReadoutResults:
             else:
                 ass_fid, angle, threshold = data.data[qb, 0, param]
 
-            ass_fid_dict[qb].append(ass_fid)
+            ass_fid_dict[qb].append(float(ass_fid))
             if qb not in highest_ass_fid or ass_fid > highest_ass_fid[qb]:
                 highest_ass_fid[qb] = ass_fid
                 best_param[qb] = param
