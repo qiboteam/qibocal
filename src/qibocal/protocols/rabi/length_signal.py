@@ -3,13 +3,14 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from sklearn.decomposition import PCA
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
-from qibocal.result import magnitude, phase
+from qibocal.result import collect
 
 from . import utils
 
@@ -38,18 +39,18 @@ class RabiLengthSignalParameters(Parameters):
 class RabiLengthSignalResults(Results):
     """RabiLengthSignal outputs."""
 
-    length: dict[QubitId, int | list[float]]
-    """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, float | list[float]]
-    """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    length: dict[QubitId, float] | dict[QubitId, list[float]]
+    """Pulse duration for each qubit."""
+    amplitude: dict[QubitId, float] | dict[QubitId, list[float]]
+    """Pulse amplitude. Same for all qubits."""
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
     rx90: bool
     """Pi or Pi_half calibration"""
 
 
 RabiLenSignalType = np.dtype(
-    [("length", np.float64), ("signal", np.float64), ("phase", np.float64)]
+    [("length", np.float64), ("i", np.float64), ("q", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
@@ -120,8 +121,8 @@ def _acquisition(
             (q),
             {
                 "length": sweeper.values,
-                "signal": magnitude(result),
-                "phase": phase(result),
+                "i": result[..., 0],
+                "q": result[..., 1],
             },
         )
     return data
@@ -131,31 +132,28 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
     """Post-processing for RabiLength experiment."""
 
     qubits = data.qubits
-    fitted_parameters = {}
-    durations = {}
+    fitted_parameters: dict[QubitId, list[float]] = {}
+    durations: dict[QubitId, float] = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
+
         rabi_parameter = qubit_data.length
-        voltages = qubit_data.signal
+        quadratures = collect(qubit_data.i, qubit_data.q)
 
-        y_min = np.min(voltages)
-        y_max = np.max(voltages)
-        x_min = np.min(rabi_parameter)
-        x_max = np.max(rabi_parameter)
-        x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min) - 1 / 2
+        # initialize PCA instance and fit it to the quadrature data
+        # and rotate the data along the principal axes
+        principal_axis_signal = PCA().fit_transform(quadratures)[:, 0]
 
-        pguess = utils.rabi_initial_guess(x, y, "length", signal=True)
+        pguess = utils.rabi_initial_guess(
+            rabi_parameter, principal_axis_signal, "length", signal=True
+        )
 
         try:
             popt, _, pi_pulse_parameter = utils.fit_length_function(
-                x,
-                y,
+                rabi_parameter,
+                principal_axis_signal,
                 pguess,
-                signal=True,
-                x_limits=(x_min, x_max),
-                y_limits=(y_min, y_max),
             )
             durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
@@ -168,16 +166,20 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
     )
 
 
+def _plot(
+    data: RabiLengthSignalData,
+    target: QubitId,
+    fit: RabiLengthSignalResults | None = None,
+):
+    """Plotting function for RabiLength experiment."""
+    return utils.plot(data, target, fit, data.rx90)
+
+
 def _update(
     results: RabiLengthSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
     update.drive_duration(results.length[target], results.rx90, platform, target)
     update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
-
-
-def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
-    """Plotting function for RabiLength experiment."""
-    return utils.plot(data, target, fit, data.rx90)
 
 
 rabi_length_signal = Protocol(_acquisition, _fit, _plot, _update)

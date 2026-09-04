@@ -3,16 +3,18 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
+from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Parameters, QubitId
 from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
-    angle_wrap,
     guess_period,
+    plot_iq_pca,
     table_dict,
     table_html,
 )
+from qibocal.result import collect
 from qibocal.update import replace
 
 QUANTILE_CONSTANT_RABI = 1.5
@@ -50,71 +52,99 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     )
 
 
-def rabi_initial_guess(x, y, experiment: str, signal: bool):
-    period = guess_period(x, y)
-    median_sig = np.median(y)
-    q80 = np.quantile(y, 0.8)
-    q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT_RABI
+def rabi_initial_guess(x, y, experiment: str, signal: bool, axis: int = -1):
+    period = guess_period(x, y, axis=axis)
+    median_sig = np.median(y, axis=axis)
+    q80 = np.quantile(y, 0.8, axis=axis)
+    q20 = np.quantile(y, 0.2, axis=axis)
+    amplitude_guess = np.abs(q80 - q20) / QUANTILE_CONSTANT_RABI
+
     phase_guess = np.pi if not signal else np.pi / 2
+    zeros = 0
+    if not np.isscalar(period):
+        zeros = np.zeros_like(period)
+        phase_guess = np.full_like(period, phase_guess)
 
     if experiment == "length":
-        return [median_sig, amplitude_guess, period, phase_guess, 0]
+        return [median_sig, amplitude_guess, period, phase_guess, zeros]
     else:
         return [median_sig, amplitude_guess, period, phase_guess]
 
 
 def plot(data, qubit, fit, rx90):
     quantity, title, fitting = extract_rabi(data)
-    figures = []
     fitting_report = ""
 
     fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
+        rows=3,
+        cols=1,
+        vertical_spacing=0.15,
         subplot_titles=(
-            "Signal [a.u.]",
-            "phase [rad]",
+            "IQ Plane",
+            "Principal Axis",
+            "Second Axis",
         ),
+        row_heights=[0.5, 0.35, 0.15],
     )
 
     qubit_data = data[qubit]
+    quadratures = collect(qubit_data.i, qubit_data.q)
+
+    # initialize a PCA instance and fit it to the quadrature data
+    pca = PCA().fit(quadratures)
+    # apply the pca rotation to the iq signal
+    pca_signal = pca.transform(quadratures)
 
     rabi_parameters = getattr(qubit_data, quantity)
+
+    #################################################################
+    # in the first row we plot the IQ plane with the quadrature data
+    # and the principal axes.
+    fig.add_traces(
+        plot_iq_pca(data, qubit),
+        rows=1,
+        cols=1,
+    )
+
+    #################################################################
+    # in the second row we plot the signal projection along the principal axis
+    # we computed the fit on.
+    principal_signal = pca_signal[:, 0]
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.signal,
+            y=principal_signal,
             opacity=1,
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
             mode="markers",
         ),
-        row=1,
+        row=2,
         col=1,
     )
+    #################################################################
+    # in the third row we plot the signal projection along the remaining axis.
+    residual_signal = pca_signal[:, 1]
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.phase,
+            y=residual_signal,
             opacity=1,
-            name="Phase",
+            name="Residual Signal",
             showlegend=True,
-            legendgroup="Phase",
+            legendgroup="Residual Signal",
             mode="markers",
         ),
-        row=1,
-        col=2,
+        row=3,
+        col=1,
     )
 
     if fit is not None:
         rabi_parameter_range = np.linspace(
             min(rabi_parameters),
             max(rabi_parameters),
-            2 * len(rabi_parameters),
+            500,
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -125,7 +155,7 @@ def plot(data, qubit, fit, rx90):
                 mode="lines",
                 marker_color="rgb(255, 130, 67)",
             ),
-            row=1,
+            row=2,
             col=1,
         )
         pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
@@ -140,20 +170,23 @@ def plot(data, qubit, fit, rx90):
 
         fig.update_layout(
             showlegend=True,
-            xaxis_title=title,
-            yaxis_title="Signal [a.u.]",
+            xaxis_title="I [a.u.]",
+            yaxis_title="Q [a.u.]",
+            yaxis2_title="Principal Axis Signal [a.u.]",
             xaxis2_title=title,
-            yaxis2_title="Phase [rad]",
+            yaxis3_title="Residual Signal [a.u.]",
+            xaxis3_title=title,
         )
 
-    figures.append(fig)
+    fig.update_layout(
+        height=800,
+    )
 
-    return figures, fitting_report
+    return [fig], fitting_report
 
 
 def plot_probabilities(data, qubit, fit, rx90):
     quantity, title, fitting = extract_rabi(data)
-    figures = []
     fitting_report = ""
 
     qubit_data = data[qubit]
@@ -187,7 +220,7 @@ def plot_probabilities(data, qubit, fit, rx90):
         rabi_parameter_range = np.linspace(
             min(rabi_parameters),
             max(rabi_parameters),
-            2 * len(rabi_parameters),
+            500,
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -220,9 +253,7 @@ def plot_probabilities(data, qubit, fit, rx90):
             yaxis_title="Excited state probability",
         )
 
-    figures.append(fig)
-
-    return figures, fitting_report
+    return [fig], fitting_report
 
 
 def extract_rabi(data):
@@ -230,7 +261,7 @@ def extract_rabi(data):
     Extract Rabi fit info.
     """
     if "RabiAmplitude" in data.__class__.__name__:
-        return "amp", "Amplitude [dimensionless]", rabi_amplitude_function
+        return "amp", "Amplitude [a.u.]", rabi_amplitude_function
     if "RabiLength" in data.__class__.__name__:
         return "length", "Time [ns]", rabi_length_function
     raise RuntimeError("Data has to be a data structure of the Rabi routines.")
@@ -301,7 +332,7 @@ def sequence_length(
     platform: Platform,
     rx90: bool,
     use_align: bool = False,
-) -> tuple[PulseSequence, dict, dict, dict]:
+) -> tuple[PulseSequence, dict, dict, dict, dict]:
     """Return sequence for rabi length."""
 
     sequence = PulseSequence()
@@ -337,7 +368,10 @@ def sequence_length(
 
 
 def fit_length_function(
-    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
+    x,
+    y,
+    guess,
+    sigma=None,
 ) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_length_function,
@@ -346,39 +380,24 @@ def fit_length_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, -1 if signal else 0, 0, -np.inf, 0],
-            [1, 1, np.inf, np.inf, np.inf],
+            [-np.inf, -np.inf, 0, -np.inf, 0],
+            [np.inf, np.inf, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
     )
-    x_min = x_limits[0]
-    x_max = x_limits[1]
-    y_min = y_limits[0]
-    y_max = y_limits[1]
-    if signal is False:
-        popt = [
-            popt[0],
-            popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-            popt[2] * (x_max - x_min),
-            angle_wrap(popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min)),
-            popt[4] / (x_max - x_min),
-        ]
-        perr = np.sqrt(np.diag(perr))
-    else:
-        popt = [  # change it according to the fit function
-            (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
-            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-            popt[2] * (x_max - x_min),
-            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-            popt[4] / (x_max - x_min),
-        ]
+
+    popt = np.asarray(popt).tolist()
+    perr = np.sqrt(np.diag(perr)).tolist()
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr.tolist(), pi_pulse_parameter
+    return popt, perr, pi_pulse_parameter
 
 
 def fit_amplitude_function(
-    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
+    x,
+    y,
+    guess,
+    sigma=None,
 ) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_amplitude_function,
@@ -387,26 +406,15 @@ def fit_amplitude_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, -np.inf],
-            [1, 1, np.inf, np.inf],
+            [-np.inf, -np.inf, 0, -np.inf],
+            [np.inf, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
     )
-    if signal is False:
-        perr = np.sqrt(np.diag(perr))
-    if None not in y_limits and None not in x_limits:
-        popt = [
-            y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
-            (y_limits[1] - y_limits[0]) * popt[1],
-            popt[2] * (x_limits[1] - x_limits[0]),
-            angle_wrap(
-                popt[3]
-                - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2]
-            ),
-        ]
-    else:
-        popt = popt.tolist()
+
+    popt = np.asarray(popt).tolist()
+    perr = np.sqrt(np.diag(perr)).tolist()
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
 
-    return popt, perr.tolist(), pi_pulse_parameter
+    return popt, perr, pi_pulse_parameter
