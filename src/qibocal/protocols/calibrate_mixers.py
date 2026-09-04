@@ -235,6 +235,7 @@ def _configure(cluster: Cluster, configs: dict, channels: set[str]) -> Sequencer
     narrowed temporarily and restored right after, to avoid touching unrelated modules
     or leaking the restriction into later experiments.
     """
+    original_channels_by_module = cluster._channels_by_module
     cluster._channels_by_module = {
         slot: filtered
         for slot, chs in cluster._channels_by_module.items()
@@ -243,7 +244,7 @@ def _configure(cluster: Cluster, configs: dict, channels: set[str]) -> Sequencer
     try:
         seq_map, _ = cluster.configure(configs=configs)
     finally:
-        del cluster._channels_by_module
+        cluster._channels_by_module = original_channels_by_module
     return seq_map
 
 
