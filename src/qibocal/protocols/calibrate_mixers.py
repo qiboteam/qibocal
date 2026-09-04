@@ -260,8 +260,9 @@ def _target_modules(
         mapping[target] = sorted(
             {
                 cluster._modules[slot].short_name
-                for slot, channels in seq_map.items()
-                for ch_name in channels
+                for slot, module_channels in seq_map.items()
+                if cluster._modules[slot].is_rf_type
+                for ch_name in module_channels
                 if ch_name in target_channels
             }
         )
