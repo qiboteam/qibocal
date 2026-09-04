@@ -1,7 +1,7 @@
 from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 import numpy as np
@@ -59,7 +59,7 @@ class FeatExtractionError(Exception):
     """Exception for feature extraction errors."""
 
 
-class PowerLevel(str, Enum):
+class PowerLevel(StrEnum):
     """Power Regime for Resonator Spectroscopy"""
 
     high = "high"

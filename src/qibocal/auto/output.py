@@ -2,7 +2,7 @@ import getpass
 import json
 import shutil
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from qibo.backends import construct_backend
@@ -71,11 +71,11 @@ class Metadata:
 
     def start(self):
         """Register start time."""
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
 
     def end(self):
         """Register completion time."""
-        self.end_time = datetime.now(timezone.utc)
+        self.end_time = datetime.now(UTC)
 
     @classmethod
     def load(cls, path):
@@ -119,7 +119,7 @@ class Metadata:
 
 def _new_output() -> Path:
     user = getpass.getuser().replace(".", "-")
-    date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date = datetime.now(UTC).strftime("%Y-%m-%d")
 
     num = 0
     while True:
