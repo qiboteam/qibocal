@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
+from plotly.offline import get_plotlyjs_version
 
 from qibocal.auto.history import DummyHistory
 from qibocal.auto.output import Output
@@ -51,6 +52,7 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
 
     html = template.render(
         is_static=True,
+        plotlyjs_version=get_plotlyjs_version(),
         css_styles=report_css_styles(STYLES),
         path=combined_report_path,
         title="",

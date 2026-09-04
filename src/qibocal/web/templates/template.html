@@ -19,9 +19,9 @@
 
   {% if is_static %}
   <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
-  <!-- Reading the plotly js library from online to save space (not the latest version) -->
+  <!-- Reading the plotly js library from online to save space -->
   <!-- This is required for the report plots to remain interactive -->
-  <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script type="text/javascript" src="https://cdn.plot.ly/plotly-{{plotlyjs_version}}.min.js"></script>
   {{ css_styles }}
   {% else %}
   <link rel="stylesheet" href="/static/styles.css">
