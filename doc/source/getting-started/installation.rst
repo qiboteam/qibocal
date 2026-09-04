@@ -17,8 +17,6 @@ distributed with pypi* for the packages listed above.
 | Windows          |   Yes   |
 +------------------+---------+
 
-.. note::
-      All packages are supported for Python 3.8 to 3.10
 
 .. _installing-qibocal:
 
