@@ -3,6 +3,7 @@ import pathlib
 
 import plotly.graph_objects as go
 from jinja2 import Environment, FileSystemLoader
+from plotly.offline import get_plotlyjs_version
 
 from qibocal.auto.history import History
 from qibocal.auto.operation import QubitId, QubitPairId
@@ -80,6 +81,7 @@ def report(path: pathlib.Path, history: History | None = None):
     template = env.get_template("template.html")
     html = template.render(
         is_static=True,
+        plotlyjs_version=get_plotlyjs_version(),
         css_styles=report_css_styles(STYLES),
         js_script=report_script(SCRIPT),
         path=path,
