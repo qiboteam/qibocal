@@ -92,6 +92,7 @@ class CalibrateMixersResults(Results):
 
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
+
     def __contains__(self, target: QubitId) -> bool:
         return target in self.target_modules
 
