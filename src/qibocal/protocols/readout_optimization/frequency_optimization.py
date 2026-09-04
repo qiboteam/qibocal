@@ -72,7 +72,7 @@ class ReadoutFrequencyData(Data):
     data: dict[QubitId, npt.NDArray[ReadoutFrequencyType]] = field(default_factory=dict)
 
     def frequencies(self, qubit: QubitId) -> np.ndarray:
-        return np.unique(self.data[qubit]["frequency"])
+        return np.unique(self.data[qubit]["freq"])
 
     def select_frequency(self, freq: float) -> "ReadoutFrequencyData":
         selected_data: dict[QubitId, npt.NDArray[ReadoutFrequencyType]] = {

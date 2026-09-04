@@ -708,12 +708,12 @@ actions:
     parameters:
       nshots: 10
 
-  - id : resonator_frequency
-    operation: resonator_frequency
+  - id : ro_frequency
+    operation: ro_frequency
     parameters:
-      freq_width: 200.e+6
-      freq_step: 25.e+6
+      frequency_range: ['center', 200e+6, 25.e+6]
       nshots: 10
+
   - id: chsh_native_gates
     operation: chsh
     targets: [[0, 1]]
@@ -730,12 +730,10 @@ actions:
       ntheta: 20
       native: False
 
-  - id: resonator_amplitude
-    operation: resonator_amplitude
+  - id: ro_amplitude
+    operation: ro_amplitude
     parameters:
-      amplitude_start: 0.1
-      amplitude_step: 0.1
-      amplitude_stop: 0.5
+      amplitude_range: [0.1, 0.5, 0.1]
 
   - id: qutrit
     operation: qutrit_classification
