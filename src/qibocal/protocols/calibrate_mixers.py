@@ -553,9 +553,9 @@ def _update(
             calibrated_ports.add((slot, port))
 
     # round2
-    # offset_i/offset_q are per physical port, shared by every qubit multiplexed on it
+    # offset_i/offset_q are per physical port, shared by every qubit multiplexed on it.
     # Calibrating one recalibrates all of them in hardware, so propagate the update to
-    # update to every channel on a sahred calibrated port, not just the targets.
+    # every channel on a shared calibrated port, not just the targets.
     for slot, channels in cluster._channels_by_module.items():
         mod_name = cluster._modules[slot].short_name
         if mod_name not in final_cal:
