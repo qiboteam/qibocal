@@ -66,22 +66,17 @@ def _acquisition(
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
-<<<<<<< HEAD
+
         qd12_channel = platform.qubits[q].drive_extra[1, 2]
         if natives.RX12 is not None:
             [(_, qd12_pulse)] = natives.RX12()
             if params.pulse_length is not None:
-                qd12_pulse = replace(qd12_pulse, duration=params.pulse_length)
+                qd12_pulse = update.replace(qd12_pulse, duration=params.pulse_length)
         else:
             assert params.pulse_length is not None
             qd12_pulse = Pulse(
                 amplitude=1.0, duration=params.pulse_length, envelope=Rectangular()
             )
-=======
-
-        if params.pulse_length is not None:
-            qd12_pulse = update.replace(qd_pulse, duration=params.pulse_length)
->>>>>>> 0c603db87 (resolving errors found by copilot during PR review)
 
         durations[q] = qd12_pulse.duration
         qd_pulses[q] = qd12_pulse
@@ -163,7 +158,7 @@ def _update(
         rx12_seq = [
             (
                 rx12[0][0],
-                replace(
+                update.replace(
                     rx12[0][1],
                     amplitude=results.amplitude[target],
                     duration=results.length[target],
