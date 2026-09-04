@@ -28,6 +28,7 @@ dependencies = [
   "jinja2>=3.1.2,<4.0.0",
   "plotly>=7.0.0,<8.0.0",
   "skops>=0.14.0,<0.15.0",
+  "pyyaml>=6.0.0,<7.0.0",
 ]
 
 [project.urls]
@@ -42,7 +43,6 @@ qq = "qibocal:command"
 tests = [
   "pytest>=9.0.0,<10.0.0",
   "pytest-cov>=7.0.0,<8.0.0",
-  "pytest-env>=1.0.0,<2.0.0",
   "pytest-mock>=3.14.0,<4.0.0",
 ]
 analysis = [
@@ -53,9 +53,7 @@ docs = [
   "furo>=2025.7.19,<2026.0.0",
   "sphinxcontrib-bibtex>=2.6.0,<3.0.0",
   "recommonmark>=0.7.1,<0.8.0",
-  "sphinx_markdown_tables>=0.0.17,<0.0.18",
   "sphinx-copybutton>=0.5.1,<0.6.0",
-  "setuptools>=84.0.0,<85.0.0",
 ]
 dev = [
   "ipython>=8.0.0,<10.0.0", # ipython 9 requires Python >= 3.11
