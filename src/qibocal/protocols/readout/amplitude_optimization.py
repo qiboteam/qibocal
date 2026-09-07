@@ -43,10 +43,9 @@ def _acquisition(
     targets: list[QubitId],
 ) -> ReadoutData:
     r"""
-    Data acquisition for resoantor amplitude optmization.
+    Data acquisition for resonator amplitude optimization.
     This protocol sweeps the readout amplitude performing a classification routine
-    and evaluating the error probability at each step. The sweep will be interrupted
-    if the probability error is less than the `error_threshold`.
+    and evaluating the assignment fidelity at each step.
     """
 
     sequences, probe_pulses_dict = readout_sequence(platform, targets)

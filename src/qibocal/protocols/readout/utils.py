@@ -49,6 +49,15 @@ class ReadoutData(Data):
     save_iq: bool = False
     """Whether to save the IQ data during the acquisition."""
 
+    # I need to overwrite this property since data might be empty if
+    # saving flag `save_iq` is set to False.
+    # In that case, the `data` attribute will be empty and the `qubits`
+    # property will return an empty list.
+    @property
+    def qubits(self) -> list[QubitId]:
+        """Return the list of qubits for which data was acquired."""
+        return list(self.swept_parameter.keys())
+
 
 def readout_sequence(
     platform: CalibrationPlatform, targets: list[QubitId]
