@@ -29,14 +29,11 @@ actions:
       step_amp: 0.005
       nshots: 10
 
-  - id: resonator optimization
-    operation: resonator_optimization
+  - id: readout 2D optimization
+    operation: ro_amplitude_frequency
     parameters:
-      freq_width: 200.e+6
-      freq_step: 25.e+6
-      amplitude_min: 0.1
-      amplitude_step: 0.1
-      amplitude_max: 0.5
+      frequency_range: ['center', 200e+6, 25.e+6]
+      amplitude_range: [0.1, 0.5, 0.1]
       nshots: 10
 
   - id: resonator spectroscopy low power

@@ -76,7 +76,7 @@ def _acquisition(
         swept_parameter=amplitude_values,
         save_iq=params.save_iq,
     )
-    data.data = save_data(
+    data.data, data.classification_info = save_data(
         targets=targets,
         parameter_dict=amplitude_values,
         pulses_dict=probe_pulses_dict,

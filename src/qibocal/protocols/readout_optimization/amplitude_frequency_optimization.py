@@ -9,52 +9,62 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
+    PulseLike,
     PulseSequence,
     Sweeper,
 )
 
-from ... import update
-from ...auto.operation import Data, Parameters, Protocol, QubitId, QubitPairId, Results
-from ...calibration import CalibrationPlatform
-from ...config import log
-from ...fitting.classifier.qubit_fit import QubitFit
-from ..utils import (
+from qibocal import update
+from qibocal.auto.operation import (
+    Data,
+    Parameters,
+    Protocol,
+    QubitId,
+    QubitPairId,
+    Results,
+)
+from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
+from qibocal.protocols.utils import (
     HZ_TO_GHZ,
+    Range,
+    RangeLike,
     classify,
     compute_assignment_fidelity,
     compute_qnd,
     readout_frequency,
     table_dict,
     table_html,
+    to_range,
 )
 
-__all__ = ["resonator_optimization"]
+from .utils import fit_classification_model
+
+__all__ = ["ro_amplitude_frequency"]
 
 
 @dataclass
-class ResonatorOptimizationParameters(Parameters):
+class ReadoutAmplitudeFrequencyParameters(Parameters):
     """Resonator optimization runcard inputs"""
 
-    freq_width: int
-    """Width for frequency sweep relative  to the readout frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    amplitude_min: float
-    """Minimum amplitude."""
-    amplitude_max: float
-    """Maximum amplitude."""
-    amplitude_step: float
-    """Step amplitude."""
+    frequency_range: RangeLike
+    """Frequency RangeLike object; for further information, see
+    :class:`qibocal.protocols.utils.RangeLike`."""
+    amplitude_range: RangeLike
+    """Amplitude RangeLike object; for further information, see
+    :class:`qibocal.protocols.utils.RangeLike`."""
     delay: float = 0
     """Delay between readouts, could account for resonator depletion or not [ns]."""
+    save_iq: bool = False
+    """Whether to save the IQ data during the acquisition."""
 
     @property
-    def frequency_span(self) -> np.ndarray:
-        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
+    def _amplitude_range(self) -> Range:
+        return to_range(self.amplitude_range)
 
 
 @dataclass
-class ResonatorOptimizationResults(Results):
+class ReadoutAmplitudeFrequencyResults(Results):
     """Resonator optimization outputs"""
 
     data: dict[tuple[QubitId, str], np.ndarray]
@@ -82,8 +92,8 @@ class ResonatorOptimizationResults(Results):
 
 
 @dataclass
-class ResonatorOptimizationData(Data):
-    """Data class for resonator optimization protocol."""
+class ReadoutAmplitudeFrequencyData(Data):
+    """Data class for readout optimization protocol."""
 
     frequencies_swept: dict[QubitId, list[float]] = field(default_factory=dict)
     """Frequency swept for each qubit."""
@@ -92,24 +102,20 @@ class ResonatorOptimizationData(Data):
     data: dict[tuple, np.ndarray] = field(default_factory=dict)
     """Raw data acquired"""
 
-    def grid(self, qubit: QubitId) -> tuple[np.ndarray, np.ndarray]:
-        x, y = np.meshgrid(self.frequencies_swept[qubit], self.amplitudes_swept)
-        return x.ravel(), y.ravel()
-
 
 def _acquisition(
-    params: ResonatorOptimizationParameters,
+    params: ReadoutAmplitudeFrequencyParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> ResonatorOptimizationData:
+) -> ReadoutAmplitudeFrequencyData:
     """Protocol to optimize readout frequency and readout amplitude.
 
     After preparing either state 0 or state 1 we perform two consecutive measurements to
     evaluate QND. Additionally we apply a pi pulse and we perform a third measurement to
     evaluate the QND-pi following https://arxiv.org/pdf/2110.04285"""
 
-    ro_pulses = {}
-    sequences = []
+    ro_pulses: dict[tuple[QubitId, int, int], PulseLike] = {}
+    sequences: list[PulseSequence] = []
     for state in [0, 1]:
         sequence = PulseSequence()
         for qubit in targets:
@@ -143,25 +149,23 @@ def _acquisition(
             sequence.append((ro_channel, ro_pulse_m3))
         sequences.append(sequence)
 
-    data = ResonatorOptimizationData()
+    data = ReadoutAmplitudeFrequencyData()
 
-    freq_sweepers = {}
+    freq_sweepers: dict[QubitId, Sweeper] = {}
     for qubit in targets:
-        freqs = readout_frequency(qubit, platform) + params.frequency_span
+        freqs = to_range(
+            params.frequency_range, center=readout_frequency(qubit, platform)
+        )
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
-            values=freqs,
+            range=freqs,
             channels=[platform.qubits[qubit].probe],
         )
-        data.frequencies_swept[qubit] = freqs.tolist()
+        data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
 
     amp_sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(
-            params.amplitude_min,
-            params.amplitude_max,
-            params.amplitude_step,
-        ),
+        range=params._amplitude_range,
         pulses=list(ro_pulses.values()),
     )
     data.amplitudes_swept = amp_sweeper.values.tolist()
@@ -183,8 +187,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
-    qubits = data.qubits
+def _fit(data: ReadoutAmplitudeFrequencyData) -> ReadoutAmplitudeFrequencyResults:
     arr = {}
     frequency = {}
     amplitude = {}
@@ -194,7 +197,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
     best_qnd = {}
     best_qnd_pi = {}
 
-    for qubit in qubits:
+    for qubit in data.qubits:
         freq_vals = data.frequencies_swept[qubit]
         amp_vals = data.amplitudes_swept
         shape = (len(amp_vals), len(freq_vals))
@@ -207,12 +210,8 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 for m in range(3)
             }
 
-            iq_values = np.concatenate((measurements[0, 0], measurements[0, 1]))
-            nshots = iq_values.shape[0] // 2
-            states = [0] * nshots + [1] * nshots
+            model = fit_classification_model(measurements[0, 0], measurements[0, 1])
 
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
             grids["angle"][j, k] = model.angle
             grids["threshold"][j, k] = model.threshold
 
@@ -244,10 +243,8 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
 
         averaged_qnd = (arr[qubit, "qnd"] + arr[qubit, "qnd-pi"]) / 2
 
-        # mask values where fidelity is below 80%
-        averaged_qnd[grids["fidelity"] < 0.8] = np.nan
-        # exclude values where QND is larger than 1
-        averaged_qnd[averaged_qnd > 1] = np.nan
+        # clip values where QND is larger than 1
+        averaged_qnd = np.clip(averaged_qnd, 0, 1)
         try:
             i, j = np.unravel_index(np.nanargmax(averaged_qnd), averaged_qnd.shape)
             best_fidelity[qubit] = grids["fidelity"][i, j]
@@ -260,7 +257,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         except ValueError:
             log.warning("Fitting error.")
 
-    return ResonatorOptimizationResults(
+    return ReadoutAmplitudeFrequencyResults(
         data=arr,
         fidelity=best_fidelity,
         qnd=best_qnd,
@@ -273,7 +270,9 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
 
 
 def _plot(
-    data: ResonatorOptimizationData, fit: ResonatorOptimizationResults, target: QubitId
+    data: ReadoutAmplitudeFrequencyData,
+    fit: ReadoutAmplitudeFrequencyResults,
+    target: QubitId,
 ):
     """Plotting function for resonator optimization"""
     figures = []
@@ -374,7 +373,7 @@ def _plot(
 
 
 def _update(
-    results: ResonatorOptimizationResults,
+    results: ReadoutAmplitudeFrequencyResults,
     platform: CalibrationPlatform,
     target: QubitId,
 ):
@@ -384,10 +383,5 @@ def _update(
     update.threshold(results.threshold[target], platform, target)
 
 
-resonator_optimization = Protocol(
-    _acquisition,
-    _fit,
-    _plot,
-    _update,
-)
-"""Resonator optimization Protocol object"""
+ro_amplitude_frequency = Protocol(_acquisition, _fit, _plot, _update)
+"""Readout amplitude-frequency optimization Protocol object"""

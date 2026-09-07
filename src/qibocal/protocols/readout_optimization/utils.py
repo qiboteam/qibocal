@@ -1,4 +1,3 @@
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -44,6 +43,9 @@ class ReadoutData(Data):
         default_factory=dict
     )
     """Measured data for each qubit, with shape (Nshots, N_freq_sweep, 2)."""
+    classification_info: dict[QubitId, list[list[float]]] = field(default_factory=dict)
+    """Classification information for each qubit (Assignment Fidelity, Angle and
+    Threshold of the classifier)."""
     save_iq: bool = False
     """Whether to save the IQ data during the acquisition."""
 
@@ -80,7 +82,7 @@ def readout_sequence(
 
 
 def fit_classification_model(
-    true_0: npt.NDArray[np.float64], true_1: npt.NDArray[np.float64]
+    measured_0: npt.NDArray[np.float64], measured_1: npt.NDArray[np.float64]
 ) -> QubitFit:
     """Fit a binary readout classification model to IQ samples.
 
@@ -89,8 +91,8 @@ def fit_classification_model(
 
     model = QubitFit()
     model.fit(
-        np.concatenate((true_0, true_1)),
-        np.asarray([0] * len(true_0) + [1] * len(true_1)),
+        np.concatenate((measured_0, measured_1)),
+        np.asarray([0] * len(measured_0) + [1] * len(measured_1)),
     )
     return model
 
@@ -101,7 +103,10 @@ def save_data(
     pulses_dict: dict[QubitId, dict[int, PulseLike]],
     results: dict[PulseId, Result],
     save_iq: bool,
-) -> dict[tuple[QubitId, int, float], npt.NDArray[np.float64]]:
+) -> tuple[
+    dict[tuple[QubitId, int, float], npt.NDArray[np.float64]],
+    dict[QubitId, list[list[float]]],
+]:
     """Extract and optionally classify readout data for each parameter value.
 
     It returns a mapping keyed by ``(qubit, state, parameter)`` containing either raw
@@ -109,32 +114,32 @@ def save_data(
     """
 
     data: dict[tuple[QubitId, int, float], npt.NDArray[np.float64]] = {}
+    fit_res: dict[QubitId, list[list[float]]] = {}
     # saving measurement results for each qubit
     for qubit in targets:
         qubit_ros = pulses_dict[qubit]
 
-        if save_iq:
-            for state, ro in qubit_ros.items():
-                # the measured data has shape (Nshots, N_amp_sweep, 2)
-                iq_data = np.asarray(results[ro.id])
-                for idx, a in enumerate(parameter_dict[qubit]):
-                    data[qubit, state, a] = iq_data[:, idx, :]
-        else:
-            state_0 = np.asarray(results[qubit_ros[0].id])
-            state_1 = np.asarray(results[qubit_ros[1].id])
-            for idx, a in enumerate(parameter_dict[qubit]):
-                ampl_state_0 = state_0[:, idx, :]
-                ampl_state_1 = state_1[:, idx, :]
+        state_0 = np.asarray(results[qubit_ros[0].id])
+        state_1 = np.asarray(results[qubit_ros[1].id])
+        for idx, param in enumerate(parameter_dict[qubit]):
+            sweep_state_0 = state_0[:, idx, :]
+            sweep_state_1 = state_1[:, idx, :]
 
-                fitted_result = fit_classification_model(ampl_state_0, ampl_state_1)
-                data[qubit, 0, a] = np.asarray(
-                    [
-                        fitted_result.assignment_fidelity,
-                        fitted_result.angle,
-                        fitted_result.threshold,
-                    ]
-                )
-    return data
+            if save_iq:
+                data[qubit, 0, param] = sweep_state_0
+                data[qubit, 1, param] = sweep_state_1
+
+            fitted_result = fit_classification_model(sweep_state_0, sweep_state_1)
+
+            fit_res.setdefault(qubit, []).append(
+                [
+                    fitted_result.assignment_fidelity,
+                    fitted_result.angle,
+                    fitted_result.threshold,
+                ]
+            )
+
+    return data, fit_res
 
 
 def readout_fit(data: ReadoutData) -> ReadoutResults:
@@ -144,34 +149,26 @@ def readout_fit(data: ReadoutData) -> ReadoutResults:
     best_angle: dict[QubitId, float] = {}
     best_threshold: dict[QubitId, float] = {}
     highest_ass_fid: dict[QubitId, float] = {}
-    ass_fid_dict: dict[QubitId, list] = defaultdict(list)
+    ass_fid_dict: dict[QubitId, list[float]] = {}
 
     for qb in data.qubits:
-        for param in data.swept_parameter[qb]:
-            if data.save_iq:
-                true_0 = data.data[qb, 0, param]
-                true_1 = data.data[qb, 1, param]
+        fit_res_array = np.asarray(data.classification_info[qb])
+        ass_fid_dict[qb] = fit_res_array[:, 0].tolist()
 
-                fitted_model = fit_classification_model(true_0, true_1)
-                ass_fid = fitted_model.assignment_fidelity
-                angle = fitted_model.angle
-                threshold = fitted_model.threshold
-            else:
-                ass_fid, angle, threshold = data.data[qb, 0, param]
+        # maximize assignment fidelity to find the best parameter, angle and threshold
+        max_fidelity_idx = np.argmax(fit_res_array[:, 0])
 
-            ass_fid_dict[qb].append(float(ass_fid))
-            if qb not in highest_ass_fid or ass_fid > highest_ass_fid[qb]:
-                highest_ass_fid[qb] = ass_fid
-                best_param[qb] = param
-                best_angle[qb] = angle
-                best_threshold[qb] = threshold
+        highest_ass_fid[qb] = fit_res_array[max_fidelity_idx, 0]
+        best_param[qb] = data.swept_parameter[qb][max_fidelity_idx]
+        best_angle[qb] = fit_res_array[max_fidelity_idx, 1]
+        best_threshold[qb] = fit_res_array[max_fidelity_idx, 2]
 
     return ReadoutResults(
         best_swept_param=best_param,
         highest_fidelities=highest_ass_fid,
         best_angle=best_angle,
         best_threshold=best_threshold,
-        measured_fidelities=dict(ass_fid_dict),
+        measured_fidelities=ass_fid_dict,
     )
 
 
