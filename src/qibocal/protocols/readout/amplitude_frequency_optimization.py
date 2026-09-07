@@ -263,7 +263,8 @@ def _fit(data: ReadoutAmplitudeFrequencyData) -> ReadoutAmplitudeFrequencyResult
     for qubit in data.qubits:
         averaged_qnd = (data.data[qubit, "qnd"] + data.data[qubit, "qnd-pi"]) / 2
 
-        # masking invalid values to avoid selecting them as best point
+        # Mask low-fidelity and invalid points before selecting the optimum.
+        averaged_qnd[data.data[qubit, "fidelity"] < 0.8] = np.nan
         averaged_qnd[averaged_qnd > 1] = np.nan
         try:
             i, j = np.unravel_index(np.nanargmax(averaged_qnd), averaged_qnd.shape)
