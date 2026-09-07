@@ -50,7 +50,6 @@ docs = [
   "sphinx>=9.0.0,<10.0.0",
   "furo>=2025.7.19,<2026.0.0",
   "sphinxcontrib-bibtex>=2.6.0,<3.0.0",
-  "recommonmark>=0.7.1,<0.8.0",
   "sphinx-copybutton>=0.5.1,<0.6.0",
 ]
 dev = [
