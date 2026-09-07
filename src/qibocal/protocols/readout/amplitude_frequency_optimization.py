@@ -27,7 +27,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
-    Range,
     RangeLike,
     classify,
     compute_assignment_fidelity,
@@ -113,10 +112,6 @@ class ReadoutAmplitudeFrequencyParameters(Parameters):
     save_iq: bool = False
     """Whether to save the IQ data during the acquisition."""
 
-    @property
-    def _amplitude_range(self) -> Range:
-        return to_range(self.amplitude_range)
-
 
 @dataclass
 class ReadoutAmplitudeFrequencyResults(Results):
@@ -144,8 +139,8 @@ class ReadoutAmplitudeFrequencyData(Data):
 
     frequencies_swept: dict[QubitId, list[float]] = field(default_factory=dict)
     """Frequency swept for each qubit."""
-    amplitudes_swept: list[float] = field(default_factory=list)
-    """Amplitude swept (same for all qubits)."""
+    amplitudes_swept: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Amplitude swept for each qubit."""
     data: dict[tuple, np.ndarray] = field(default_factory=dict)
     """Raw data acquired"""
 
@@ -205,6 +200,7 @@ def _acquisition(
     data = ReadoutAmplitudeFrequencyData()
 
     freq_sweepers: dict[QubitId, Sweeper] = {}
+    amp_sweepers: dict[QubitId, Sweeper] = {}
     for qubit in targets:
         freqs = to_range(
             params.frequency_range, center=readout_frequency(qubit, platform)
@@ -216,16 +212,22 @@ def _acquisition(
         )
         data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
 
-    amp_sweeper = Sweeper(
-        parameter=Parameter.amplitude,
-        range=params._amplitude_range,
-        pulses=list(ro_pulses.values()),
-    )
-    data.amplitudes_swept = amp_sweeper.values.tolist()
+        amp_sweepers[qubit] = Sweeper(
+            parameter=Parameter.amplitude,
+            range=to_range(
+                spec=params.amplitude_range,
+                center=ro_pulses[qubit, 0, 0].probe.amplitude,
+            ),
+            pulses=[ro_pulses[qubit, s, m] for s, m in product([0, 1], [0, 1, 2])],
+        )
+        data.amplitudes_swept[qubit] = amp_sweepers[qubit].values.astype(float).tolist()
 
     results = platform.execute(
         sequences,
-        [[amp_sweeper], [freq_sweepers[qubit] for qubit in targets]],
+        [
+            [amp_sweepers[qubit] for qubit in targets],
+            [freq_sweepers[qubit] for qubit in targets],
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -241,7 +243,7 @@ def _acquisition(
         data.data |= elaborate_raw_data(
             qubit=target,
             pixel_measurements=pixel_data,
-            ampl_sweep=data.amplitudes_swept,
+            ampl_sweep=data.amplitudes_swept[target],
             freq_sweep=data.frequencies_swept[target],
         )
 
@@ -272,7 +274,7 @@ def _fit(data: ReadoutAmplitudeFrequencyData) -> ReadoutAmplitudeFrequencyResult
             best_qnd[qubit] = data.data[qubit, "qnd"][i, j]
             best_qnd_pi[qubit] = data.data[qubit, "qnd-pi"][i, j]
             frequency[qubit] = data.frequencies_swept[qubit][j]
-            amplitude[qubit] = data.amplitudes_swept[i]
+            amplitude[qubit] = data.amplitudes_swept[qubit][i]
             angle[qubit] = data.data[qubit, "angle"][i, j]
             threshold[qubit] = data.data[qubit, "threshold"][i, j]
         except ValueError:
@@ -307,7 +309,7 @@ def _plot(
     fig.add_trace(
         go.Heatmap(
             x=np.array(data.frequencies_swept[target]) * HZ_TO_GHZ,
-            y=data.amplitudes_swept,
+            y=data.amplitudes_swept[target],
             z=data.data[target, "fidelity"],
             coloraxis="coloraxis",
         ),
@@ -318,7 +320,7 @@ def _plot(
     fig.add_trace(
         go.Heatmap(
             x=np.array(data.frequencies_swept[target]) * HZ_TO_GHZ,
-            y=data.amplitudes_swept,
+            y=data.amplitudes_swept[target],
             z=data.data[target, "qnd"],
             coloraxis="coloraxis",
         ),
@@ -329,7 +331,7 @@ def _plot(
     fig.add_trace(
         go.Heatmap(
             x=np.array(data.frequencies_swept[target]) * HZ_TO_GHZ,
-            y=data.amplitudes_swept,
+            y=data.amplitudes_swept[target],
             z=data.data[target, "qnd-pi"],
             coloraxis="coloraxis",
         ),
