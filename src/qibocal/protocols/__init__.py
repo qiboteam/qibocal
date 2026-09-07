@@ -12,7 +12,6 @@ from . import (
     rabi,
     randomized_benchmarking,
     readout,
-    readout_optimization,
     resonator_spectroscopies,
     signal_experiments,
     tomographies,
@@ -41,7 +40,6 @@ from .rabi import *
 from .ramsey import *
 from .randomized_benchmarking import *
 from .readout import *
-from .readout_optimization import *
 from .resonator_spectroscopies import *
 from .signal_experiments import *
 from .tomographies import *
@@ -57,7 +55,6 @@ __all__ += classification.__all__
 __all__ += rabi.__all__
 __all__ += ramsey_.__all__
 __all__ += randomized_benchmarking.__all__
-__all__ += readout_optimization.__all__
 __all__ += signal_experiments.__all__
 __all__ += dispersive_shift_.__all__
 __all__ += classification.__all__
