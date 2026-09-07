@@ -12,7 +12,6 @@
 #
 from pathlib import Path
 
-from recommonmark.transform import AutoStructify
 from sphinx.ext import apidoc
 
 import qibocal
@@ -48,7 +47,6 @@ extensions = [
     "sphinx.ext.coverage",
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
-    "recommonmark",
     "sphinx.ext.viewcode",
     "sphinx.ext.todo",
     "sphinx_copybutton",
@@ -118,11 +116,7 @@ intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 autodoc_member_order = "bysource"
 
 
-# Adapted this from
-# https://github.com/readthedocs/recommonmark/blob/ddd56e7717e9745f11300059e4268e204138a6b1/docs/conf.py
 # app setup hook
-
-
 def run_apidoc(_):
     """Extract autodoc directives from package structure."""
     source = Path(__file__).parent
@@ -132,10 +126,7 @@ def run_apidoc(_):
 
 
 def setup(app):
-    app.add_config_value("recommonmark_config", {"enable_eval_rst": True}, True)
-    app.add_transform(AutoStructify)
     app.add_css_file("css/style.css")
-
     app.connect("builder-inited", run_apidoc)
 
 
