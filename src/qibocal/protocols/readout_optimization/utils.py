@@ -171,7 +171,7 @@ def readout_fit(data: ReadoutData) -> ReadoutResults:
         highest_fidelities=highest_ass_fid,
         best_angle=best_angle,
         best_threshold=best_threshold,
-        measured_fidelities=ass_fid_dict,
+        measured_fidelities=dict(ass_fid_dict),
     )
 
 
