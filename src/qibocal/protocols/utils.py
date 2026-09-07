@@ -1223,7 +1223,7 @@ The other variants are the following:
 - ``center``, similar to the former, but assuming a default for the center, which
   depends the chosen protocol, i.e. ``("center", width, step)``
 - ``asym``, which is also a way to build upon an implicit center, but with specifying an
-  asymmetric interval around it, i.e. ``("asim", (left-shift, right-shift), step)``
+  asymmetric interval around it, i.e. ``("asym", (left-shift, right-shift), step)``
 """
 
 _RangeLike = TypeAdapter(RangeLike)
