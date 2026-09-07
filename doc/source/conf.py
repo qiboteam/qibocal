@@ -31,7 +31,6 @@ release = qibocal.__version__
 # https://stackoverflow.com/questions/56336234/build-fail-sphinx-error-contents-rst-not-found
 # master_doc = "index"
 
-autodoc_mock_imports = ["qm"]
 autodoc_default_options = {
     "members": True,
     "undoc-members": True,
