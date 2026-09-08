@@ -18,10 +18,10 @@ from qibocal.protocols.utils import (
 from .utils import (
     ReadoutData,
     ReadoutResults,
+    base_sequence,
+    fit_readout_classification_models,
     readout_fit,
     readout_plot,
-    readout_sequence,
-    save_data,
 )
 
 __all__ = ["ro_frequency"]
@@ -32,7 +32,9 @@ class ReadoutFrequencyParameters(Parameters):
     """Optimization RO frequency inputs."""
 
     frequency_range: RangeLike
-    """Frequency RangeLike object; for further information, see
+    """Frequency RangeLike object.
+
+    For further information, see
     :class:`qibocal.protocols.utils.RangeLike`."""
     save_iq: bool = False
     """Whether to save the IQ data during the acquisition."""
@@ -43,41 +45,34 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ReadoutData:
-    r"""
+    """
     Data acquisition for readout frequency optimization.
-    While sweeping the readout frequency, the routine performs a single shot
-    classification and evaluates the assignment fidelity.
-    At the end, the readout frequency is updated, choosing the one that has
-    the highest assignment fidelity.
     """
 
-    sequences, probe_pulses_dict = readout_sequence(platform, targets)
+    sequences, probe_pulses_dict = base_sequence(platform, targets)
 
-    sweepers: dict[QubitId, Sweeper] = {}
+    sweepers: list[Sweeper] = []
     frequency_values: dict[QubitId, list[float]] = {}
     for qubit in targets:
-        sweepers[qubit] = Sweeper(
+        sweeper = Sweeper(
             parameter=Parameter.frequency,
             range=to_range(
                 spec=params.frequency_range, center=readout_frequency(qubit, platform)
             ),
             channels=[platform.qubits[qubit].probe],
         )
-        frequency_values[qubit] = sweepers[qubit].values.astype(float).tolist()
+        frequency_values[qubit] = sweeper.values.tolist()
+        sweepers.append(sweeper)
 
     results = platform.execute(
         sequences,
-        [list(sweepers.values())],
+        [sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
     )
 
-    data = ReadoutData(
-        swept_parameter=frequency_values,
-        save_iq=params.save_iq,
-    )
-    data.data, data.classification_info = save_data(
+    data = fit_readout_classification_models(
         targets=targets,
         parameter_dict=frequency_values,
         pulses_dict=probe_pulses_dict,
@@ -100,4 +95,17 @@ def _update(results: ReadoutResults, platform: CalibrationPlatform, target: Qubi
 
 
 ro_frequency = Protocol(_acquisition, readout_fit, _plot, _update)
-"""Optimization RO frequency Protocol object"""
+"""Readout resonator frequency optimization protocol.
+
+
+The protocol sweeps the probe frequency of the resonator probe pulse over the
+range specified by ``ReadoutFrequencyParameters.frequency_range`` and
+acquires integrated readout signals for each value. The acquired data are
+fitted to identify the frequency that best separates the readout states.
+The fit also determines the optimal IQ rotation angle and discrimination
+threshold.
+
+When updated, the selected frequency, IQ angle, and threshold are written to
+the platform calibration for every target qubit. Set ``save_iq=True`` to
+retain the acquired IQ data.
+"""

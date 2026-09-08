@@ -102,10 +102,14 @@ class ReadoutAmplitudeFrequencyParameters(Parameters):
     """Resonator optimization runcard inputs"""
 
     frequency_range: RangeLike
-    """Frequency RangeLike object; for further information, see
+    """Frequency RangeLike object.
+
+    For further information, see
     :class:`qibocal.protocols.utils.RangeLike`."""
     amplitude_range: RangeLike
-    """Amplitude RangeLike object; for further information, see
+    """Amplitude RangeLike object.
+
+    For further information, see
     :class:`qibocal.protocols.utils.RangeLike`."""
     delay: float = 0
     """Delay between readouts, could account for resonator depletion or not [ns]."""
@@ -156,11 +160,7 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ReadoutAmplitudeFrequencyData:
-    """Protocol to optimize readout frequency and readout amplitude.
-
-    After preparing either state 0 or state 1 we perform two consecutive measurements to
-    evaluate QND. Additionally we apply a pi pulse and we perform a third measurement to
-    evaluate the QND-pi following https://arxiv.org/pdf/2110.04285"""
+    """Protocol to optimize readout frequency and readout amplitude."""
 
     ro_pulses: dict[tuple[QubitId, int, int], PulseLike] = {}
     sequences: list[PulseSequence] = []
@@ -199,35 +199,33 @@ def _acquisition(
 
     data = ReadoutAmplitudeFrequencyData()
 
-    freq_sweepers: dict[QubitId, Sweeper] = {}
-    amp_sweepers: dict[QubitId, Sweeper] = {}
+    freq_sweepers: list[Sweeper] = []
+    amp_sweepers: list[Sweeper] = []
     for qubit in targets:
         freqs = to_range(
             params.frequency_range, center=readout_frequency(qubit, platform)
         )
-        freq_sweepers[qubit] = Sweeper(
+        freq_sweeper = Sweeper(
             parameter=Parameter.frequency,
             range=freqs,
             channels=[platform.qubits[qubit].probe],
         )
-        data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
+        data.frequencies_swept[qubit] = freq_sweeper.values.tolist()
 
-        amp_sweepers[qubit] = Sweeper(
+        _, native_ro = platform.parameters.native_gates.single_qubit[qubit].MZ()[0]
+        amp_sweeper = Sweeper(
             parameter=Parameter.amplitude,
             range=to_range(
                 spec=params.amplitude_range,
-                center=ro_pulses[qubit, 0, 0].probe.amplitude,
+                center=native_ro.probe.amplitude,
             ),
             pulses=[ro_pulses[qubit, s, m] for s, m in product([0, 1], [0, 1, 2])],
         )
-        data.amplitudes_swept[qubit] = amp_sweepers[qubit].values.astype(float).tolist()
+        data.amplitudes_swept[qubit] = amp_sweeper.values.tolist()
 
     results = platform.execute(
         sequences,
-        [
-            [amp_sweepers[qubit] for qubit in targets],
-            [freq_sweepers[qubit] for qubit in targets],
-        ],
+        [amp_sweepers, freq_sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -403,4 +401,19 @@ def _update(
 
 
 ro_amplitude_frequency = Protocol(_acquisition, _fit, _plot, _update)
-"""Readout amplitude-frequency optimization Protocol object"""
+r"""Optimize the readout amplitude and frequency for each target qubit.
+
+The protocol sweeps a two-dimensional grid of readout-pulse amplitudes and
+frequencies.  At every grid point it prepares the qubit in the ground and
+excited states, performs two consecutive readout measurements to evaluate the
+assignment fidelity and QND fidelity, and applies a :math:`\pi` pulse before a
+third measurement to evaluate the QND-:math:`\pi` fidelity
+(see https://arxiv.org/pdf/2110.04285).
+Single-shot IQsamples are classified independently at each grid point, yielding the
+optimal classification angle and threshold as well as the three readout-quality
+metrics.
+
+The fit selects the grid point that optimizes the readout quality and returns
+the corresponding amplitude, frequency, IQ angle, threshold, assignment
+fidelity, QND fidelity, and QND-:math:`\pi` fidelity.
+"""

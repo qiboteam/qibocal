@@ -38,7 +38,7 @@ class ReadoutData(Data):
     """Optimization RO frequency acquisition outputs."""
 
     swept_parameter: dict[QubitId, list[float]] = field(default_factory=dict)
-    """List of parameter swept for each qubit."""
+    """List of parameter values swept for each qubit."""
     data: dict[tuple[QubitId, int, float], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
@@ -59,7 +59,7 @@ class ReadoutData(Data):
         return list(self.swept_parameter.keys())
 
 
-def readout_sequence(
+def base_sequence(
     platform: CalibrationPlatform, targets: list[QubitId]
 ) -> tuple[list[PulseSequence], dict[QubitId, dict[int, PulseLike]]]:
     """Build readout sequences for ground- and excited-state measurements."""
@@ -67,27 +67,21 @@ def readout_sequence(
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
 
-    probe_pulses_dict: dict[QubitId, dict[int, PulseLike]] = {}
+    readouts: dict[QubitId, dict[int, PulseLike]] = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse_0 = natives.MZ()[0]
-        ro_pulse_1 = ro_pulse_0.new()
-
         # measuring the ground state
-        sequence_0.append((ro_channel, ro_pulse_0))
+        sequence_0 += natives.MZ()
 
         # preparing and measuring the excited state
-        sequence_1 += PulseSequence([(qd_channel, qd_pulse)]) | PulseSequence(
-            [(ro_channel, ro_pulse_1)]
-        )
+        sequence_1 += natives.RX() | natives.MZ()
 
-        probe_pulses_dict[qubit] = {
-            0: ro_pulse_0,
-            1: ro_pulse_1,
+        readouts[qubit] = {
+            0: sequence_0[-1][1],
+            1: sequence_1[-1][1],
         }
 
-    return [sequence_0, sequence_1], probe_pulses_dict
+    return [sequence_0, sequence_1], readouts
 
 
 def fit_classification_model(
@@ -106,20 +100,21 @@ def fit_classification_model(
     return model
 
 
-def save_data(
+def fit_readout_classification_models(
     targets: list[QubitId],
     parameter_dict: dict[QubitId, list[float]],
     pulses_dict: dict[QubitId, dict[int, PulseLike]],
     results: dict[PulseId, Result],
     save_iq: bool,
-) -> tuple[
-    dict[tuple[QubitId, int, float], npt.NDArray[np.float64]],
-    dict[QubitId, list[list[float]]],
-]:
-    """Extract and optionally classify readout data for each parameter value.
+) -> ReadoutData:
+    """Fit readout classification models for each target qubit and parameter sweep.
 
-    It returns a mapping keyed by ``(qubit, state, parameter)`` containing either raw
-    IQ samples or classification metrics.
+    For each qubit and swept readout parameter value, the function loads the
+    ground- and excited-state IQ data from the acquisition results, optionally
+    stores the raw IQ samples, and fits a binary classifier. The fitted
+    assignment fidelity, IQ rotation angle, and discrimination threshold are
+    collected for each sweep point and returned together with the optional IQ
+    samples.
     """
 
     data: dict[tuple[QubitId, int, float], npt.NDArray[np.float64]] = {}
@@ -148,7 +143,12 @@ def save_data(
                 ]
             )
 
-    return data, fit_res
+    return ReadoutData(
+        swept_parameter=parameter_dict,
+        data=data,
+        classification_info=fit_res,
+        save_iq=save_iq,
+    )
 
 
 def readout_fit(data: ReadoutData) -> ReadoutResults:
