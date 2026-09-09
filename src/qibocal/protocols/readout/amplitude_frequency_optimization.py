@@ -211,6 +211,7 @@ def _acquisition(
             channels=[platform.qubits[qubit].probe],
         )
         data.frequencies_swept[qubit] = freq_sweeper.values.tolist()
+        freq_sweepers.append(freq_sweeper)
 
         _, native_ro = platform.parameters.native_gates.single_qubit[qubit].MZ()[0]
         amp_sweeper = Sweeper(
@@ -222,6 +223,7 @@ def _acquisition(
             pulses=[ro_pulses[qubit, s, m] for s, m in product([0, 1], [0, 1, 2])],
         )
         data.amplitudes_swept[qubit] = amp_sweeper.values.tolist()
+        amp_sweepers.append(amp_sweeper)
 
     results = platform.execute(
         sequences,
