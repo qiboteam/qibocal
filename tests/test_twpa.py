@@ -109,9 +109,9 @@ def test_acquisition_and_fit(platform, tmp_path):
     for qubit in targets:
         assert qubit in fit_res.frequency
         assert qubit in fit_res.offset
+        assert qubit in fit_res.gain
         assert fit_res.frequency[qubit] in data.frequency[qubit]
         assert fit_res.offset[qubit] in data.offset[qubit]
-        assert fit_res.data[qubit].shape == (n_offset, n_twpa_freq)
 
     # Test Plot with and without fit
     figs, report = _plot(data, fit_res, targets[0])
@@ -120,12 +120,15 @@ def test_acquisition_and_fit(platform, tmp_path):
     assert fig.layout.yaxis2 is not None
     assert fig.layout.yaxis2.side == "right"
     assert fig.layout.yaxis2.overlaying == "y"
-    assert "TWPA Frequency [Hz]" in report
-    assert "TWPA Amplitude" in report
-    assert "TWPA Attenuation [dB]" in report
+    assert any(trace.yaxis == "y2" for trace in fig.data)
+    assert "Pump Frequency [Hz]" in report
+    assert "Pump Amplitude" in report
+    assert "Pump Attenuation [dB]" in report
+    assert "TWPA Gain [dB]" in report
 
     figs_no_fit, report_no_fit = _plot(data, None, targets[0])
     assert len(figs_no_fit) == 1
+    assert any(trace.yaxis == "y2" for trace in figs_no_fit[0].data)
     assert report_no_fit == ""
 
     # Test serialization
@@ -141,7 +144,7 @@ def test_acquisition_and_fit(platform, tmp_path):
     fit_res.save(tmp_path)
     loaded_fit = TwpaFrequencyOffsetResults.load(tmp_path)
     for qubit in targets:
-        np.testing.assert_array_equal(fit_res.data[qubit], loaded_fit.data[qubit])
+        assert fit_res.gain[qubit] == loaded_fit.gain[qubit]
         assert fit_res.frequency[qubit] == loaded_fit.frequency[qubit]
         assert fit_res.offset[qubit] == loaded_fit.offset[qubit]
 
