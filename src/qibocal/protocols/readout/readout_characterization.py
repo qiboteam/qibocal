@@ -28,6 +28,8 @@ class ReadoutCharacterizationParameters(Parameters):
 
     delay: float = 0
     """Delay between readouts, could account for resonator deplation or not [ns]."""
+    post_selection: bool = False
+    """If true, a pre-measurement is applied and results will be filtered based on said measurement."""
 
 
 @dataclass
@@ -56,6 +58,7 @@ class ReadoutCharacterizationData(Data):
     """Qubit frequencies."""
     delay: float = 0
     """Delay between readouts [ns]."""
+    post_selection: bool = False
 
     angle: dict[QubitId, float] = field(default_factory=dict)
     threshold: dict[QubitId, float] = field(default_factory=dict)
@@ -84,21 +87,27 @@ def _acquisition(
             for qubit in targets
         },
         delay=float(params.delay),
+        post_selection=params.post_selection,
     )
-
-    # FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
 
     for state in [0, 1]:
         sequence = PulseSequence()
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
             ro_channel = natives.MZ()[0][0]
+            subsequence = PulseSequence()
+            ringdown = (ro_channel, Delay(duration=params.delay))
+
+            if params.post_selection:
+                subsequence += natives.MZ()
+                subsequence.append(ringdown)
             if state == 1:
-                sequence += natives.RX()
-            sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
-            sequence += natives.MZ()
-            sequence.append((ro_channel, Delay(duration=params.delay)))
-            sequence += natives.MZ()
+                subsequence |= natives.RX()
+            subsequence |= natives.MZ()
+            subsequence.append(ringdown)
+            subsequence += natives.MZ()
+
+            sequence += subsequence
 
         # execute the pulse sequence
         results = platform.execute(
@@ -115,7 +124,7 @@ def _acquisition(
                 for pulse in sequence.channel(platform.qubits[qubit].acquisition)
                 if isinstance(pulse, Readout)
             ]
-            for j, ro_pulse in enumerate(readouts):
+            for j, ro_pulse in enumerate(reversed(readouts)):
                 data.data[qubit, state, j] = results[ro_pulse.id]
     return data
 
@@ -131,17 +140,35 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     lambda_m, lambda_m2 = {}, {}
     for qubit in qubits:
         m1_state_1 = classify(
-            data.data[qubit, 1, 0], data.angle[qubit], data.threshold[qubit]
-        )
-        m1_state_0 = classify(
-            data.data[qubit, 0, 0], data.angle[qubit], data.threshold[qubit]
-        )
-        m2_state_1 = classify(
             data.data[qubit, 1, 1], data.angle[qubit], data.threshold[qubit]
         )
-        m2_state_0 = classify(
+        m1_state_0 = classify(
             data.data[qubit, 0, 1], data.angle[qubit], data.threshold[qubit]
         )
+        m2_state_1 = classify(
+            data.data[qubit, 1, 0], data.angle[qubit], data.threshold[qubit]
+        )
+        m2_state_0 = classify(
+            data.data[qubit, 0, 0], data.angle[qubit], data.threshold[qubit]
+        )
+        if data.post_selection:
+            mask_0 = (
+                classify(
+                    data.data[qubit, 0, 2], data.angle[qubit], data.threshold[qubit]
+                )
+                == 0
+            )
+            m1_state_0 = m1_state_0[mask_0]
+            m2_state_0 = m2_state_0[mask_0]
+
+            mask_1 = (
+                classify(
+                    data.data[qubit, 1, 2], data.angle[qubit], data.threshold[qubit]
+                )
+                == 0
+            )
+            m1_state_1 = m1_state_1[mask_1]
+            m2_state_1 = m2_state_1[mask_1]
 
         assignment_fidelity[qubit] = compute_assignment_fidelity(m1_state_1, m1_state_0)
         qnd[qubit], lambda_m[qubit], lambda_m2[qubit] = compute_qnd(
@@ -235,10 +262,10 @@ def _plot(
             col=2,
         )
 
-        fig.update_xaxes(title_text="Measured state", row=1, col=1)
-        fig.update_xaxes(title_text="Measured state", row=1, col=2)
-        fig.update_yaxes(title_text="Prepared state", row=1, col=1)
-        fig.update_yaxes(title_text="Prepared state", row=1, col=2)
+        fig.update_yaxes(title_text="Measured state", row=1, col=1)
+        fig.update_yaxes(title_text="Measured state", row=1, col=2)
+        fig.update_xaxes(title_text="Prepared state", row=1, col=1)
+        fig.update_xaxes(title_text="Prepared state", row=1, col=2)
 
         figures.append(fig)
 
