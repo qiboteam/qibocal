@@ -37,19 +37,22 @@ class TwpaFrequencyOffsetParameters(Parameters):
     frequency: RangeLike
     """Range of TWPA frequency values for sweep."""
     probes: list[float] | None = None
-    """List of probe frequencies to evaluate (Hz). If omitted, defaults to readout frequencies of targets."""
+    """List of probe frequencies to evaluate (Hz).
+
+    If omitted, defaults to readout frequencies of targets.
+    """
 
 
 @dataclass
 class TwpaFrequencyOffsetResults(Results):
     """TwpaFrequencyOffset outputs."""
 
-    data: dict[QubitId, npt.NDArray]
-    """Array with average gain for each qubit."""
     frequency: dict[QubitId, float]
-    """TWPA frequency [Hz]."""
+    """Pump frequency [Hz]."""
     offset: dict[QubitId, float]
-    """TWPA offset [dimensionless]."""
+    """Pump offset [a.u.]."""
+    gain: dict[QubitId, float]
+    """TWPA gain [dBm]."""
 
 
 @dataclass
@@ -242,20 +245,18 @@ def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
     corresponding TWPA frequency and offset that maximizes the gain for each qubit.
     """
     gains = {}
-    twpa_frequency = {}
-    twpa_offset = {}
+    frequency = {}
+    offset = {}
+    gain = {}
     for qubit in data.qubits:
         averaged_gain = data.averaged_gain(qubit)
         gains[qubit] = averaged_gain
         flat_index = np.argmax(averaged_gain)
         i, j = np.unravel_index(flat_index, averaged_gain.shape)
-        twpa_frequency[qubit] = float(data.frequency[qubit][j])
-        twpa_offset[qubit] = float(data.offset[qubit][i])
-    return TwpaFrequencyOffsetResults(
-        data=gains,
-        frequency=twpa_frequency,
-        offset=twpa_offset,
-    )
+        frequency[qubit] = float(data.frequency[qubit][j])
+        offset[qubit] = float(data.offset[qubit][i])
+        gain[qubit] = averaged_gain[i, j]
+    return TwpaFrequencyOffsetResults(frequency=frequency, offset=offset, gain=gain)
 
 
 def _plot(
@@ -319,22 +320,18 @@ def _plot(
         opt_offset = fit.offset[target]
         opt_att = base_attenuation + 20 * np.log10(abs(opt_offset))
         labels = [
-            "TWPA Frequency [Hz]",
-            "TWPA Amplitude",
-            "TWPA Attenuation [dB]",
+            "Pump Frequency [Hz]",
+            "Pump Amplitude",
+            "Pump Attenuation [dB]",
+            "TWPA Gain [dB]",
         ]
         values = [
             np.round(fit.frequency[target], 4),
-            np.round(fit.offset[target], 4),
+            np.round(opt_offset, 4),
             np.round(opt_att, 4),
+            np.round(fit.gain[target], 4),
         ]
-        fitting_report = table_html(
-            table_dict(
-                [target] * len(labels),
-                labels,
-                values,
-            )
-        )
+        fitting_report = table_html(table_dict([target] * len(labels), labels, values))
     else:
         fitting_report = ""
 
