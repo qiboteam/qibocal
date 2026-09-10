@@ -174,33 +174,24 @@ def _acquisition(
     raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
 
     # 1. Reference measurements with TWPA off for each probe frequency
-    try:
-        for ch in unique_twpa_channels:
-            if ch in platform.instruments:
-                platform.instruments[ch].disconnect()
-
-        for probe in probes:
-            updates = [
-                {ch: {"offset": 0.0} for ch in unique_twpa_channels}
-                | {platform.qubits[q].probe: {"frequency": probe} for q in targets}
-            ]
-            ref_results = platform.execute(
-                [sequence],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-                updates=updates,
-            )
-            for qubit in targets:
-                acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ].id
-                reference_data[qubit].append(ref_results[acq_handle].tolist())
-    finally:
-        for ch in unique_twpa_channels:
-            if ch in platform.instruments:
-                platform.instruments[ch].connect()
+    for probe in probes:
+        updates = [
+            {ch: {"offset": 0.0} for ch in unique_twpa_channels}
+            | {platform.qubits[q].probe: {"frequency": probe} for q in targets}
+        ]
+        ref_results = platform.execute(
+            [sequence],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+            updates=updates,
+        )
+        for qubit in targets:
+            acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
+                -1
+            ].id
+            reference_data[qubit].append(ref_results[acq_handle].tolist())
 
     # 2. 2D TWPA sweeps (amplitude and frequency) for each probe frequency
     for probe in probes:
