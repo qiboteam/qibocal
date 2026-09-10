@@ -58,7 +58,7 @@ class TwpaFrequencyOffsetResults(Results):
     offset: dict[QubitId, float]
     """Pump offset [a.u.]."""
     gain: dict[QubitId, float]
-    """TWPA gain [dBm]."""
+    """TWPA gain [dB]."""
 
 
 @dataclass
@@ -183,11 +183,9 @@ def _acquisition(
 
     # TWPA amplitude (offset) range (linear sweep)
     offset_range = to_range(params.amplitude)
-    offset_values = np.arange(*offset_range)
-    if np.any(np.abs(offset_values) >= 1.0):
-        raise ValueError("TWPA amplitude values must be between -1 and 1.")
 
-    # Build 2D sweepers over TWPA pump parameters
+    # Build 2D sweepers over TWPA pump parameters.
+    # Use Sweeper-generated values to ensure consistency with backend semantics.
     freq_sweeps = [
         Sweeper(
             parameter=Parameter.frequency,
@@ -204,6 +202,9 @@ def _acquisition(
         )
         for ch in unique_twpa_channels
     ]
+    offset_values = offset_sweeps[0].values
+    if np.any(np.abs(offset_values) >= 1.0):
+        raise ValueError("TWPA amplitude values must be between -1 and 1.")
 
     # Reference value acquisition (TWPA off)
     reference_data: dict[QubitId, list[list[float]]] = {q: [] for q in targets}
