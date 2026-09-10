@@ -73,6 +73,12 @@ class TwpaFrequencyOffsetData(Data):
         """Return reference value as a numpy array."""
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
+    def averaged_gain(self, qubit: QubitId) -> npt.NDArray:
+        return 20 * np.log10(
+            np.mean(magnitude(self[qubit]), axis=2)
+            / np.mean(magnitude(self.reference_value_array(qubit)), axis=0)
+        )
+
 
 def _acquisition(
     params: TwpaFrequencyOffsetParameters,
@@ -239,10 +245,7 @@ def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
     twpa_frequency = {}
     twpa_offset = {}
     for qubit in data.qubits:
-        averaged_gain = 20 * np.log10(
-            np.mean(magnitude(data[qubit]), axis=2)
-            / np.mean(magnitude(data.reference_value_array(qubit)), axis=0)
-        )
+        averaged_gain = data.averaged_gain(qubit)
         gains[qubit] = averaged_gain
         flat_index = np.argmax(averaged_gain)
         i, j = np.unravel_index(flat_index, averaged_gain.shape)
@@ -264,13 +267,57 @@ def _plot(
     figures = []
     fig = go.Figure()
     base_attenuation = data.attenuation.get(target, 0.0)
+
+    averaged_gain = data.averaged_gain(target)
+    offsets = np.array(data.offset[target])
+    valid_mask = np.abs(offsets) > 1e-12
+    tickvals = offsets[valid_mask]
+    if len(tickvals) > 8:
+        indices = np.linspace(0, len(tickvals) - 1, 8, dtype=int)
+        tickvals = tickvals[indices]
+    attenuations = base_attenuation + 20 * np.log10(np.abs(tickvals))
+    ticktext = [f"{np.round(a, 1)}" for a in attenuations]
+
+    fig.add_trace(
+        go.Heatmap(
+            x=np.array(data.frequency[target]) * HZ_TO_GHZ,
+            y=data.offset[target],
+            z=averaged_gain,
+            colorscale="inferno",
+        ),
+    )
+    if fit is not None and target in fit:
+        fig.add_trace(
+            go.Scatter(
+                x=[fit.frequency[target] * HZ_TO_GHZ],
+                y=[fit.offset[target]],
+                mode="markers",
+                marker={"size": 10, "color": "black", "symbol": "cross"},
+                name="Optimal Point",
+                showlegend=False,
+            )
+        )
+    fig.update_xaxes(title_text="TWPA Frequency [GHz]")
+    fig.update_yaxes(title_text="TWPA Amplitude")
+    fig.update_layout(
+        showlegend=False,
+        yaxis2={
+            "title_text": "TWPA Attenuation [dB]",
+            "overlaying": "y",
+            "side": "right",
+            "matches": "y",
+            "tickmode": "array",
+            "tickvals": tickvals,
+            "ticktext": ticktext,
+            "showgrid": False,
+        },
+    )
+
+    figures.append(fig)
+
     if fit is not None and target in fit:
         opt_offset = fit.offset[target]
-        opt_att = (
-            base_attenuation - 20 * np.log10(abs(opt_offset))
-            if abs(opt_offset) > 1e-12
-            else np.nan
-        )
+        opt_att = base_attenuation + 20 * np.log10(abs(opt_offset))
         labels = [
             "TWPA Frequency [Hz]",
             "TWPA Amplitude",
@@ -288,64 +335,8 @@ def _plot(
                 values,
             )
         )
-        averaged_gain = fit.data[target]
     else:
-        averaged_gain = 20 * np.log10(
-            np.mean(magnitude(data[target]), axis=2)
-            / np.mean(magnitude(data.reference_value_array(target)), axis=0)
-        )
         fitting_report = ""
-
-    offsets = np.array(data.offset[target])
-    valid_mask = np.abs(offsets) > 1e-12
-    if np.any(valid_mask):
-        tickvals = offsets[valid_mask]
-        if len(tickvals) > 8:
-            indices = np.linspace(0, len(tickvals) - 1, 8, dtype=int)
-            tickvals = tickvals[indices]
-        attenuations = base_attenuation - 20 * np.log10(np.abs(tickvals))
-        ticktext = [f"{np.round(a, 1)}" for a in attenuations]
-    else:
-        tickvals = offsets
-        ticktext = [""] * len(offsets)
-
-    fig.add_trace(
-        go.Heatmap(
-            x=np.array(data.frequency[target]) * HZ_TO_GHZ,
-            y=data.offset[target],
-            z=averaged_gain,
-            colorbar={"x": 1.15},
-        ),
-    )
-    if fit is not None and target in fit:
-        fig.add_trace(
-            go.Scatter(
-                x=[fit.frequency[target] * HZ_TO_GHZ],
-                y=[fit.offset[target]],
-                mode="markers",
-                marker={"size": 10, "color": "black", "symbol": "cross"},
-                name="Optimal Point",
-                showlegend=False,
-            )
-        )
-    fig.update_xaxes(title_text="TWPA Frequency [GHz]")
-    fig.update_yaxes(title_text="TWPA Amplitude")
-
-    fig.update_layout(
-        showlegend=False,
-        yaxis2={
-            "title_text": "TWPA Attenuation [dB]",
-            "overlaying": "y",
-            "side": "right",
-            "matches": "y",
-            "tickmode": "array",
-            "tickvals": tickvals,
-            "ticktext": ticktext,
-            "showgrid": False,
-        },
-    )
-
-    figures.append(fig)
 
     return figures, fitting_report
 
