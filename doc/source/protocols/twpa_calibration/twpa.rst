@@ -53,3 +53,34 @@ A possible runcard to launch a TWPA calibration experiment could be the followin
 The expected output is the following:
 
 .. image:: twpa.png
+
+
+TWPA Sweeper Protocol
+---------------------
+
+For instruments supporting hardware sweepers, the ``twpa_frequency_offset`` protocol
+(aliased as ``twpa_sweep``) sweeps the TWPA frequency, TWPA offset, and readout
+frequency concurrently using sweepers instead of software loops.
+Because hardware sweepers enforce linear steps, the amplitude/power sweep is replaced by
+a linear offset sweep.
+
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.twpa.frequency_offset.TwpaFrequencyOffsetParameters
+  :noindex:
+
+
+Example
+^^^^^^^
+
+.. code-block:: yaml
+
+    - id: twpa_frequency_offset
+      operation: twpa_frequency_offset
+      parameters:
+        probe_frequency: ["center", 50000000, 10000000]
+        frequency: ["center", 300000000, 50000000]
+        amplitude: [0.1, 0.5, 0.05]
+        nshots: 300
