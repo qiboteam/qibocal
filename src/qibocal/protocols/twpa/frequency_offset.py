@@ -1,6 +1,7 @@
 """Protocol to sweep TWPA signal control parameters (frequency and offset) using sweepers."""
 
 from dataclasses import dataclass, field
+from typing import cast
 
 import numpy as np
 import numpy.typing as npt
@@ -8,6 +9,7 @@ import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    OscillatorConfig,
     Parameter,
     Platform,
     PulseSequence,
@@ -64,6 +66,8 @@ class TwpaFrequencyOffsetData(Data):
     """Reference values with TWPA off for each probe frequency."""
     probes: list[float] = field(default_factory=list)
     """List of probe frequencies evaluated."""
+    attenuation: dict[QubitId, float] = field(default_factory=dict)
+    """Configured base attenuation [dB] for each target."""
 
     def reference_value_array(self, qubit: QubitId) -> npt.NDArray:
         """Return reference value as a numpy array."""
@@ -207,11 +211,17 @@ def _acquisition(
             ].id
             raw_data[qubit].append(results[acq_handle])
 
+    twpa_attenuations = {}
+    for qubit in targets:
+        cfg = cast(OscillatorConfig, platform.config(twpa_channels[qubit]))
+        twpa_attenuations[qubit] = cfg.power
+
     data = TwpaFrequencyOffsetData(
         offset=twpa_offset_ranges,
         frequency=twpa_frequency_ranges,
         reference_value=reference_data,
         probes=probes,
+        attenuation=twpa_attenuations,
     )
     for qubit in targets:
         data.data[qubit] = np.stack(raw_data[qubit], axis=2)
@@ -253,18 +263,29 @@ def _plot(
     """Plotting for TwpaFrequencyOffset."""
     figures = []
     fig = go.Figure()
+    base_attenuation = data.attenuation.get(target, 0.0)
     if fit is not None and target in fit:
+        opt_offset = fit.offset[target]
+        opt_att = (
+            base_attenuation - 20 * np.log10(abs(opt_offset))
+            if abs(opt_offset) > 1e-12
+            else np.nan
+        )
+        labels = [
+            "TWPA Frequency [Hz]",
+            "TWPA Amplitude",
+            "TWPA Attenuation [dB]",
+        ]
+        values = [
+            np.round(fit.frequency[target], 4),
+            np.round(fit.offset[target], 4),
+            np.round(opt_att, 4),
+        ]
         fitting_report = table_html(
             table_dict(
-                [target, target],
-                [
-                    "TWPA Frequency [Hz]",
-                    "TWPA Amplitude",
-                ],
-                [
-                    np.round(fit.frequency[target], 4),
-                    np.round(fit.offset[target], 4),
-                ],
+                [target] * len(labels),
+                labels,
+                values,
             )
         )
         averaged_gain = fit.data[target]
@@ -275,11 +296,25 @@ def _plot(
         )
         fitting_report = ""
 
+    offsets = np.array(data.offset[target])
+    valid_mask = np.abs(offsets) > 1e-12
+    if np.any(valid_mask):
+        tickvals = offsets[valid_mask]
+        if len(tickvals) > 8:
+            indices = np.linspace(0, len(tickvals) - 1, 8, dtype=int)
+            tickvals = tickvals[indices]
+        attenuations = base_attenuation - 20 * np.log10(np.abs(tickvals))
+        ticktext = [f"{np.round(a, 1)}" for a in attenuations]
+    else:
+        tickvals = offsets
+        ticktext = [""] * len(offsets)
+
     fig.add_trace(
         go.Heatmap(
             x=np.array(data.frequency[target]) * HZ_TO_GHZ,
             y=data.offset[target],
             z=averaged_gain,
+            colorbar={"x": 1.15},
         ),
     )
     if fit is not None and target in fit:
@@ -298,6 +333,16 @@ def _plot(
 
     fig.update_layout(
         showlegend=False,
+        yaxis2={
+            "title_text": "TWPA Attenuation [dB]",
+            "overlaying": "y",
+            "side": "right",
+            "matches": "y",
+            "tickmode": "array",
+            "tickvals": tickvals,
+            "ticktext": ticktext,
+            "showgrid": False,
+        },
     )
 
     figures.append(fig)

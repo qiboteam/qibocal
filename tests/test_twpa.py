@@ -89,6 +89,8 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert qubit in data.offset
         assert qubit in data.frequency
         assert qubit in data.reference_value
+        assert qubit in data.attenuation
+        assert data.attenuation[qubit] == 10.0
 
         # Shape check: (N_amplitude, N_twpa_freq, N_probes, 2)
         n_offset = len(data.offset[qubit])
@@ -114,8 +116,13 @@ def test_acquisition_and_fit(platform, tmp_path):
     # Test Plot with and without fit
     figs, report = _plot(data, fit_res, targets[0])
     assert len(figs) == 1
+    fig = figs[0]
+    assert fig.layout.yaxis2 is not None
+    assert fig.layout.yaxis2.side == "right"
+    assert fig.layout.yaxis2.overlaying == "y"
     assert "TWPA Frequency [Hz]" in report
     assert "TWPA Amplitude" in report
+    assert "TWPA Attenuation [dB]" in report
 
     figs_no_fit, report_no_fit = _plot(data, None, targets[0])
     assert len(figs_no_fit) == 1
@@ -129,6 +136,7 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert data.offset[qubit] == loaded_data.offset[qubit]
         assert data.frequency[qubit] == loaded_data.frequency[qubit]
         assert data.probes == loaded_data.probes
+        assert data.attenuation == loaded_data.attenuation
 
     fit_res.save(tmp_path)
     loaded_fit = TwpaFrequencyOffsetResults.load(tmp_path)
