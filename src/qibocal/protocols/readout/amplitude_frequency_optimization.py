@@ -141,9 +141,9 @@ class ReadoutAmplitudeFrequencyResults(Results):
 class ReadoutAmplitudeFrequencyData(Data):
     """Data class for readout optimization protocol."""
 
-    frequencies_swept: dict[QubitId, list[float]] = field(default_factory=dict)
+    frequencies_swept: dict[QubitId, list[float]]
     """Frequency swept for each qubit."""
-    amplitudes_swept: dict[QubitId, list[float]] = field(default_factory=dict)
+    amplitudes_swept: dict[QubitId, list[float]]
     """Amplitude swept for each qubit."""
     data: dict[tuple, np.ndarray] = field(default_factory=dict)
     """Raw data acquired"""
@@ -197,10 +197,10 @@ def _acquisition(
             sequence.append((ro_channel, ro_pulse_m3))
         sequences.append(sequence)
 
-    data = ReadoutAmplitudeFrequencyData()
-
     freq_sweepers: list[Sweeper] = []
     amp_sweepers: list[Sweeper] = []
+    freqs_dict: dict[QubitId, list[float]] = {}
+    amps_dict: dict[QubitId, list[float]] = {}
     for qubit in targets:
         freqs = to_range(
             params.frequency_range, center=readout_frequency(qubit, platform)
@@ -210,7 +210,7 @@ def _acquisition(
             range=freqs,
             channels=[platform.qubits[qubit].probe],
         )
-        data.frequencies_swept[qubit] = freq_sweeper.values.tolist()
+        freqs_dict[qubit] = freq_sweeper.values.tolist()
         freq_sweepers.append(freq_sweeper)
 
         _, native_ro = platform.parameters.native_gates.single_qubit[qubit].MZ()[0]
@@ -222,8 +222,13 @@ def _acquisition(
             ),
             pulses=[ro_pulses[qubit, s, m] for s, m in product([0, 1], [0, 1, 2])],
         )
-        data.amplitudes_swept[qubit] = amp_sweeper.values.tolist()
+        amps_dict[qubit] = amp_sweeper.values.tolist()
         amp_sweepers.append(amp_sweeper)
+
+    data = ReadoutAmplitudeFrequencyData(
+        amplitudes_swept=amps_dict,
+        frequencies_swept=freqs_dict,
+    )
 
     results = platform.execute(
         sequences,
