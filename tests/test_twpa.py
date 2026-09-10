@@ -40,13 +40,27 @@ def test_parameters_validation():
     assert params_rangelike.amplitude == ("linspace", 0.0, 0.4, 5)
     assert params_rangelike.probes is None
 
+    params_loaded = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.0, 0.5, 0.1],
+            "frequency": ["center", 20_000_000, 2_000_000],
+            "probes": [7_000_000_000, 7_200_000_000],
+            "nshots": 100,
+        }
+    )
+    assert to_range(params_loaded.amplitude) == (0.0, 0.5, 0.1)
+    assert params_loaded.probes == [7_000_000_000, 7_200_000_000]
+    assert params_loaded.nshots == 100
+
 
 def test_acquisition_invalid_amplitude(platform):
     # Invalid amplitude (offset) >= 1
-    params_invalid_offset = TwpaFrequencyOffsetParameters(
-        amplitude=[0.0, 1.5, 0.5],
-        frequency=["center", 20_000_000, 2_000_000],
-        probes=[7_000_000_000],
+    params_invalid_offset = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.0, 1.5, 0.5],
+            "frequency": ["center", 20_000_000, 2_000_000],
+            "probes": [7_000_000_000],
+        }
     )
     with pytest.raises(
         ValueError, match="TWPA amplitude values must be between -1 and 1"
@@ -57,11 +71,13 @@ def test_acquisition_invalid_amplitude(platform):
 def test_acquisition_and_fit(platform, tmp_path):
     targets = [0, 1]
     probes = [7_000_000_000, 7_200_000_000]
-    params = TwpaFrequencyOffsetParameters(
-        amplitude=[0.1, 0.4, 0.1],
-        frequency=["center", 10_000_000, 2_000_000],
-        probes=probes,
-        nshots=100,
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.1, 0.4, 0.1],
+            "frequency": ["center", 10_000_000, 2_000_000],
+            "probes": probes,
+            "nshots": 100,
+        }
     )
 
     data = _acquisition(params, platform, targets)
@@ -71,8 +87,6 @@ def test_acquisition_and_fit(platform, tmp_path):
     for qubit in targets:
         assert qubit in data.data
         assert qubit in data.offset
-        assert qubit in data.frequency
-        assert qubit in data.amplitude
         assert qubit in data.frequency
         assert qubit in data.reference_value
 
@@ -93,8 +107,6 @@ def test_acquisition_and_fit(platform, tmp_path):
     for qubit in targets:
         assert qubit in fit_res.frequency
         assert qubit in fit_res.offset
-        assert qubit in fit_res.frequency
-        assert qubit in fit_res.amplitude
         assert fit_res.frequency[qubit] in data.frequency[qubit]
         assert fit_res.offset[qubit] in data.offset[qubit]
         assert fit_res.data[qubit].shape == (n_offset, n_twpa_freq)
@@ -118,13 +130,22 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert data.frequency[qubit] == loaded_data.frequency[qubit]
         assert data.probes == loaded_data.probes
 
+    fit_res.save(tmp_path)
+    loaded_fit = TwpaFrequencyOffsetResults.load(tmp_path)
+    for qubit in targets:
+        np.testing.assert_array_equal(fit_res.data[qubit], loaded_fit.data[qubit])
+        assert fit_res.frequency[qubit] == loaded_fit.frequency[qubit]
+        assert fit_res.offset[qubit] == loaded_fit.offset[qubit]
+
 
 def test_acquisition_default_probes(platform):
     targets = [0]
-    params = TwpaFrequencyOffsetParameters(
-        amplitude=[0.1, 0.3, 0.1],
-        frequency=["center", 10_000_000, 5_000_000],
-        nshots=50,
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.1, 0.3, 0.1],
+            "frequency": ["center", 10_000_000, 5_000_000],
+            "nshots": 50,
+        }
     )
     data = _acquisition(params, platform, targets)
     assert len(data.probes) == 1
