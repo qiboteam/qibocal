@@ -123,11 +123,8 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        raw_x = qubit_data.length
-        min_x = np.min(raw_x)
-        max_x = np.max(raw_x)
+        x = qubit_data.length
         y = qubit_data.prob
-        x = (raw_x - min_x) / (max_x - min_x)
 
         pguess = utils.rabi_initial_guess(x, y, "length", signal=False)
 
@@ -137,16 +134,14 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
                 y,
                 pguess,
                 sigma=qubit_data.error,
-                signal=False,
-                x_limits=(min_x, max_x),
             )
-            durations[qubit] = [pi_pulse_parameter, perr[2] * (max_x - min_x) / 2]
+            durations[qubit] = [pi_pulse_parameter, perr[2]]
             fitted_parameters[qubit] = popt
             amplitudes = {key: [value, 0] for key, value in data.amplitudes.items()}
             chi2[qubit] = [
                 chi2_reduced(
                     y,
-                    utils.rabi_length_function(raw_x, *popt),
+                    utils.rabi_length_function(x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),

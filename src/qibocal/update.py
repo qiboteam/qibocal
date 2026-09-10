@@ -74,7 +74,7 @@ def drive_amplitude(
 
 
 def drive_duration(
-    duration: int | tuple | list, rx90: bool, platform: Platform, qubit: QubitId
+    duration: float | tuple | list, rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
