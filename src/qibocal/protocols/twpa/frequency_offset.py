@@ -123,22 +123,19 @@ def _acquisition(
 
     # The sequence is purely made by simultaneous rectangular readouts, whose duration
     # and amplitude are given as inputs
-    sequence = PulseSequence(
-        [
-            (
-                acquisition[q],
-                Readout(
-                    probe=Pulse(
-                        amplitude=params.probe_amplitude,
-                        duration=params.probe_duration,
-                        envelope=Rectangular(),
-                    ),
-                    acquisition=Acquisition(duration=params.probe_duration),
-                ),
-            )
-            for q in targets
-        ]
-    )
+    readouts = {
+        q: Readout(
+            probe=Pulse(
+                amplitude=params.probe_amplitude,
+                duration=params.probe_duration,
+                envelope=Rectangular(),
+            ),
+            acquisition=Acquisition(duration=params.probe_duration),
+        )
+        for q in targets
+    }
+    sequence = PulseSequence([(acquisition[q], readouts[q]) for q in targets])
+    acquisition_handles = {q: readouts[q].acquisition.id for q in targets}
 
     twpa_channels = {}
     for qubit in targets:
@@ -171,45 +168,38 @@ def _acquisition(
         ]
 
     # TWPA frequency ranges
-    frequency_ranges = {
-        q: np.arange(
-            *to_range(
-                params.frequency,
-                center=cast(
-                    OscillatorConfig, platform.config(twpa_channels[q])
-                ).frequency,
-            )
-        ).tolist()
+    freq_ranges = {
+        q: to_range(
+            params.frequency,
+            center=cast(OscillatorConfig, platform.config(twpa_channels[q])).frequency,
+        )
         for q in targets
     }
+    frequency_ranges = {q: np.arange(*freq_ranges[q]).tolist() for q in targets}
 
     # TWPA amplitude (offset) range (linear sweep)
     offset_range = to_range(params.amplitude)
-    twpa_offset_values = np.arange(*offset_range)
-    if np.any(np.abs(twpa_offset_values) >= 1.0):
+    offset_values = np.arange(*offset_range)
+    if np.any(np.abs(offset_values) >= 1.0):
         raise ValueError("TWPA amplitude values must be between -1 and 1.")
-    twpa_offset_ranges = {q: twpa_offset_values.tolist() for q in targets}
+    offset_ranges = {q: offset_values.tolist() for q in targets}
 
     # Build 2D sweepers over TWPA pump parameters
-    twpa_freq_sweepers = [
+    freq_sweeps = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=np.array(frequency_ranges[q]),
+            range=freq_ranges[q],
             channels=[ch],
         )
         for ch, q in unique_twpa_channels.items()
     ]
-    twpa_offset_sweepers = [
+    offset_sweeps = [
         Sweeper(
             parameter=Parameter.offset,
-            values=twpa_offset_values,
+            range=offset_range,
             channels=[ch],
         )
         for ch in unique_twpa_channels
-    ]
-    sweepers = [
-        twpa_offset_sweepers,
-        twpa_freq_sweepers,
     ]
 
     # Reference value acquisition (TWPA off)
@@ -228,17 +218,16 @@ def _acquisition(
             updates=updates,
         )
         for qubit in targets:
-            acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                -1
-            ].id
-            reference_data[qubit].append(ref_results[acq_handle].tolist())
+            reference_data[qubit].append(
+                ref_results[acquisition_handles[qubit]].tolist()
+            )
 
     # 2. 2D TWPA sweeps (amplitude and frequency)
     for probe_updates in probe_updates_list:
         updates = [probe_updates]
         results = platform.execute(
             [sequence],
-            sweepers,
+            [offset_sweeps, freq_sweeps],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
@@ -246,10 +235,7 @@ def _acquisition(
             updates=updates,
         )
         for qubit in targets:
-            acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                -1
-            ].id
-            raw_data[qubit].append(results[acq_handle])
+            raw_data[qubit].append(results[acquisition_handles[qubit]])
 
     twpa_attenuations = {}
     for qubit in targets:
@@ -257,7 +243,7 @@ def _acquisition(
         twpa_attenuations[qubit] = cfg.power
 
     data = TwpaFrequencyOffsetData(
-        offset=twpa_offset_ranges,
+        offset=offset_ranges,
         frequency=frequency_ranges,
         reference_value=reference_data,
         probes=params.probes,
