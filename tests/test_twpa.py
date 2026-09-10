@@ -150,3 +150,4 @@ def test_acquisition_default_probes(platform):
     data = _acquisition(params, platform, targets)
     assert len(data.probes) == 1
     assert data.data[targets[0]].shape[2] == 1
+    assert data.reference_value_array(targets[0]).shape == (1, 2)
