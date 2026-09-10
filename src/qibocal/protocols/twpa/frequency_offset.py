@@ -138,6 +138,7 @@ def _acquisition(
     acquisition_handles = {q: readouts[q].acquisition.id for q in targets}
 
     twpa_channels = {}
+    twpa_configs = {}
     for qubit in targets:
         pump = platform.channels[platform.qubits[qubit].acquisition].twpa_pump
         if pump is None:
@@ -145,6 +146,7 @@ def _acquisition(
                 f"Qubit {qubit} does not have a TWPA pump channel configured."
             )
         twpa_channels[qubit] = pump
+        twpa_configs[qubit] = cast(OscillatorConfig, platform.config(pump))
 
     # Deduplicate TWPA channels preserving association to a target qubit
     unique_twpa_channels: dict[str, QubitId] = {}
@@ -169,11 +171,7 @@ def _acquisition(
 
     # TWPA frequency ranges
     freq_ranges = {
-        q: to_range(
-            params.frequency,
-            center=cast(OscillatorConfig, platform.config(twpa_channels[q])).frequency,
-        )
-        for q in targets
+        q: to_range(params.frequency, center=twpa_configs[q].frequency) for q in targets
     }
     frequency_ranges = {q: np.arange(*freq_ranges[q]).tolist() for q in targets}
 
@@ -237,17 +235,12 @@ def _acquisition(
         for qubit in targets:
             raw_data[qubit].append(results[acquisition_handles[qubit]])
 
-    twpa_attenuations = {}
-    for qubit in targets:
-        cfg = cast(OscillatorConfig, platform.config(twpa_channels[qubit]))
-        twpa_attenuations[qubit] = cfg.power
-
     data = TwpaFrequencyOffsetData(
         offset=offset_ranges,
         frequency=frequency_ranges,
         reference_value=reference_data,
         probes=params.probes,
-        attenuation=twpa_attenuations,
+        attenuation={q: twpa_configs[q].power for q in targets},
     )
     for qubit in targets:
         data.data[qubit] = np.stack(raw_data[qubit], axis=2)
