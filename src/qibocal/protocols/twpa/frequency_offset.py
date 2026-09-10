@@ -7,19 +7,24 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import (
+    Acquisition,
     AcquisitionType,
     AveragingMode,
+    ChannelId,
     OscillatorConfig,
     Parameter,
-    Platform,
+    Pulse,
     PulseSequence,
+    Readout,
+    Rectangular,
     Sweeper,
 )
+from scipy.constants import nano
 
 from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
+from ...calibration.platform import CalibrationPlatform
 from ...result import magnitude
 from ..utils import (
-    HZ_TO_GHZ,
     RangeLike,
     readout_frequency,
     table_dict,
@@ -41,6 +46,10 @@ class TwpaFrequencyOffsetParameters(Parameters):
 
     If omitted, defaults to readout frequencies of targets.
     """
+    probe_duration: float = 4e3
+    """Probe wave duration."""
+    probe_amplitude: float = 1.0
+    """Probe wave amplitude."""
 
 
 @dataclass
@@ -85,7 +94,7 @@ class TwpaFrequencyOffsetData(Data):
 
 def _acquisition(
     params: TwpaFrequencyOffsetParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> TwpaFrequencyOffsetData:
     """Acquisition function for TwpaFrequencyOffset.
@@ -102,9 +111,31 @@ def _acquisition(
     performance speed-up is already achieved through the on-board 2D hardware sweep over
     the TWPA pump signal parameters (amplitude and frequency).
     """
-    sequence = PulseSequence()
-    for qubit in targets:
-        sequence += platform.natives.single_qubit[qubit].MZ()
+    acquisition: dict[QubitId, ChannelId] = {}
+    for q in targets:
+        acq = platform.qubits[q].acquisition
+        if acq is None:
+            raise ValueError(f"Acquisition channel for qubit {q} not defined.")
+        acquisition[q] = acq
+
+    # The sequence is purely made by simultaneous rectangular readouts, whose duration
+    # and amplitude are given as inputs
+    sequence = PulseSequence(
+        [
+            (
+                acquisition[q],
+                Readout(
+                    probe=Pulse(
+                        amplitude=params.probe_amplitude,
+                        duration=params.probe_duration,
+                        envelope=Rectangular(),
+                    ),
+                    acquisition=Acquisition(duration=params.probe_duration),
+                ),
+            )
+            for q in targets
+        ]
+    )
 
     twpa_channels = {}
     for qubit in targets:
@@ -130,11 +161,13 @@ def _acquisition(
     )
 
     # TWPA frequency ranges
-    twpa_frequency_ranges = {
+    frequency_ranges = {
         q: np.arange(
             *to_range(
                 params.frequency,
-                center=platform.config(twpa_channels[q]).frequency,
+                center=cast(
+                    OscillatorConfig, platform.config(twpa_channels[q])
+                ).frequency,
             )
         ).tolist()
         for q in targets
@@ -151,7 +184,7 @@ def _acquisition(
     twpa_freq_sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=np.array(twpa_frequency_ranges[q]),
+            values=np.array(frequency_ranges[q]),
             channels=[ch],
         )
         for ch, q in unique_twpa_channels.items()
@@ -218,7 +251,7 @@ def _acquisition(
 
     data = TwpaFrequencyOffsetData(
         offset=twpa_offset_ranges,
-        frequency=twpa_frequency_ranges,
+        frequency=frequency_ranges,
         reference_value=reference_data,
         probes=probes,
         attenuation=twpa_attenuations,
@@ -274,7 +307,7 @@ def _plot(
 
     averaged_gain = data.averaged_gain(target)
     offsets = np.array(data.offset[target])
-    frequencies = np.array(data.frequency[target]) * HZ_TO_GHZ
+    frequencies = np.array(data.frequency[target]) * nano
     valid_mask = np.abs(offsets) > 1e-12
     tickvals = offsets[valid_mask]
     if len(tickvals) > 8:
@@ -307,7 +340,7 @@ def _plot(
     if fit is not None and target in fit:
         fig.add_trace(
             go.Scatter(
-                x=[fit.frequency[target] * HZ_TO_GHZ],
+                x=[fit.frequency[target] * nano],
                 y=[fit.offset[target]],
                 mode="markers",
                 marker={"size": 10, "color": "black", "symbol": "cross"},
