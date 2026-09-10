@@ -900,6 +900,14 @@ actions:
       twpa_pow_step: 3
       nshots: 20000
 
+  - id: twpa_frequency_offset
+    operation: twpa_frequency_offset
+    parameters:
+      probes: [7_000_000_000, 7_200_000_000]
+      frequency: ["center", 10_000_000, 2_000_000]
+      amplitude: [0.1, 0.4, 0.1]
+      nshots: 20000
+
   - id: CR tomography amplitude
     operation: cr_amplitude
     targets: [[0, 1]]
