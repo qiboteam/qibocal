@@ -11,6 +11,7 @@ from qibocal.protocols.utils import (
     COLORBAND_LINE,
     guess_period,
     plot_iq_pca,
+    plot_pca_projections,
     table_dict,
     table_html,
 )
@@ -66,79 +67,61 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool, axis: int = -1):
         phase_guess = np.full_like(period, phase_guess)
 
     if experiment == "length":
-        return [median_sig, amplitude_guess, period, phase_guess, zeros]
+        return (median_sig, amplitude_guess, period, phase_guess, zeros)
     else:
-        return [median_sig, amplitude_guess, period, phase_guess]
+        return (median_sig, amplitude_guess, period, phase_guess)
 
 
 def plot(data, qubit, fit, rx90):
+    """
+    Generate a visualization of Rabi experiment results.
+
+    Creates a three-subplot figure displaying:
+    Panel 1: IQ plane with quadrature data and PCA components
+    Panel 2: Principal axis projection with optional fit curve
+    Panel 3: Secondary axis projection
+    """
+
     quantity, title, fitting = extract_rabi(data)
     fitting_report = ""
 
-    fig = make_subplots(
-        rows=3,
-        cols=1,
-        vertical_spacing=0.15,
-        subplot_titles=(
-            "IQ Plane",
-            "Principal Axis",
-            "Second Axis",
-        ),
-        row_heights=[0.5, 0.35, 0.15],
-    )
-
     qubit_data = data[qubit]
     quadratures = collect(qubit_data.i, qubit_data.q)
+
+    rabi_parameters = getattr(qubit_data, quantity)
 
     # initialize a PCA instance and fit it to the quadrature data
     pca = PCA().fit(quadratures)
     # apply the pca rotation to the iq signal
     pca_signal = pca.transform(quadratures)
 
-    rabi_parameters = getattr(qubit_data, quantity)
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        vertical_spacing=0.1,
+        horizontal_spacing=0.1,
+        specs=[[{"colspan": 2}, None], [{}, {}]],
+        subplot_titles=("IQ Plane", "Principal Axis", "Second Axis"),
+        row_heights=[0.5, 0.5],
+    )
 
-    #################################################################
-    # in the first row we plot the IQ plane with the quadrature data
-    # and the principal axes.
+    # row 1: IQ plane with quadrature data and principal axes
     fig.add_traces(
         plot_iq_pca(quadratures, pca.mean_, pca.components_),
         rows=1,
         cols=1,
     )
 
-    #################################################################
-    # in the second row we plot the signal projection along the principal axis
-    # we computed the fit on.
-    principal_signal = pca_signal[:, 0]
-    fig.add_trace(
-        go.Scatter(
-            x=rabi_parameters,
-            y=principal_signal,
-            opacity=1,
-            name="Signal",
-            showlegend=True,
-            legendgroup="Signal",
-            mode="markers",
-        ),
-        row=2,
-        col=1,
+    # row 2: PCA projections along the principal and second axis
+    first_axis_proj, second_axis_proj = plot_pca_projections(
+        pca_signal=pca_signal,
+        plot_param=rabi_parameters,
     )
-    #################################################################
-    # in the third row we plot the signal projection along the remaining axis.
-    residual_signal = pca_signal[:, 1]
-    fig.add_trace(
-        go.Scatter(
-            x=rabi_parameters,
-            y=residual_signal,
-            opacity=1,
-            name="Residual Signal",
-            showlegend=True,
-            legendgroup="Residual Signal",
-            mode="markers",
-        ),
-        row=3,
-        col=1,
-    )
+    fig.add_trace(first_axis_proj, row=2, col=1)
+    fig.add_trace(second_axis_proj, row=2, col=2)
+
+    # keep the second axis on the same bounds as the first one
+    fig.update_yaxes(matches="y2", row=2, col=2)
 
     if fit is not None:
         rabi_parameter_range = np.linspace(
