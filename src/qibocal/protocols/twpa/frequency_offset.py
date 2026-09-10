@@ -264,7 +264,19 @@ def _plot(
     fit: TwpaFrequencyOffsetResults | None,
     target: QubitId,
 ):
-    """Plotting for TwpaFrequencyOffset."""
+    """Plotting function for TwpaFrequencyOffset.
+
+    The visualization displays the averaged TWPA gain across evaluated probe frequencies
+    as a 2D heatmap versus pump frequency (horizontal axis) and pump amplitude/offset
+    (primary vertical axis). If fit results are available, the optimal working point is
+    highlighted with a marker.
+
+    To relate the dimensionless amplitude offset to the effective physical attenuation
+    in dB, a secondary vertical axis is rendered on the right edge. Its tick positions
+    and labels are generated dynamically from the platform attenuation and the logarithmic
+    offset scaling. Because Plotly requires an associated trace to render secondary layout
+    axes, an invisible dummy scatter trace is attached to this secondary scale.
+    """
     figures = []
     fig = go.Figure()
     base_attenuation = data.attenuation.get(target, 0.0)
@@ -285,7 +297,23 @@ def _plot(
             y=data.offset[target],
             z=averaged_gain,
             colorscale="inferno",
+            colorbar_x=1.15,
         ),
+    )
+    # Invisible trace required for Plotly to render the secondary y-axis (yaxis2).
+    fig.add_trace(
+        go.Scatter(
+            x=[
+                np.min(data.frequency[target]) * HZ_TO_GHZ,
+                np.max(data.frequency[target]) * HZ_TO_GHZ,
+            ],
+            y=[np.min(offsets), np.max(offsets)],
+            mode="markers",
+            marker={"size": 0, "opacity": 0},
+            hoverinfo="skip",
+            showlegend=False,
+            yaxis="y2",
+        )
     )
     if fit is not None and target in fit:
         fig.add_trace(
@@ -308,7 +336,7 @@ def _plot(
             "side": "right",
             "matches": "y",
             "tickmode": "array",
-            "tickvals": tickvals,
+            "tickvals": tickvals.tolist(),
             "ticktext": ticktext,
             "showgrid": False,
         },
