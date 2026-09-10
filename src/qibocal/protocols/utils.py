@@ -16,16 +16,12 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
 from sklearn.cluster import HDBSCAN
-from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.fitting.classifier import run
-<<<<<<< HEAD
-=======
-from qibocal.result import collect
->>>>>>> dd088adf3 (changing typethints in quinn_fernandes)
+
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
