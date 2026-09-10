@@ -69,8 +69,11 @@ class TwpaFrequencyOffsetData(Data):
     """List with twpa frequency values swept."""
     offset: dict[QubitId, list[float]] = field(default_factory=dict)
     """List with twpa offset values swept."""
-    reference_value: dict[QubitId, list[float]] = field(default_factory=dict)
-    """Reference values with TWPA off for each probe frequency."""
+    reference_value: dict[QubitId, list[list[float]]] = field(default_factory=dict)
+    """Reference values with TWPA off for each probe frequency.
+
+    Reference measurements are I/Q points themselves, as the acquired data.
+    """
     probes: list[float] | None = None
     """List of probe frequencies evaluated.
 
@@ -80,7 +83,11 @@ class TwpaFrequencyOffsetData(Data):
     """Configured base attenuation [dB] for each target."""
 
     def reference_value_array(self, qubit: QubitId) -> npt.NDArray:
-        """Return reference value as a numpy array."""
+        """Return reference value as a numpy array.
+
+        The shape is ``(nprobes, 2)``, with ``nprobes`` the number of probes used, and 2
+        for the I/Q measurements.
+        """
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
     def averaged_gain(self, qubit: QubitId) -> npt.NDArray:
@@ -173,14 +180,12 @@ def _acquisition(
     freq_ranges = {
         q: to_range(params.frequency, center=twpa_configs[q].frequency) for q in targets
     }
-    frequency_ranges = {q: np.arange(*freq_ranges[q]).tolist() for q in targets}
 
     # TWPA amplitude (offset) range (linear sweep)
     offset_range = to_range(params.amplitude)
     offset_values = np.arange(*offset_range)
     if np.any(np.abs(offset_values) >= 1.0):
         raise ValueError("TWPA amplitude values must be between -1 and 1.")
-    offset_ranges = {q: offset_values.tolist() for q in targets}
 
     # Build 2D sweepers over TWPA pump parameters
     freq_sweeps = [
@@ -236,8 +241,8 @@ def _acquisition(
             raw_data[qubit].append(results[acquisition_handles[qubit]])
 
     data = TwpaFrequencyOffsetData(
-        offset=offset_ranges,
-        frequency=frequency_ranges,
+        offset={q: offset_values.tolist() for q in targets},
+        frequency={q: np.arange(*freq_ranges[q]).tolist() for q in targets},
         reference_value=reference_data,
         probes=params.probes,
         attenuation={q: twpa_configs[q].power for q in targets},
@@ -263,8 +268,8 @@ def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
         gains[qubit] = averaged_gain
         flat_index = np.argmax(averaged_gain)
         i, j = np.unravel_index(flat_index, averaged_gain.shape)
-        frequency[qubit] = float(data.frequency[qubit][j])
-        offset[qubit] = float(data.offset[qubit][i])
+        frequency[qubit] = data.frequency[qubit][j]
+        offset[qubit] = data.offset[qubit][i]
         gain[qubit] = averaged_gain[i, j]
     return TwpaFrequencyOffsetResults(frequency=frequency, offset=offset, gain=gain)
 
