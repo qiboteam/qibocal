@@ -14,7 +14,7 @@ from qibocal.protocols.twpa.frequency_offset import (
     twpa_frequency_offset,
     twpa_sweep,
 )
-from qibocal.protocols.utils import to_range
+from qibocal.protocols.utils import readout_frequency, to_range
 
 
 def test_twpa_protocols_registration():
@@ -155,8 +155,8 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert fit_res.offset[qubit] == loaded_fit.offset[qubit]
 
 
-def test_acquisition_default_probes(platform):
-    targets = [0]
+def test_acquisition_default_probes(platform, mocker):
+    targets = [0, 1]
     params = TwpaFrequencyOffsetParameters.load(
         {
             "amplitude": [0.1, 0.3, 0.1],
@@ -164,7 +164,16 @@ def test_acquisition_default_probes(platform):
             "nshots": 50,
         }
     )
+    spy = mocker.spy(platform, "execute")
     data = _acquisition(params, platform, targets)
-    assert len(data.probes) == 1
-    assert data.data[targets[0]].shape[2] == 1
-    assert data.reference_value_array(targets[0]).shape == (1, 2)
+    assert data.probes is None
+    # Exactly 2 platform.execute calls: 1 for reference scan, 1 for 2D sweep
+    assert spy.call_count == 2
+    sweep_call = spy.call_args_list[1]
+    updates = sweep_call.kwargs["updates"][0]
+    for q in targets:
+        probe_ch = platform.qubits[q].probe
+        ro_freq = readout_frequency(q, platform)
+        assert updates[probe_ch]["frequency"] == ro_freq
+        assert data.data[q].shape[2] == 1
+        assert data.reference_value_array(q).shape == (1, 2)
