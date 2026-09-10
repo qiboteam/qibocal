@@ -97,7 +97,7 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> TwpaFrequencyOffsetData:
-    """Acquisition function for TwpaFrequencyOffset.
+    """Acquire reference scan and 2D gain landscape, for each probe.
 
     First perform a scan over the readout probe with the TWPA off, then sweep the
     TWPA amplitude (offset) and frequency concurrently using a 2D sweeper.
@@ -263,7 +263,7 @@ def _acquisition(
 
 
 def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
-    """Post-processing function for TwpaFrequencyOffset.
+    """Maximize measured gain.
 
     After computing the averaged gain across evaluated probes, select the
     corresponding TWPA frequency and offset that maximizes the gain for each qubit.
@@ -288,7 +288,7 @@ def _plot(
     fit: TwpaFrequencyOffsetResults | None,
     target: QubitId,
 ):
-    """Plotting function for TwpaFrequencyOffset.
+    """Plot average gain, and report fit results - if any.
 
     The visualization displays the averaged TWPA gain across evaluated probe frequencies
     as a 2D heatmap versus pump frequency (horizontal axis) and pump amplitude/offset
@@ -358,13 +358,7 @@ def _plot(
         fig.update_yaxes(range=[np.min(offsets) - doff, np.max(offsets) + doff])
     fig.update_layout(
         showlegend=True,
-        legend={
-            "orientation": "h",
-            "yanchor": "top",
-            "y": -0.2,
-            "xanchor": "center",
-            "x": 0.5,
-        },
+        legend={"orientation": "h"},
         yaxis2={
             "title_text": "Pump Attenuation [dB]",
             "overlaying": "y",
