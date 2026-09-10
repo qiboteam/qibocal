@@ -21,6 +21,7 @@ from qibolab import (
 )
 from qibolab._core.components import IqChannel
 from scipy.optimize import curve_fit
+from sklearn.decomposition import PCA
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -29,11 +30,13 @@ from qibocal.protocols.utils import (
     Range,
     RangeLike,
     lorentzian,
+    plot_iq_pca,
+    plot_pca_projections,
     table_dict,
     table_html,
     to_range,
 )
-from qibocal.result import magnitude, phase
+from qibocal.result import collect, magnitude, phase
 
 __all__ = [
     "QubitSpectroscopyData",
@@ -352,62 +355,94 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 
 
 def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyResults):
-    figures = []
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-    )
-    fitting_report = ""
-    frequencies = np.array(data.drive_frequencies[target])
-    signal = data.signal(target)
-    phase = data.phase(target)
+    """Plot QubitSpectroscopy.
 
+    A single figure is built with three rows: the IQ plane (full width), the
+    PCA projections (principal and second axis), and the signal magnitude and
+    phase.
+    """
+    fitting_report = ""
+    frequencies = np.array(data.drive_frequencies[target]) * scipy.constants.nano
+
+    quadratures = collect(data.data[target][:, 0], data.data[target][:, 1])
+    pca = PCA().fit(quadratures)
+    pca_signal = pca.transform(quadratures)
+
+    fig = make_subplots(
+        rows=3,
+        cols=2,
+        vertical_spacing=0.1,
+        horizontal_spacing=0.1,
+        specs=[[{"colspan": 2}, None], [{}, {}], [{}, {}]],
+        subplot_titles=(
+            "IQ Plane",
+            "Principal Axis",
+            "Second Axis",
+            "Signal",
+            "Phase",
+        ),
+    )
+
+    # row 1: IQ plane with quadrature data and principal axes
+    fig.add_traces(
+        plot_iq_pca(quadratures, pca.mean_, pca.components_),
+        rows=1,
+        cols=1,
+    )
+
+    # row 2: PCA projections along the principal and second axis
+    first_axis_proj, second_axis_proj = plot_pca_projections(
+        pca_signal=pca_signal,
+        plot_param=frequencies,
+    )
+    fig.add_trace(first_axis_proj, row=2, col=1)
+    fig.add_trace(second_axis_proj, row=2, col=2)
+    # keep the second axis on the same bounds as the first one
+    fig.update_yaxes(matches="y2", row=2, col=2)
+
+    # row 3: signal magnitude and phase
     fig.add_trace(
         go.Scatter(
-            x=frequencies * scipy.constants.nano,
-            y=signal,
+            x=frequencies,
+            y=data.signal(target),
             opacity=1,
-            name="Frequency",
+            name="Signal",
             showlegend=True,
-            legendgroup="Frequency",
+            legendgroup="Signal",
             mode="markers",
         ),
-        row=1,
+        row=3,
         col=1,
     )
-
     fig.add_trace(
         go.Scatter(
-            x=frequencies * scipy.constants.nano,
-            y=phase,
+            x=frequencies,
+            y=data.phase(target),
             opacity=1,
             name="Phase",
             showlegend=True,
             legendgroup="Phase",
             mode="markers",
         ),
-        row=1,
+        row=3,
         col=2,
     )
 
-    freqrange = np.linspace(
-        min(frequencies),
-        max(frequencies),
-        2 * len(frequencies),
-    )
-
     if fit is not None:
+        freqrange = np.linspace(
+            min(frequencies),
+            max(frequencies),
+            2 * len(frequencies),
+        )
         params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
-                x=freqrange * scipy.constants.nano,
+                x=freqrange,
                 y=_lorentzian_with_offset(freqrange, *params),
                 name="Fit",
                 mode="lines",
             ),
-            row=1,
+            row=3,
             col=1,
         )
 
@@ -425,14 +460,20 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency [GHz]",
-        yaxis_title="Signal [a.u.]",
+        height=1000,
+        xaxis_title="I [a.u.]",
+        yaxis_title="Q [a.u.]",
+        yaxis2_title="Principal Axis Signal [a.u.]",
         xaxis2_title="Frequency [GHz]",
-        yaxis2_title="Phase [rad]",
+        yaxis3_title="Residual Signal [a.u.]",
+        xaxis3_title="Frequency [GHz]",
+        yaxis4_title="Signal [a.u.]",
+        xaxis4_title="Frequency [GHz]",
+        yaxis5_title="Phase [rad]",
+        xaxis5_title="Frequency [GHz]",
     )
-    figures.append(fig)
 
-    return figures, fitting_report
+    return [fig], fitting_report
 
 
 def _update(
