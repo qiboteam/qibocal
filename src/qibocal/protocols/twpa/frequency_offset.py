@@ -61,7 +61,7 @@ class TwpaFrequencyOffsetData(Data):
     offset: dict[QubitId, list[float]] = field(default_factory=dict)
     """List with twpa offset values swept."""
     reference_value: dict[QubitId, list[float]] = field(default_factory=dict)
-    """Values for readout frequency sweep with TWPA off."""
+    """Reference values with TWPA off for each probe frequency."""
     probes: list[float] = field(default_factory=list)
     """List of probe frequencies evaluated."""
 
@@ -157,16 +157,6 @@ def _acquisition(
     ]
 
     # Reference value acquisition (TWPA off)
-    zero_offset_sweepers = [
-        Sweeper(
-            parameter=Parameter.offset,
-            values=np.array([0.0]),
-            channels=[ch],
-        )
-        for ch in unique_twpa_channels
-    ]
-    ref_sweepers = [zero_offset_sweepers]
-
     reference_data: dict[QubitId, list[list[float]]] = {q: [] for q in targets}
     raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
 
@@ -178,11 +168,11 @@ def _acquisition(
 
         for probe in probes:
             updates = [
-                {platform.qubits[q].probe: {"frequency": probe}} for q in targets
+                {ch: {"offset": 0.0} for ch in unique_twpa_channels}
+                | {platform.qubits[q].probe: {"frequency": probe} for q in targets}
             ]
             ref_results = platform.execute(
                 [sequence],
-                ref_sweepers,
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
@@ -193,7 +183,7 @@ def _acquisition(
                 acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
                     -1
                 ].id
-                reference_data[qubit].append(ref_results[acq_handle][0].tolist())
+                reference_data[qubit].append(ref_results[acq_handle].tolist())
     finally:
         for ch in unique_twpa_channels:
             if ch in platform.instruments:
