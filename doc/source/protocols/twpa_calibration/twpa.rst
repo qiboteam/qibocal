@@ -59,18 +59,29 @@ TWPA Sweeper Protocol
 ---------------------
 
 For instruments supporting hardware sweepers, the ``twpa_frequency_offset`` protocol
-(aliased as ``twpa_sweep``) sweeps the TWPA frequency and amplitude (offset) concurrently
-using an on-board 2D hardware sweep for each probe frequency specified in ``probes``.
-Because hardware sweepers enforce linear steps, the amplitude/power sweep is replaced by
-a linear offset sweep.
+(aliased as ``twpa_sweep``) sweeps the TWPA pump frequency and amplitude (offset)
+concurrently using an on-board 2D hardware sweep. Because hardware sweepers enforce
+linear steps, the amplitude/power sweep is replaced by a linear offset sweep.
+
+By default, when the ``probes`` parameter is omitted, the protocol performs only a
+**single acquisition run** (a single execution for the reference scan, and a further
+individual one for the 2D pump sweep). In this run, each target qubit is updated and
+interrogated exclusively at its own calibrated readout resonator frequency, rather than
+scanning across the readout frequencies of the other targets. This provides a fast,
+multiplexed characterization at the operational frequencies of all selected targets.
+
+When a discrete list of probe frequencies is provided in ``probes``, the protocol
+instead evaluates each probe frequency in a loop, applying each frequency across all
+target probe lines and averaging the resulting gain over the evaluated probes to find
+the pump parameters that maximize average gain.
 
 .. note::
 
-    The probe frequencies are specified as a discrete list (``probes``) rather than a swept
-    range, and evaluated via a software loop. The reason not to sweep the probe frequency is that
-    the TWPA gain oscillates rapidly with the probe frequency. Instead of obtaining the best gain
-    on average across an arbitrary continuous range, the calibration is targeted specifically
-    at the frequencies of the expected readout resonators.
+    When defined, the probe frequencies are specified as a discrete list (``probes``) rather
+    than a swept range, and evaluated via a software loop. The reason not to sweep the probe
+    frequency continuously is that the TWPA gain oscillates rapidly with the probe frequency.
+    Instead of obtaining the best gain on average across an arbitrary continuous range, the
+    calibration is targeted specifically at the frequencies of the expected readout resonators.
     Because not all control electronics support sweeping an arbitrary non-equispaced list of values
     on-board, this is implemented as a loop over the probe frequencies, while the primary speed-up
     is achieved via the 2D hardware sweep over the pump signal parameters (amplitude and frequency).
