@@ -120,7 +120,13 @@ def test_acquisition_and_fit(platform, tmp_path):
     assert fig.layout.yaxis2 is not None
     assert fig.layout.yaxis2.side == "right"
     assert fig.layout.yaxis2.overlaying == "y"
+    assert fig.layout.showlegend is True
+    assert fig.layout.legend.orientation == "h"
     assert any(trace.yaxis == "y2" for trace in fig.data)
+    assert any(
+        getattr(trace, "name", None) == "Optimal Point" and trace.showlegend is True
+        for trace in fig.data
+    )
     assert "Pump Frequency [Hz]" in report
     assert "Pump Amplitude" in report
     assert "Pump Attenuation [dB]" in report

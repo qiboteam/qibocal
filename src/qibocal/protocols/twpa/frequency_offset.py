@@ -260,7 +260,7 @@ def _plot(
     The visualization displays the averaged TWPA gain across evaluated probe frequencies
     as a 2D heatmap versus pump frequency (horizontal axis) and pump amplitude/offset
     (primary vertical axis). If fit results are available, the optimal working point is
-    highlighted with a marker.
+    highlighted with a marker in the plot and legend.
 
     To relate the dimensionless amplitude offset to the effective physical attenuation
     in dB, a secondary vertical axis is rendered on the right edge. Its tick positions
@@ -274,6 +274,7 @@ def _plot(
 
     averaged_gain = data.averaged_gain(target)
     offsets = np.array(data.offset[target])
+    frequencies = np.array(data.frequency[target]) * HZ_TO_GHZ
     valid_mask = np.abs(offsets) > 1e-12
     tickvals = offsets[valid_mask]
     if len(tickvals) > 8:
@@ -284,7 +285,7 @@ def _plot(
 
     fig.add_trace(
         go.Heatmap(
-            x=np.array(data.frequency[target]) * HZ_TO_GHZ,
+            x=frequencies,
             y=data.offset[target],
             z=averaged_gain,
             colorscale="inferno",
@@ -294,11 +295,8 @@ def _plot(
     # Invisible trace required for Plotly to render the secondary y-axis (yaxis2).
     fig.add_trace(
         go.Scatter(
-            x=[
-                np.min(data.frequency[target]) * HZ_TO_GHZ,
-                np.max(data.frequency[target]) * HZ_TO_GHZ,
-            ],
-            y=[np.min(offsets), np.max(offsets)],
+            x=[None],
+            y=[None],
             mode="markers",
             marker={"size": 0, "opacity": 0},
             hoverinfo="skip",
@@ -314,15 +312,28 @@ def _plot(
                 mode="markers",
                 marker={"size": 10, "color": "black", "symbol": "cross"},
                 name="Optimal Point",
-                showlegend=False,
+                showlegend=True,
             )
         )
-    fig.update_xaxes(title_text="TWPA Frequency [GHz]")
-    fig.update_yaxes(title_text="TWPA Amplitude")
+    fig.update_xaxes(title_text="Pump Frequency [GHz]")
+    fig.update_yaxes(title_text="Pump Amplitude")
+    if len(frequencies) > 1:
+        df = abs(frequencies[1] - frequencies[0]) / 2
+        fig.update_xaxes(range=[np.min(frequencies) - df, np.max(frequencies) + df])
+    if len(offsets) > 1:
+        doff = abs(offsets[1] - offsets[0]) / 2
+        fig.update_yaxes(range=[np.min(offsets) - doff, np.max(offsets) + doff])
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
+        legend={
+            "orientation": "h",
+            "yanchor": "top",
+            "y": -0.2,
+            "xanchor": "center",
+            "x": 0.5,
+        },
         yaxis2={
-            "title_text": "TWPA Attenuation [dB]",
+            "title_text": "Pump Attenuation [dB]",
             "overlaying": "y",
             "side": "right",
             "matches": "y",
