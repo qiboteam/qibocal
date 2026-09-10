@@ -16,13 +16,11 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
 from sklearn.cluster import HDBSCAN
-from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.fitting.classifier import run
-from qibocal.result import collect
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -1130,7 +1128,7 @@ def quinn_fernandes_algorithm(
         beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=-1) / np.sum(
             xi[..., :-1] ** 2, axis=-1
         )
-        # np.where() works with scalars as well, so there is not need to add a dimension in 1D case
+        # np.where() works with scalars as well
         beta = np.where(np.isfinite(beta), beta, 0)
         if len(buffer_beta) >= 5:
             buffer_beta.pop(0)
@@ -1147,7 +1145,7 @@ def quinn_fernandes_algorithm(
     alpha = np.clip(alpha, -2, 2)
     omega_est = np.arccos(alpha / 2)
 
-    return omega_est * fs
+    return np.asarray(omega_est * fs)
 
 
 def guess_period(
@@ -1262,7 +1260,9 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
     return start, stop, spec_[-1]
 
 
-def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
+def plot_iq_pca(
+    iq: np.ndarray, pca_centroids: np.ndarray, pca_axis: np.ndarray
+) -> list[go.Scatter]:
     """Plot IQ plane data with PCA analysis.
 
     Performs Principal Component Analysis on quadrature data and creates
@@ -1270,22 +1270,13 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
     """
 
     scatters = []
-    qubit_data = data[qubit]
-
-    if any(name not in qubit_data.dtype.names for name in ["i", "q"]):
-        i = qubit_data.signal * np.cos(qubit_data.phase)
-        q = qubit_data.signal * np.sin(qubit_data.phase)
-    else:
-        i = qubit_data.i
-        q = qubit_data.q
-    quadratures = collect(i, q)
-
-    # initialize a PCA instance and fit it to the quadrature data
-    pca = PCA().fit(quadratures)
 
     # compute the principal axes and the centroid of the data
-    centroid_x, centroid_y = pca.mean_
-    axis_1, axis_2 = pca.components_
+    centroid_x, centroid_y = pca_centroids
+    axis_1, axis_2 = pca_axis
+
+    i = iq[:, 0]
+    q = iq[:, 1]
 
     #################################################################
     # in the first row we plot the IQ plane with the quadrature data
@@ -1313,9 +1304,8 @@ def plot_iq_pca(data: Data, qubit: QubitId) -> list[go.Scatter]:
         )
     )
 
-    axis_plot = np.linspace(
-        -max(np.ptp(i), np.ptp(q)) / 2, max(np.ptp(i), np.ptp(q)) / 2, 200
-    )
+    halfwidth = max(np.ptp(i), np.ptp(q)) / 2
+    axis_plot = np.asarray([-halfwidth, halfwidth])
     scatters.extend(
         [
             go.Scatter(

@@ -101,7 +101,7 @@ def plot(data, qubit, fit, rx90):
     # in the first row we plot the IQ plane with the quadrature data
     # and the principal axes.
     fig.add_traces(
-        plot_iq_pca(data, qubit),
+        plot_iq_pca(quadratures, pca.mean_, pca.components_),
         rows=1,
         cols=1,
     )
