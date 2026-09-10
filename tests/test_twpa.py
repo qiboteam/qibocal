@@ -177,3 +177,8 @@ def test_acquisition_default_probes(platform, mocker):
         assert updates[probe_ch]["frequency"] == ro_freq
         assert data.data[q].shape[2] == 1
         assert data.reference_value_array(q).shape == (1, 2)
+
+    sweepers = sweep_call.args[1]
+    assert len(sweepers) == 2
+    assert all(sw.range is not None for sw in sweepers[0])
+    assert all(sw.range is not None for sw in sweepers[1])
