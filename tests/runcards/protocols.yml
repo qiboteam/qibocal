@@ -903,7 +903,7 @@ actions:
   - id: twpa_frequency_offset
     operation: twpa_frequency_offset
     parameters:
-      probe_frequency: ["center", 10_000_000, 1_000_000]
+      probes: [7_000_000_000, 7_200_000_000]
       frequency: ["center", 10_000_000, 2_000_000]
       amplitude: [0.1, 0.4, 0.1]
       nshots: 20000

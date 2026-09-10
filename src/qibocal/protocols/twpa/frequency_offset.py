@@ -34,8 +34,8 @@ class TwpaFrequencyOffsetParameters(Parameters):
     """Range of amplitude (offset) values for TWPA sweep."""
     frequency: RangeLike
     """Range of TWPA frequency values for sweep."""
-    probe_frequency: RangeLike
-    """Range of readout probe frequency values for sweep."""
+    probes: list[float] | None = None
+    """List of probe frequencies to evaluate (Hz). If omitted, defaults to readout frequencies of targets."""
 
 
 @dataclass
@@ -57,15 +57,17 @@ class TwpaFrequencyOffsetData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
     frequency: dict[QubitId, list[float]] = field(default_factory=dict)
-    """List with twpa frequency values swept, for each qubit."""
+    """List with twpa frequency values swept."""
     offset: dict[QubitId, list[float]] = field(default_factory=dict)
-    """List with twpa offset values swept, for each qubit."""
-    probes: dict[QubitId, list[float]] = field(default_factory=dict)
-    """Values for readout frequency sweep with TWPA off, for each qubit."""
+    """List with twpa offset values swept."""
+    reference_value: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Values for readout frequency sweep with TWPA off."""
+    probes: list[float] = field(default_factory=list)
+    """List of probe frequencies evaluated."""
 
     def reference_value_array(self, qubit: QubitId) -> npt.NDArray:
         """Return reference value as a numpy array."""
-        return np.array(self.probes[qubit]).reshape(-1, 2)
+        return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
 
 def _acquisition(
@@ -73,6 +75,20 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> TwpaFrequencyOffsetData:
+    """Acquisition function for TwpaFrequencyOffset.
+
+    First perform a scan over the readout probe with the TWPA off, then sweep the
+    TWPA amplitude (offset) and frequency concurrently using a 2D sweeper.
+
+    Note on the probes loop:
+    The TWPA gain oscillates quite fast in the probe frequency. Instead of obtaining
+    the best gain on average across an arbitrary continuous frequency range, we optimize
+    specifically for the frequencies of the resonators we are expecting.
+    Because not all control electronics support sweeping an arbitrary on-board list of
+    values, we implement this as a software loop over the `probes` list. The main
+    performance speed-up is already achieved through the on-board 2D hardware sweep over
+    the TWPA pump signal parameters (amplitude and frequency).
+    """
     sequence = PulseSequence()
     for qubit in targets:
         sequence += platform.natives.single_qubit[qubit].MZ()
@@ -93,16 +109,12 @@ def _acquisition(
         if ch not in unique_twpa_channels:
             unique_twpa_channels[ch] = q
 
-    # Readout probe frequency ranges
-    ro_freq_values = {
-        q: np.arange(
-            *to_range(
-                params.probe_frequency,
-                center=readout_frequency(q, platform),
-            )
-        )
-        for q in targets
-    }
+    # Probe frequencies to evaluate
+    probes = (
+        params.probes
+        if params.probes
+        else [readout_frequency(q, platform) for q in targets]
+    )
 
     # TWPA frequency ranges
     twpa_frequency_ranges = {
@@ -122,15 +134,7 @@ def _acquisition(
         raise ValueError("TWPA amplitude values must be between -1 and 1.")
     twpa_offset_ranges = {q: twpa_offset_values.tolist() for q in targets}
 
-    # Build sweepers
-    ro_freq_sweepers = [
-        Sweeper(
-            parameter=Parameter.frequency,
-            values=ro_freq_values[q],
-            channels=[platform.qubits[q].probe],
-        )
-        for q in targets
-    ]
+    # Build 2D sweepers over TWPA pump parameters
     twpa_freq_sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
@@ -147,6 +151,10 @@ def _acquisition(
         )
         for ch in unique_twpa_channels
     ]
+    sweepers = [
+        twpa_offset_sweepers,
+        twpa_freq_sweepers,
+    ]
 
     # Reference value acquisition (TWPA off)
     zero_offset_sweepers = [
@@ -157,64 +165,75 @@ def _acquisition(
         )
         for ch in unique_twpa_channels
     ]
-    ref_sweepers = [zero_offset_sweepers, ro_freq_sweepers]
+    ref_sweepers = [zero_offset_sweepers]
 
-    reference_value = {}
+    reference_data: dict[QubitId, list[list[float]]] = {q: [] for q in targets}
+    raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
+
+    # 1. Reference measurements with TWPA off for each probe frequency
     try:
         for ch in unique_twpa_channels:
             if ch in platform.instruments:
                 platform.instruments[ch].disconnect()
 
-        ref_results = platform.execute(
-            [sequence],
-            ref_sweepers,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        )
+        for probe in probes:
+            updates = [
+                {platform.qubits[q].probe: {"frequency": probe}} for q in targets
+            ]
+            ref_results = platform.execute(
+                [sequence],
+                ref_sweepers,
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+                updates=updates,
+            )
+            for qubit in targets:
+                acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
+                    -1
+                ].id
+                reference_data[qubit].append(ref_results[acq_handle][0].tolist())
     finally:
         for ch in unique_twpa_channels:
             if ch in platform.instruments:
                 platform.instruments[ch].connect()
 
-    for qubit in targets:
-        acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
-        reference_value[qubit] = ref_results[acq_handle].tolist()
+    # 2. 2D TWPA sweeps (amplitude and frequency) for each probe frequency
+    for probe in probes:
+        updates = [{platform.qubits[q].probe: {"frequency": probe}} for q in targets]
+        results = platform.execute(
+            [sequence],
+            sweepers,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+            updates=updates,
+        )
+        for qubit in targets:
+            acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
+                -1
+            ].id
+            raw_data[qubit].append(results[acq_handle])
 
     data = TwpaFrequencyOffsetData(
         offset=twpa_offset_ranges,
         frequency=twpa_frequency_ranges,
-        probes=reference_value,
+        reference_value=reference_data,
+        probes=probes,
     )
-
-    # Main scan: sweep offset, twpa frequency, and readout frequency concurrently
-    sweepers = [
-        twpa_offset_sweepers,
-        twpa_freq_sweepers,
-        ro_freq_sweepers,
-    ]
-    results = platform.execute(
-        [sequence],
-        sweepers,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
-
     for qubit in targets:
-        acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
-        data.data[qubit] = np.array(results[acq_handle])
+        data.data[qubit] = np.stack(raw_data[qubit], axis=2)
 
     return data
 
 
 def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
-    """Maximize gain (bare argmax).
+    """Post-processing function for TwpaFrequencyOffset.
 
-    After computing the averaged gain we select the corresponding TWPA frequency and offset
-    that maximizes the gain for each qubit.
+    After computing the averaged gain across evaluated probes, select the
+    corresponding TWPA frequency and offset that maximizes the gain for each qubit.
     """
     gains = {}
     twpa_frequency = {}
@@ -241,6 +260,7 @@ def _plot(
     fit: TwpaFrequencyOffsetResults | None,
     target: QubitId,
 ):
+    """Plotting for TwpaFrequencyOffset."""
     figures = []
     fig = go.Figure()
     if fit is not None and target in fit:
@@ -296,13 +316,7 @@ def _plot(
 
 
 twpa_frequency_offset = Protocol(_acquisition, _fit, _plot)
-"""Resonator TWPA Frequency and Offset Sweeper Protocol object.
-
-First perform a scan over the readout probe with the TWPA off, then sweep the
-TWPA amplitude (offset) and frequency concurrently with the readout probe using sweepers.
-The gain is computed as the norm of the complex readout signal divided by the
-norm of the complex readout signal without TWPA.
-"""
+"""Resonator TWPA Frequency and Offset Sweeper Protocol object."""
 
 twpa_sweep = twpa_frequency_offset
 """Alias for twpa_frequency_offset."""
