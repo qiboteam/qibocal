@@ -59,10 +59,21 @@ TWPA Sweeper Protocol
 ---------------------
 
 For instruments supporting hardware sweepers, the ``twpa_frequency_offset`` protocol
-(aliased as ``twpa_sweep``) sweeps the TWPA frequency, TWPA offset, and readout
-frequency concurrently using sweepers instead of software loops.
+(aliased as ``twpa_sweep``) sweeps the TWPA frequency and amplitude (offset) concurrently
+using an on-board 2D hardware sweep for each probe frequency specified in ``probes``.
 Because hardware sweepers enforce linear steps, the amplitude/power sweep is replaced by
 a linear offset sweep.
+
+.. note::
+
+    The probe frequencies are specified as a discrete list (``probes``) rather than a swept
+    range, and evaluated via a software loop. The reason not to sweep the probe frequency is that
+    the TWPA gain oscillates rapidly with the probe frequency. Instead of obtaining the best gain
+    on average across an arbitrary continuous range, the calibration is targeted specifically
+    at the frequencies of the expected readout resonators.
+    Because not all control electronics support sweeping an arbitrary non-equispaced list of values
+    on-board, this is implemented as a loop over the probe frequencies, while the primary speed-up
+    is achieved via the 2D hardware sweep over the pump signal parameters (amplitude and frequency).
 
 
 Parameters
@@ -80,7 +91,7 @@ Example
     - id: twpa_frequency_offset
       operation: twpa_frequency_offset
       parameters:
-        probe_frequency: ["center", 50000000, 10000000]
+        probes: [7000000000, 7200000000]
         frequency: ["center", 300000000, 50000000]
         amplitude: [0.1, 0.5, 0.05]
         nshots: 300
