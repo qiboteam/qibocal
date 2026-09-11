@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qibolab import Parameters, Platform, create_platform, locate_platform
-from qibolab.platform import create_dummy
+from qibolab.platform import create_dummy_platform
 
 from .calibration import CALIBRATION, Calibration
 
@@ -90,7 +90,11 @@ class CalibrationPlatform(Platform):
             (folder_path / CALIBRATION).read_text()
         )
 
-        platform = create_dummy() if dummy_hardware else create_platform(platform_name)
+        platform = (
+            create_dummy_platform(calibration.qubits)
+            if dummy_hardware
+            else create_platform(platform_name)
+        )
         platform.parameters = parameters
         platform.name = platform_name
 
