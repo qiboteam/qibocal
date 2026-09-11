@@ -103,7 +103,7 @@ class Executor(BaseModel):
                 self.platform
                 if ExecutionMode.ACQUIRE in mode
                 else CalibrationPlatform.from_datafolder(
-                    folder_path=output,
+                    folder_path=output / PLATFORM_DIR,
                     platform_name=self.platform.name,
                     dummy_hardware=True,
                 )

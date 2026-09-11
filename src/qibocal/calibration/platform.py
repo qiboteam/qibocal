@@ -105,8 +105,9 @@ class CalibrationPlatform(Platform):
 
 
 def create_calibration_platform(name: str) -> CalibrationPlatform:
-    """This function builds a ``CalibrationPlatform`` object which is sentitive of the hardware,
-    so it needs information about the clusters and its connection. Has to be used for acquisition.
+    """Build a hardware-sensitive ``CalibrationPlatform`` for acquisition.
+
+    This requires cluster and connection information.
     """
     platform = create_platform(name)
     return CalibrationPlatform.from_platform(platform)

@@ -255,8 +255,8 @@ class Output:
             self.platform = CalibrationPlatform.from_platform(backend.platform)
         else:
             # while performing a fitting task we do not need hardware information
-            # but also we need the params saved in the datafolder, since in the
-            # platform folder might been changed.
+            # Use parameters saved in the data folder because those in the live
+            # platform folder might have changed.
             self.platform = CalibrationPlatform.from_datafolder(
                 folder_path=output / "platform",
                 platform_name=self.meta.platform,
