@@ -256,12 +256,6 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                 2 * len(q_data),
             )
             params = fit.fitted_parameters[target][state]
-            # _x = freqrange * scipy.constants.nano
-            # _y = lorentzian_with_linear_background(freqrange, *params)
-            # print(
-            #    f"DEBUG state{state}: x {_x[0]:.4f}..{_x[-1]:.4f} GHz, "
-            #    f"y {_y.min() * 1e6:.0f}..{_y.max() * 1e6:.0f} uV"
-            # )
             fig.add_trace(
                 go.Scatter(
                     x=freqrange * scipy.constants.nano,
