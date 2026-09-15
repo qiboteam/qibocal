@@ -215,7 +215,7 @@ def _plot(
         frequencies = q_data.freq * HZ_TO_GHZ
         fig.add_trace(
             go.Scatter(
-                x=frequencies,
+                x=frequencies * HZ_TO_GHZ,
                 y=q_data.signal,
                 opacity=opacity,
                 name=f"{label}",
@@ -228,7 +228,7 @@ def _plot(
         )
         fig.add_trace(
             go.Scatter(
-                x=frequencies,
+                x=frequencies * HZ_TO_GHZ,
                 y=q_data.phase,
                 opacity=opacity,
                 showlegend=False,
@@ -258,7 +258,7 @@ def _plot(
             ][target]
             fig.add_trace(
                 go.Scatter(
-                    x=freqrange,
+                    x=freqrange * HZ_TO_GHZ,
                     y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
                     mode="lines",
