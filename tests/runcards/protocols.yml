@@ -434,6 +434,23 @@ actions:
       detuning: 1_000_000
       nshots: 10
 
+  - id: ramsey_signal_ef
+    operation: ramsey_signal_ef
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      nshots: 10
+
+  - id: ramsey_signal_detuned_ef
+    operation: ramsey_signal_ef
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      detuning: 1_000_000
+      nshots: 10
+
   - id: ramsey
     operation: ramsey
     parameters:
