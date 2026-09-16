@@ -435,7 +435,7 @@ actions:
       nshots: 10
 
   - id: ramsey_signal_ef
-    operation: ramsey_signal_ef
+    operation: ramsey_ef_signal
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
@@ -443,7 +443,7 @@ actions:
       nshots: 10
 
   - id: ramsey_signal_detuned_ef
-    operation: ramsey_signal_ef
+    operation: ramsey_ef_signal
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
