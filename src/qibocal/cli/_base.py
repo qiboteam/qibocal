@@ -201,8 +201,7 @@ def fit(
 )
 @click.option(
     "--tag",
-    default=None,
-    type=str,
+    multiple=True,
     help="Optional tag.",
 )
 @click.option(
