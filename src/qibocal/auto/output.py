@@ -1,7 +1,7 @@
 import getpass
 import json
 import shutil
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -49,7 +49,7 @@ class Metadata:
     stats: dict[str, TaskStats]
     versions: Versions
     author: str | None = None
-    tag: str | None = None
+    tag: list[str] | None = field(default_factory=list)
     targets: Targets | None = None
 
     @classmethod

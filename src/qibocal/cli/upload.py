@@ -58,11 +58,13 @@ class UploadConfig:
             )
 
 
-def upload_report(path: pathlib.Path, tag: str, author: str, lab: str) -> str:
+def upload_report(path: pathlib.Path, tag: tuple[str], author: str, lab: str) -> str:
     # load meta and update tag
     meta = Metadata.load(path)
     meta.author = author
-    meta.tag = tag
+    if meta.tag is None:
+        meta.tag = []
+    meta.tag.extend(list(tag))
     (path / META).write_text(json.dumps(meta.dump(), indent=4), encoding="utf-8")
     config = UploadConfig.from_lab(lab)
     # check the rsync command exists.
