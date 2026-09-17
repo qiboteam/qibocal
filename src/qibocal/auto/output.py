@@ -67,6 +67,8 @@ class Metadata:
             end_time=None,
             stats={},
             versions=versions,
+            # default to the username of the user running qibocal
+            author=getpass.getuser(),
         )
 
     def start(self):
