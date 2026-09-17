@@ -67,6 +67,8 @@ class Metadata:
             end_time=None,
             stats={},
             versions=versions,
+            # default to the username of the user running qibocal
+            author=getpass.getuser(),
         )
 
     def start(self):
@@ -118,7 +120,7 @@ class Metadata:
 
 
 def _new_output() -> Path:
-    user = getpass.getuser().replace(".", "-")
+    user = getpass.getuser()
     date = datetime.now(UTC).strftime("%Y-%m-%d")
 
     num = 0
