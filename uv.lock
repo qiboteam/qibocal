@@ -1800,7 +1800,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0,<7.0.0" },
     { name = "qibo", specifier = ">=0.3.1,<0.4.0" },
-    { name = "qibolab", specifier = ">=0.2.16,<0.3.0" },
+    { name = "qibolab", git = "https://github.com/qiboteam/qibolab?branch=main" },
     { name = "scikit-learn", specifier = ">=1.3.0,<2.0.0" },
     { name = "scipy", specifier = ">=1.10.1,<2.0.0" },
     { name = "skops", specifier = ">=0.14.0,<0.15.0" },
@@ -1828,18 +1828,16 @@ tests = [
 
 [[package]]
 name = "qibolab"
-version = "0.2.16"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.17"
+source = { git = "https://github.com/qiboteam/qibolab?branch=main#265273e3e84f0ca66f4053d193187c68d8f8c3bc" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "requests" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/27/f0/db4099cfedc574a1d62e22ccdba35b315c65b5c1d1ba6b45aa4b353d94b6/qibolab-0.2.16.tar.gz", hash = "sha256:c72c13cad2ce0582819ff73fc395e685dc64dfb5bec5f475c6cd244dc2265843", size = 137518, upload-time = "2026-07-16T06:42:19.069Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/f8/6372af39f3f52e445237792cecf8ae1acb9113903eb7be1dda5a7e3b5421/qibolab-0.2.16-py3-none-any.whl", hash = "sha256:816b161e9d6cb6fc157cdbf3d6c7b745faeda8a98689cee3283118d67837597c", size = 187297, upload-time = "2026-07-16T06:42:17.771Z" },
 ]
 
 [[package]]
