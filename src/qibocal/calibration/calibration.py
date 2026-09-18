@@ -150,6 +150,8 @@ class TwoQubitCalibration(Model):
     """CZ interleaved rb fidelity."""
     coupling: list[float] | None = None
     """Qubit-qubit coupling."""
+    conditional_phase: list[float] | None = None
+    """Accumulated conditional phase of the gate."""
 
 
 class Calibration(Model):
