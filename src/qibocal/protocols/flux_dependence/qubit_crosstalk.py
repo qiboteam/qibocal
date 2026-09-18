@@ -91,8 +91,8 @@ class QubitCrosstalkResults(QubitFluxResults):
     """Crosstalk matrix element."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict] = field(default_factory=dict)
     """Fitted parameters for each couple target-flux qubit."""
-    successful_fit: dict[QubitId, bool] = field(default_factory=dict)
-    """flag for each qubit to see whether the fit was successful."""
+    successful_fit: dict[tuple[QubitId, QubitId], bool] = field(default_factory=dict)
+    """Flag for each couple target-flux qubit to see whether the fit was successful."""
 
     def __contains__(self, key: QubitId):
         """Checking if qubit is in crosstalk_matrix attribute."""
@@ -240,6 +240,8 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     successful_fit = {}
 
     for target_flux_qubit, qubit_data in data.data.items():
+        target_qubit, flux_qubit = target_flux_qubit
+
         frequencies, biases = utils.flux_extract_feature(
             qubit_data.freq,
             qubit_data.bias,
@@ -247,10 +249,8 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             data.resonator_type == "2D",
         )
 
-        target_qubit, flux_qubit = target_flux_qubit
-
         if frequencies is None or biases is None:
-            successful_fit[target_qubit] = False
+            successful_fit[target_flux_qubit] = False
 
         else:
             qubit_frequency_bias_point[target_qubit] = (
@@ -287,9 +287,9 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                 crosstalk_matrix[target_qubit][flux_qubit] = (
                     popt[0] * data.matrix_element[target_qubit]
                 )
-                successful_fit[target_qubit] = True
+                successful_fit[target_flux_qubit] = True
             except (RuntimeError, ValueError) as e:  # pragma: no cover
-                successful_fit[target_qubit] = False
+                successful_fit[target_flux_qubit] = False
                 log.error(f"Error in qubit_crosstalk protocol fit: {e} ")
 
     return QubitCrosstalkResults(
@@ -305,7 +305,9 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
     figures, fitting_report = utils.flux_crosstalk_plot(
         data, target, fit, fit_function=utils.transmon_frequency
     )
-    if fit is not None and fit.successful_fit[target]:
+    if fit is not None and any(
+        success for (qubit, _), success in fit.successful_fit.items() if qubit == target
+    ):
         labels = [
             "Qubit Frequency at Bias point [Hz]",
         ]
