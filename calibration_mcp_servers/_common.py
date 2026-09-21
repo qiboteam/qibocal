@@ -1,8 +1,12 @@
 """Shared adapters for qibocal MCP servers."""
 
 import uuid
+from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+
+import pandas as pd
+import plotly.graph_objects as go
 
 from qibocal.auto.output import Output
 from qibocal.auto.runcard import Runcard
@@ -70,11 +74,11 @@ def update_platform(
     skip_qubits: list[str] | None = None,
 ) -> dict[str, str]:
     """Apply platform updates after explicit user approval."""
-    update(Path(output_folder), skip_qubits)
+    update(Path(output_folder), cast(Any, skip_qubits))
     return result(output_folder)
 
 
-def report_content(output_folder: str | Path) -> dict[str, str]:
+def report_content(output_folder: str | Path) -> dict[str, Any]:
     """Build report HTML that MCP clients can render in the agent conversation."""
     path = Path(output_folder)
     output = Output.load(path)
@@ -88,6 +92,10 @@ def report_content(output_folder: str | Path) -> dict[str, str]:
         f"<h1>Qibocal report: {path.name}</h1>",
         _versions_table(report.meta.get("versions", {})),
     ]
+    artifacts_path = path / "agent_report"
+    artifacts_path.mkdir(exist_ok=True)
+    png_files = []
+    export_errors = []
     for task_id in report.history:
         node = report.history[task_id]
         sections.append(f"<h2>{report.routine_name(task_id)}</h2>")
@@ -97,13 +105,62 @@ def report_content(output_folder: str | Path) -> dict[str, str]:
             sections.append(f"<h3>Target: {target}</h3>")
             sections.append(fitting_report)
             for index, figure in enumerate(figures):
+                figure_name = f"{task_id}-{target}-figure-{index}.png"
+                _export_png(
+                    figure, artifacts_path / figure_name, png_files, export_errors
+                )
                 sections.append(
                     figure.to_html(
                         full_html=False,
                         include_plotlyjs="cdn" if index == 0 else False,
                     )
                 )
-    return {"output_folder": str(path.resolve()), "report_html": "\n".join(sections)}
+            for index, table in enumerate(_report_tables(fitting_report)):
+                table_name = f"{task_id}-{target}-table-{index}.png"
+                _export_png(
+                    table, artifacts_path / table_name, png_files, export_errors
+                )
+    return {
+        "output_folder": str(path.resolve()),
+        "report_html": "\n".join(sections),
+        "report_artifacts_folder": str(artifacts_path.resolve()),
+        "report_png_files": png_files,
+        "report_export_errors": export_errors,
+    }
+
+
+def _export_png(
+    figure: go.Figure,
+    path: Path,
+    png_files: list[str],
+    export_errors: list[str],
+) -> None:
+    """Export one Plotly figure, retaining a clear error when Kaleido is unavailable."""
+    try:
+        figure.write_image(path)
+    except (RuntimeError, ValueError) as error:
+        export_errors.append(f"{path.name}: {error}")
+    else:
+        png_files.append(str(path.resolve()))
+
+
+def _report_tables(report: str) -> list[go.Figure]:
+    """Convert fitting-report HTML tables into image-ready Plotly tables."""
+    try:
+        tables = pd.read_html(StringIO(report))
+    except ValueError:
+        return []
+    return [
+        go.Figure(
+            data=[
+                go.Table(
+                    header={"values": list(table.columns)},
+                    cells={"values": [table[column] for column in table.columns]},
+                )
+            ]
+        )
+        for table in tables
+    ]
 
 
 def _versions_table(versions: dict[str, Any]) -> str:
