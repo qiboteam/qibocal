@@ -5,6 +5,7 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from calibration_mcp_servers._common import result
+from qibocal.calibration.calibration import QubitId
 from qibocal.cli.update import update
 
 mcp = FastMCP("qibocal-platform-update")
@@ -13,7 +14,7 @@ mcp = FastMCP("qibocal-platform-update")
 @mcp.tool()
 def update_platform(
     data_folder: str,
-    skip_qubits: list[str] | None = None,
+    skip_qubits: list[QubitId] | None = None,
 ) -> dict[str, str]:
     """Apply the updated platform from a qibocal output folder."""
     update(Path(data_folder), skip_qubits)

@@ -10,20 +10,59 @@ python -m calibration_mcp_servers.automatic_calibration_server
 python -m calibration_mcp_servers.update_server
 ```
 
-The `_mcp_server.py` variants use the official low-level `mcp` SDK directly:
+## MCP server configuration
 
-```text
-python -m calibration_mcp_servers.acquisition_mcp_server
-python -m calibration_mcp_servers.fitting_mcp_server
-python -m calibration_mcp_servers.report_mcp_server
-python -m calibration_mcp_servers.automatic_calibration_mcp_server
-python -m calibration_mcp_servers.update_mcp_server
+To use the servers from an MCP client (for example VS Code's `mcp.json`),
+register one stdio server per module. Replace `/path/to/venv/bin/python` with
+your Python interpreter and `/path/to/qibocal` with the path to this repository:
+
+```json
+{
+	"servers": {
+		"/qibocal-fit": {
+			"type": "stdio",
+			"command": "/path/to/venv/bin/python",
+			"args": ["-m", "calibration_mcp_servers.fitting_server"],
+			"cwd": "/path/to/qibocal"
+		},
+		"/qibocal-report": {
+			"type": "stdio",
+			"command": "/path/to/venv/bin/python",
+			"args": ["-m", "calibration_mcp_servers.report_server"],
+			"cwd": "/path/to/qibocal"
+		},
+		"/qibocal-update": {
+			"type": "stdio",
+			"command": "/path/to/venv/bin/python",
+			"args": ["-m", "calibration_mcp_servers.update_server"],
+			"cwd": "/path/to/qibocal"
+		},
+		"/qibocal-execute": {
+			"type": "stdio",
+			"command": "/path/to/venv/bin/python",
+			"args": ["-m", "calibration_mcp_servers.acquisition_server"],
+			"cwd": "/path/to/qibocal"
+		},
+		"/qibocal-calibrate": {
+			"type": "stdio",
+			"command": "/path/to/venv/bin/python",
+			"args": ["-m", "calibration_mcp_servers.automatic_calibration_server"],
+			"cwd": "/path/to/qibocal"
+		}
+	},
+	"inputs": []
+}
 ```
 
 The acquisition tools run acquisition, fitting, and report generation in one call.
-They return the report plots and tables in `report_html` and do not update the
-platform automatically. After the user approves the changes, call
-`update_platform_after_approval` with the returned output folder.
+They generate the interactive `index.html` report and PNG files for every figure,
+and return the `report_folder` containing the PNG artifacts. They do not update
+the platform automatically. `parent_folder` is optional and identifies the parent
+directory for a run. Each invocation creates the actual qibocal run root at
+`parent_folder/<platform>/<uuid>/`; when `parent_folder` is omitted, the run
+root is created at `<current working directory>/<platform>/<uuid>/`. That
+generated directory contains qibocal's `data/` subfolder, runcard, history,
+metadata, report, and the `agent_report/` folder with PNG figures.
 
 [`PROTOCOL_CATALOG.md`](PROTOCOL_CATALOG.md) lists every built-in qibocal
 operation, its parameter descriptions, types, and required fields. Regenerate it
@@ -33,69 +72,68 @@ after protocol changes with:
 python calibration_mcp_servers/generate_protocol_catalog.py
 ```
 
-The acquisition and automatic-calibration tools accept experiments in this form:
-
-```json
-[
-  {
-    "operation": "rabi_amplitude",
-    "parameters": {"min_amp": 0.0, "max_amp": 1.0, "step_amp": 0.01, "rx90": false},
-    "targets": [0]
-  }
-]
-```
-
 The operation name must be registered in `qibocal.protocols`. Paths are passed as
 strings to MCP and resolved by qibocal on the server side.
 
 ## Example: running a Rabi amplitude experiment
 
-Call the `acquire_experiments` tool on the acquisition server:
+Ask the agent in natural language:
 
-```json
-{
-  "experiments": [
-    {
-      "operation": "rabi_amplitude",
-      "parameters": {
-        "min_amp": 0.0,
-        "max_amp": 1.0,
-        "step_amp": 0.01,
-        "rx90": true
-      },
-      "targets": [0]
-    }
-  ],
-  "output_folder": "/tmp/qibocal_rabi",
-  "platform": "mock",
-  "force": true
-}
+```text
+Run a Rabi amplitude experiment on qubit 0 with amplitude range (0.0, 1.0, 0.01)
+on the mock platform, saving results to /tmp/qibocal_runs.
 ```
 
-The tool runs acquisition, fitting, and report generation, then returns:
+The agent calls the `acquire_experiments` tool on the acquisition server with
+the corresponding parameters. The tool runs acquisition, fitting, and report
+generation, then returns:
 
-- `output_folder` — the resolved output directory
-- `report_html` — all plots and tables rendered as HTML
+- `output_folder` — the generated qibocal run directory (`parent_folder/<platform>/<uuid>/`)
+- `report_folder` — directory containing PNG files for all report figures
 - `platform_update_pending` — `true`, indicating the platform has not been updated yet
 
-After reviewing the report, if the user approves the calibration, call
-`update_platform_after_approval`:
+After reviewing the report, if the user approves the calibration, ask:
 
-```json
-{
-  "data_folder": "/tmp/qibocal_rabi"
-}
+```text
+Apply the calibration update from /tmp/qibocal_runs.
 ```
+
+The agent then calls `update_platform_after_approval` with the run folder.
 
 ## Agent-guided automatic calibration
 
 The automatic calibration server provides the `qibocal://protocol-catalog`
-resource and the `plan_automatic_calibration` prompt. Give the prompt the user's
-natural-language calibration request. The agent uses the catalog to select an
-initial protocol and its parameters, runs it with `run_automatic_calibration`,
-and inspects the returned `report_png_files` and fitting tables.
+resource and the `plan_automatic_calibration` prompt. The agent is the strategy
+engine: it reads the catalog, dynamically plans a sequence of protocols, and
+adapts the strategy after every step based on the observed results.
 
-The first run does not update the platform. After reviewing the fit, the agent
-either revises the parameters, tries another protocol, or documents a defensible
-inferred value from a clear signal. It calls `update_platform_after_review` only
-when the selected calibration result is approved.
+Start the process once with `start_calibration`, providing:
+
+- `parent_folder` — where the run directory is created
+- `targets` — the qubits to calibrate
+- `platform` — the platform name
+
+The server creates one `Executor` and keeps it connected for the entire process.
+Each reasoning round calls `run_protocol` with one catalog operation, its
+parameters, and an optional `update` flag. When `update=true`, successful fit
+results update the executor's private in-memory platform. After every round the
+current history, metadata, report, PNG figures, and platform state are persisted
+under the same generated data folder. Following Qibocal's output convention,
+`platform/` preserves the initial snapshot and `new_platform/` contains the
+latest private platform state.
+
+The agent must inspect each round's figures and fitting results before selecting
+the next protocol or changing its parameters. When the strategy is complete, it
+calls `finish_calibration`. Passing `publish=true` copies the final private
+`new_platform/` into the configured Qibolab platform registry through Qibocal's
+standard `update()` command exactly once. Passing `publish=false` closes the
+executor while leaving the registry unchanged.
+
+A minimal natural-language request can be passed to the prompt like this:
+
+```text
+Calibrate the pi pulse amplitude of qubit 0 on the qw5q_platinum platform,
+saving results to /home/users/lorenzo.ballerio/test/qibocal_experiments.
+Adapt the strategy after reviewing every fit and generated plot, then publish
+the final platform only when the complete calibration is finished.
+```
