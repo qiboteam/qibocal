@@ -1,21 +1,20 @@
 """Stateful MCP server for autonomous qibocal calibration."""
 
-import atexit
-import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastmcp import FastMCP
 
-from calibration_mcp_servers._common import report_content
-from qibocal import Executor
-from qibocal.auto.mode import AUTOCALIBRATION
-from qibocal.auto.output import PLATFORM, UPDATED_PLATFORM, Output
-from qibocal.auto.task import Action
-from qibocal.cli.report import report
+from calibration_mcp_servers._common import (
+    make_output_path,
+    make_runcard,
+    report_content,
+    run_qq,
+    write_runcard,
+)
+from qibocal.auto.output import PLATFORM, UPDATED_PLATFORM
 from qibocal.cli.update import update as publish_platform
-from qibocal.config import log
 
 CATALOG = Path(__file__).with_name("PROTOCOL_CATALOG.md")
 
@@ -24,11 +23,17 @@ mcp = FastMCP("qibocal-automatic-calibration")
 
 @dataclass
 class CalibrationSession:
-    """Live executor and its private output state."""
+    """Private, on-disk state of a calibration session.
 
-    executor: Executor
+    Each `run_protocol` call is its own `qq run` subprocess, writing into a fresh
+    step folder under `path`; no hardware connection is kept between calls.
+    """
+
     platform_name: str
+    targets: list[Any]
     path: Path
+    partition: str | None
+    steps: list[dict[str, Any]] = field(default_factory=list)
 
 
 _active_session: CalibrationSession | None = None
@@ -38,33 +43,6 @@ def _session() -> CalibrationSession:
     if _active_session is None:
         raise RuntimeError("No calibration is active. Call start_calibration first.")
     return _active_session
-
-
-def _checkpoint(session: CalibrationSession, generate_report: bool = True) -> None:
-    """Persist the live history and platform without closing the executor."""
-    Output(session.executor.history, session.executor.meta).dump(session.path)
-    Output.update_platform(session.executor.platform, session.path)
-    if generate_report and session.executor.history._order:
-        report(session.path, history=session.executor.history)
-        report_content(session.path)
-
-
-def _close_active_session() -> None:
-    """Release hardware if the MCP process exits with an active calibration."""
-    global _active_session
-    if _active_session is None:
-        return
-    session = _active_session
-    _active_session = None
-    try:
-        session.executor.platform.disconnect()
-        session.executor.meta.end()
-        _checkpoint(session, generate_report=False)
-    except Exception:
-        log.exception("Failed to close the active automatic calibration session.")
-
-
-atexit.register(_close_active_session)
 
 
 @mcp.resource("qibocal://protocol-catalog")
@@ -81,14 +59,20 @@ def plan_automatic_calibration(request: str) -> str:
 {request}
 
 Read `qibocal://protocol-catalog`, then call `start_calibration` once. Build the
-strategy dynamically and call `run_protocol` for one protocol at a time. After
-every call, inspect its PNG figures and fitting results before choosing the next
-protocol or changing its parameters. Set `update=true` only when that protocol's
-successful fit should update the session's private platform. Continue adapting
-until the calibration goal is complete, then call `finish_calibration`. The live
-executor is reused throughout the process, `platform/` remains the initial
-snapshot, and `new_platform/` is refreshed after every step. The Qibolab platform
-registry is changed only by `finish_calibration(publish=true)`."""
+strategy dynamically and call `run_protocol` for one protocol at a time. Each call
+runs `qq run` in its own step folder under the session's `data_folder`. After every
+call, inspect its PNG figures and fitting results before choosing the next protocol,
+its parameters, and its target qubits. Pass `targets` to run only the qubits that
+need that step. For every protocol, `targets` must be a non-empty subset of the
+session targets passed to `start_calibration`; using the entire session target set
+is also valid. Omit `targets` to use that entire set. Use the default
+`execution_mode="parallel"` to run all selected targets in one runcard and Slurm
+job. Use `execution_mode="individual"` to run each selected target in its own
+runcard, Slurm job, and output folder. Set `update=true` only when that protocol's
+successful fit should update the platform: doing so immediately publishes the
+step's calibration to the Qibolab platform registry, so later steps (and other
+users of that platform) see it right away. Continue adapting until the calibration
+goal is complete, then call `finish_calibration`."""
 
 
 @mcp.tool()
@@ -96,32 +80,29 @@ async def start_calibration(
     parent_folder: str,
     targets: list[Any],
     platform: str,
-    force: bool = False,
+    partition: str | None = None,
 ) -> dict[str, Any]:
-    """Start one calibration session and keep its executor connected."""
+    """Start one calibration session.
+
+    ``partition`` selects the Slurm partition every subsequent `run_protocol` call
+    is submitted to (via ``sbatch --wait --time=01:00:00``); when omitted those
+    calls run on the local host.
+    """
     global _active_session
     if _active_session is not None:
         raise RuntimeError(
             "A calibration is already active. Finish it before starting another."
         )
 
-    path = Path(parent_folder) / platform / str(uuid.uuid4())
-    executor = Executor.create(
-        path=path,
-        targets=targets,
-        platform=platform,
-        update=True,
-    )
-    executor.init(force=force)
+    path = make_output_path(parent_folder, platform)
     _active_session = CalibrationSession(
-        executor=executor,
         platform_name=platform,
+        targets=targets,
         path=path,
+        partition=partition,
     )
     return {
         "data_folder": str(path.resolve()),
-        "platform_folder": str((path / PLATFORM).resolve()),
-        "updated_platform_folder": str((path / UPDATED_PLATFORM).resolve()),
         "targets": targets,
         "platform": platform,
     }
@@ -133,69 +114,123 @@ async def run_protocol(
     parameters: dict[str, Any],
     update: bool = True,
     step_id: str | None = None,
+    targets: list[Any] | None = None,
+    execution_mode: Literal["parallel", "individual"] = "parallel",
 ) -> dict[str, Any]:
-    """Run, fit, optionally update, and checkpoint one calibration protocol."""
+    """Run one protocol jointly or in a separate job for each selected target."""
     session = _session()
-    protocol = session.executor.protocols.get(operation)
-    if protocol is None:
-        raise ValueError(f"Unknown qibocal protocol: {operation}")
+    step_id = step_id or operation
 
-    action = Action.cast(
+    step_targets = list(session.targets if targets is None else targets)
+    targets_str = "-".join(str(target) for target in step_targets)
+
+    if execution_mode == "parallel":
+        step_path = session.path / f"{step_id}-{operation}-qubits-{targets_str}"
+        runs = [
+            await _run_targets(
+                session, step_id, operation, parameters, step_targets, step_path, update
+            )
+        ]
+        response: dict[str, Any] = {**runs[0]}
+    else:
+        runs = []
+        for target in step_targets:
+            target_path = session.path / f"{step_id}-{operation}-qubit-{target}"
+            runs.append(
+                await _run_targets(
+                    session,
+                    step_id,
+                    operation,
+                    parameters,
+                    [target],
+                    target_path,
+                    update,
+                )
+            )
+        response = {
+            "output_folders": [run["output_folder"] for run in runs],
+            "runs": runs,
+        }
+
+    session.steps.append(
         {
-            "id": step_id or operation,
+            "step_id": step_id,
             "operation": operation,
-            "parameters": parameters,
-            "update": update,
+            "targets": step_targets,
+            "execution_mode": execution_mode,
+            "folders": [run["output_folder"] for run in runs],
         }
     )
-    completed = session.executor.run_protocol(
-        protocol=protocol,
-        parameters=action,
-        mode=AUTOCALIBRATION,
-        output=session.path,
+    response.update(
+        {
+            "operation": operation,
+            "step_id": step_id,
+            "targets": step_targets,
+            "execution_mode": execution_mode,
+            "update_requested": update,
+            "platform_published": update,
+        }
     )
-    _checkpoint(session)
+    return response
 
-    targets = completed.task.targets or session.executor.targets
-    results = completed.results
-    successful_targets = [
-        str(target)
-        for target in targets
-        if results is not None
-        and (tuple(target) if isinstance(target, list) else target) in results
-    ]
-    return {
-        "data_folder": str(session.path.resolve()),
-        "platform_folder": str((session.path / PLATFORM).resolve()),
-        "updated_platform_folder": str((session.path / UPDATED_PLATFORM).resolve()),
-        "report_folder": str((session.path / "agent_report").resolve()),
-        "operation": operation,
-        "step_id": str(completed.task.id),
-        "successful_targets": successful_targets,
-        "platform_updated_targets": successful_targets if update else [],
-        "update_requested": update,
-    }
+
+async def _run_targets(
+    session: CalibrationSession,
+    step_id: str,
+    operation: str,
+    parameters: dict[str, Any],
+    targets: list[Any],
+    output_path: Path,
+    update: bool,
+) -> dict[str, Any]:
+    """Run one runcard and Slurm job for the given targets."""
+    runcard = make_runcard(
+        [
+            {
+                "id": step_id,
+                "operation": operation,
+                "parameters": parameters,
+                "update": update,
+            }
+        ],
+        targets=targets,
+        platform=session.platform_name,
+        update=update,
+    )
+    runcard_path = write_runcard(runcard, output_dir=output_path)
+    try:
+        await run_qq(
+            runcard_path, output_path, update=update, partition=session.partition
+        )
+    finally:
+        runcard_path.unlink(missing_ok=True)
+
+    if update:
+        publish_platform(output_path, skip_qubits=None)
+
+    response: dict[str, Any] = {**report_content(output_path)}
+    response.update(
+        {
+            "targets": targets,
+            "platform_folder": str((output_path / PLATFORM).resolve()),
+            "updated_platform_folder": str((output_path / UPDATED_PLATFORM).resolve()),
+            "report_folder": str((output_path / "agent_report").resolve()),
+        }
+    )
+    return response
 
 
 @mcp.tool()
-async def finish_calibration(publish: bool = True) -> dict[str, Any]:
-    """Close the executor and optionally publish its final platform once."""
+async def finish_calibration() -> dict[str, Any]:
+    """Close the session and return a summary of its steps."""
     global _active_session
     session = _session()
-    session.executor.platform.disconnect()
-    session.executor.meta.end()
-    _checkpoint(session)
     _active_session = None
-
-    if publish:
-        publish_platform(session.path, skip_qubits=None)
 
     return {
         "data_folder": str(session.path.resolve()),
-        "platform_folder": str((session.path / PLATFORM).resolve()),
-        "updated_platform_folder": str((session.path / UPDATED_PLATFORM).resolve()),
-        "published": publish,
         "platform": session.platform_name,
+        "steps": session.steps,
     }
 
 

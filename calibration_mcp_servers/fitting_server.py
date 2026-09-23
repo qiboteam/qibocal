@@ -8,7 +8,7 @@ from calibration_mcp_servers._common import report_content
 from qibocal.cli.fit import fit
 from qibocal.cli.report import report
 
-mcp = FastMCP("qibocal-fitting")
+mcp = FastMCP("qibocal-fit")
 
 
 @mcp.tool()

@@ -128,3 +128,79 @@ def test_finish_calibration_publishes_new_platform_once(tmp_path, monkeypatch):
     assert published == [(tmp_path, None)]
     assert response["published"] is True
     assert calibration._active_session is None
+
+
+def test_run_protocol_selects_targets_per_step(tmp_path, monkeypatch):
+    runcard_targets = []
+    run_paths = []
+
+    def make_runcard(experiments, targets, platform, update):
+        runcard_targets.append(targets)
+        return object()
+
+    def write_runcard(runcard, output_dir):
+        output_dir.mkdir(parents=True)
+        path = output_dir / "runcard.yml"
+        path.touch()
+        return path
+
+    async def run_qq(runcard_path, output_path, update, partition):
+        run_paths.append(output_path)
+        return ""
+
+    calibration._active_session = calibration.CalibrationSession(
+        platform_name="mock",
+        targets=[0, 1, 2],
+        path=tmp_path,
+        partition=None,
+    )
+    monkeypatch.setattr(calibration, "make_runcard", make_runcard)
+    monkeypatch.setattr(calibration, "write_runcard", write_runcard)
+    monkeypatch.setattr(calibration, "run_qq", run_qq)
+    monkeypatch.setattr(
+        calibration,
+        "report_content",
+        lambda path: {"output_folder": str(path.resolve())},
+    )
+
+    try:
+        single = asyncio.run(
+            calibration.run_protocol(
+                "rabi_amplitude", {}, targets=[1], update=False, step_id="step-n"
+            )
+        )
+        all_targets = asyncio.run(
+            calibration.run_protocol(
+                "rabi_amplitude",
+                {},
+                targets=[0, 1, 2],
+                update=False,
+                step_id="step-n-plus-1",
+            )
+        )
+        individual = asyncio.run(
+            calibration.run_protocol(
+                "rabi_amplitude",
+                {},
+                targets=[0, 2],
+                update=False,
+                step_id="step-n-plus-2",
+                execution_mode="individual",
+            )
+        )
+    finally:
+        calibration._active_session = None
+
+    assert runcard_targets == [[1], [0, 1, 2], [0], [2]]
+    assert len(run_paths) == 4
+    assert single["targets"] == [1]
+    assert single["output_folder"].endswith("step-n-rabi_amplitude-qubits-1")
+    assert all_targets["targets"] == [0, 1, 2]
+    assert individual["execution_mode"] == "individual"
+    assert [run["targets"] for run in individual["runs"]] == [[0], [2]]
+    assert individual["output_folders"][0].endswith(
+        "step-n-plus-2-rabi_amplitude-qubit-0"
+    )
+    assert individual["output_folders"][1].endswith(
+        "step-n-plus-2-rabi_amplitude-qubit-2"
+    )
