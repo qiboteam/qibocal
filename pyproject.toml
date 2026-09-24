@@ -15,7 +15,7 @@ classifiers = [
 ]
 requires-python = ">=3.11,<3.14"
 dependencies = [
-  "qibolab>=0.2.16,<0.3.0", # 0.2.16 exports ChannelId
+  "qibolab", # resolved from git main via [tool.uv.sources]
   "qibo>=0.3.1,<0.4.0",
   "numpy>=2.0.0,<3.0.0",
   "scipy>=1.10.1,<2.0.0",
@@ -36,6 +36,9 @@ Documentation = "https://qibo.science/qibocal/stable/"
 
 [project.scripts]
 qq = "qibocal:command"
+
+[tool.uv.sources]
+qibolab = { git = "https://github.com/qiboteam/qibolab", branch = "dummy_hardware_input_qubits_couplers" }
 
 [dependency-groups]
 tests = [
