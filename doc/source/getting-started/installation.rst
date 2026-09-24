@@ -17,8 +17,6 @@ distributed with pypi* for the packages listed above.
 | Windows          |   Yes   |
 +------------------+---------+
 
-.. note::
-      All packages are supported for Python 3.8 to 3.10
 
 .. _installing-qibocal:
 
@@ -47,10 +45,10 @@ and perform the installation by following these instructions.
       cd qibocal
       pip install .
 
-You can also use `poetry <https://python-poetry.org/>`_ to install ``qibocal`` from source:
+You can also use `uv <https://docs.astral.sh/uv/>`_ to install ``qibocal`` from source:
 
 .. code-block::
 
       git clone https://github.com/qiboteam/qibocal.git
       cd qibocal
-      poetry install
+      uv sync

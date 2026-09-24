@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import numpy as np
@@ -24,14 +24,14 @@ HamiltonianTomographyType = np.dtype(
 """Custom dtype for Hamiltonian Tomography."""
 
 
-class SetControl(str, Enum):
+class SetControl(StrEnum):
     """Helper to create sequence with control set to X or I."""
 
     Id = "Id"
     X = "X"
 
 
-class Basis(str, Enum):
+class Basis(StrEnum):
     """Measurement basis."""
 
     X = "X"
@@ -39,7 +39,7 @@ class Basis(str, Enum):
     Z = "Z"
 
 
-class HamiltonianTerm(str, Enum):
+class HamiltonianTerm(StrEnum):
     """Hamiltonian terms for CR effective Hamiltonian."""
 
     IX = "IX"

@@ -27,11 +27,11 @@ pip install .
 
 
 ### Developer instructions
-For development make sure to install the package using [`poetry`](https://python-poetry.org/) and to install the pre-commit hooks:
+For development make sure to install the package using [`uv`](https://docs.astral.sh/uv/) and to install the pre-commit hooks:
 ```sh
 git clone https://github.com/qiboteam/qibocal.git
 cd qibocal
-poetry install
+uv sync
 pre-commit install
 ```
 
@@ -50,21 +50,21 @@ platform = create_calibration_platform("qubit")
 targets = [0]
 
 # define protocol parameters
-params = rabi_amplitude.parameters_type.load(dict(
+params = rabi_amplitude.parameters_type.load(
+    dict(
         min_amp=0.01,
         max_amp=0.2,
         step_amp=0.02,
         nshots=2000,
         pulse_length=40,
-        ))
+    )
+)
 
 # acquire
 platform.connect()
 data, acquisition_time = rabi_amplitude.acquisition(
-                                                    params=params,
-                                                    platform=platform,
-                                                    targets=targets
-                                                    )
+    params=params, platform=platform, targets=targets
+)
 platform.disconnect()
 
 # post-processing
@@ -83,6 +83,7 @@ The table is written in HTML and can be visualized in Python with
 
 ```py
 from IPython import display
+
 display.HTML(table)
 ```
 <p align="center">
