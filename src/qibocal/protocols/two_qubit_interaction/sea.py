@@ -13,8 +13,6 @@ from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     chi2_reduced,
-    fallback_period,
-    guess_period,
     table_dict,
     table_html,
 )
@@ -159,9 +157,16 @@ def _acquisition(
     return data
 
 
-def sea_fit(x, offset, amplitude, omega, phase, gamma):
+def sea_fit(n, offset, contrast, delta, gamma):
+    """Excited-state probability of the probe qubit after 2n CZs (n >= 1).
+
+    Each of the n active CZs adds a conditional phase pi + delta; the n*pi part
+    produces the (-1)^n alternation, and decoherence shrinks the contrast.
+    Only |delta| is identifiable (the model is even in delta).
+    """
+    parity = np.where(np.asarray(n) % 2 == 0, 1.0, -1.0)
     return (
-        amplitude * np.cos((x * omega + phase) / 2) ** 2 * np.exp(-x * gamma) + offset
+        0.5 + offset - 0.5 * contrast * parity * np.exp(-gamma * n) * np.cos(n * delta)
     )
 
 
@@ -176,20 +181,14 @@ def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResu
         y = pair_data["prob"]
         x = pair_data["repetitions"]
 
-        period = fallback_period(guess_period(x, y))
-        pguess = [0, 1, 2 * np.pi / period, 0, 0]
-
         try:
             popt, perr = curve_fit(
                 sea_fit,
                 x,
                 y,
-                p0=pguess,
+                p0=[0.0, 0.9, 0.1, 0.01],
                 maxfev=2000000,
-                bounds=(
-                    [-0.1, 0.85, -np.inf, -np.pi / 8, 0],
-                    [0.15, 1.15, np.inf, np.pi / 8, np.inf],
-                ),
+                bounds=([-0.2, 0.0, 0.0, 0.0], [0.2, 1.0, np.pi, 1.0]),
                 sigma=pair_data["error"],
             )
             perr = np.sqrt(np.diag(perr)).tolist()
@@ -269,7 +268,6 @@ def _plot(
                     float(fit.fitted_parameters[target][1]),
                     float(fit.fitted_parameters[target][2]),
                     float(fit.fitted_parameters[target][3]),
-                    float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
