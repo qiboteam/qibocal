@@ -1142,10 +1142,10 @@ def quinn_fernandes_algorithm(
         else:
             alpha = 2 * beta - alpha
 
-    alpha = np.asarray(np.clip(alpha, -2, 2))
-    omega_est = np.asarray(np.arccos(alpha / 2))
+    alpha = np.clip(alpha, -2, 2)
+    omega_est = np.arccos(alpha / 2)
 
-    return omega_est * fs
+    return np.asarray(omega_est * fs)
 
 
 def guess_period(
