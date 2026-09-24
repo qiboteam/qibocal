@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
-from typing import Generic, NewType, TypeVar
+from typing import Any, Generic, NewType, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -106,7 +106,7 @@ class AbstractData:
     ):
         self.data = data if data is not None else {}
 
-    def __getitem__(self, qubit: QubitId | tuple[QubitId, int]):
+    def __getitem__(self, qubit: QubitId | QubitPairId) -> Any:
         """Access data attribute member."""
         return self.data[qubit]
 
