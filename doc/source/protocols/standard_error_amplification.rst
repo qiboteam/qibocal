@@ -15,22 +15,29 @@ Standard Error Amplification
 
 Let :math:`Q_a` be the probe qubit and :math:`Q_b` the control qubit of the pair.
 
-The experiment consists of the following circuit:
+The circuit applies an :math:`X(\pi/2)` pulse on :math:`Q_a`, followed by :math:`2n` :math:`CZ` gates interleaved with :math:`X` on :math:`Q_a` and :math:`Y` on :math:`Q_b`,
+and a final :math:`R(\pi/2, \phi_f)` pulse on :math:`Q_a` before measuring it, with :math:`\phi_f = n\pi`.
 
-..
-  missing svg image of the circuit
 
-The net phase accumulated by :math:`Q_a` after the full sequence is, up to known and calculable offsets,
+Since :math:`Q_b` alternates between :math:`\ket{0}` and :math:`\ket{1}`, only :math:`n` of the :math:`2n` :math:`CZ` gates are active,
+while the :math:`X` echoes on :math:`Q_a` cancel the single-qubit phases and make the active contributions add up.
+:math:`Q_a` therefore accumulates the phase :math:`n(\pi + \delta)` and, for :math:`n \geq 1`,
 
-.. math:: \phi_n = n\,\delta .
-    :label: sea_phase
+.. math::
+    :label: sea_population_ideal
 
-The final :math:`X(\pi/2)` pulse on :math:`Q_a` is the same rotation as the initial one: it converts the phase :math:`\phi_n` of :eq:`sea_phase` into a measurable excited-state population
+    P(\ket{1}_{Q_a}) = \sin^2\left(\frac{n(\pi + \delta) - \phi_f}{2}\right) = \sin^2\left(\frac{n\,\delta}{2}\right),
 
-.. math:: P(\ket{1}_{Q_a}) \approx \cos^2\left(\frac{n\,\delta}{2}\right)
+where the choice :math:`\phi_f = n\pi` removes the :math:`(-1)^n` alternation due to the ideal phase :math:`n\pi`.
+
+Decoherence drives :math:`Q_a` towards a mixed state, so the measured probabilities are fitted with
+
+.. math::
     :label: sea_population
 
-By measuring :math:`P(\ket{1}_{Q_a})` as a function of the number of repetitions :math:`n` and fitting it to a sinusoid, it is possible to extract :math:`\delta`.
+    P(\ket{1}_{Q_a}) = \frac{1}{2} + B - \frac{A}{2}\, e^{-\gamma n} \cos(n\,\delta),
+
+where :math:`A` is the contrast, :math:`B` an offset accounting for readout asymmetries and :math:`\gamma` the decay rate of the contrast per repetition.
 
 Parameters
 ^^^^^^^^^^
