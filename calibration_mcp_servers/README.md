@@ -111,8 +111,23 @@ The agent then calls `update_platform_after_approval` with the run folder.
 
 The automatic calibration server provides the `qibocal://protocol-catalog`
 resource and the `plan_automatic_calibration` prompt. The agent is the strategy
-engine: it reads the catalog, dynamically plans a sequence of protocols, and
-adapts the strategy after every step based on the observed results.
+engine: it reads the catalog, inspects the platform architecture, dynamically
+plans a sequence of protocols, and adapts the strategy after every step based on
+the observed results.
+
+Before choosing any calibration strategy, the agent must call
+`platform_architecture` once the session has started. This tool inspects the
+platform's `parameters.json` and reports:
+
+- qubit names and the total number of qubits
+- the connectivity topology from the `native_gates.two_qubit` entries
+- whether the platform includes flux-tunable qubits by checking for
+  `<qubit>/flux` channels in `configs`
+- whether the QPU contains couplers by checking for `coupler_*` flux channels in
+  `configs`
+
+This architecture understanding is required before planning which protocols are
+applicable, which targets to include, and how the calibration flow should evolve.
 
 Start the process once with `start_calibration`, providing:
 
@@ -130,29 +145,19 @@ calls. The session has one datetime-based directory at
 target set. This lets the agent retry one poorly calibrated qubit in one step and
 return to all session qubits in a later step.
 
-`run_protocol` supports two execution modes:
-
-- `execution_mode="parallel"` (default) builds one single-action runcard and runs
-	one `qq run` job for all selected targets. Its step folder is named
-	`<step_id>-<operation>-qubits-<targets>`.
-- `execution_mode="individual"` builds a separate runcard and runs a separate
-	`qq run` job for each selected target. Each run has its own folder named
-	`<step_id>-<operation>-qubit-<target>`. The response contains `runs` and
-	`output_folders` entries for the per-qubit results.
-
-Every run writes its temporary runcard into its output folder and deletes it when
-execution finishes. Each run also generates an `agent_report/` directory with PNG
-figures. When `update=true`, each successful run's fit result is immediately
-published into the configured Qibolab platform registry (the same mechanism as
-`update_platform_after_approval`), so later runs — which reconnect to the platform
-from scratch — see it right away.
+`run_protocol` supports one single-action runcard per call and runs it over the
+selected targets. Each step writes its temporary runcard into the step output
+folder and deletes it when execution finishes. Each run also generates an
+`agent_report/` directory with PNG figures. When `update=true`, a successful fit
+can be published into the configured Qibolab platform registry, so later runs —
+which reconnect to the platform from scratch — see the updated settings.
 
 The agent must inspect each round's figures and fitting results before selecting
-the next protocol, changing its parameters, choosing a target subset, or selecting
-an execution mode. When the strategy is complete, it calls `finish_calibration`,
-which closes the session and returns a summary of every logical step that ran,
-including its `step_id`, `operation`, `targets`, `execution_mode`, and output
-folders.
+the next protocol, changing its parameters, choosing a target subset, or deciding
+whether to accept a platform update. When the strategy is complete, it calls
+`finish_calibration`, which closes the session and returns a summary of every
+logical step that ran, including its `step_id`, `operation`, `targets`, and
+output folders.
 
 A minimal natural-language request can be passed to the prompt like this:
 
