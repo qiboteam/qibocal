@@ -47,7 +47,7 @@ def fit_flux_amplitude(matrix, amps, times):
     std = []
     for i in range(size_amp):
         y = matrix[i, :]
-        period = fallback_period(guess_period(times, y))
+        period = fallback_period(guess_period(times, y)).tolist()
         fs.append(1 / period)
         std.append(np.std(y))
 
