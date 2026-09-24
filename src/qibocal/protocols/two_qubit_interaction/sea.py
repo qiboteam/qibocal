@@ -160,9 +160,6 @@ def _acquisition(
 
 def sea_fit(n, offset, contrast, delta, gamma):
     """Excited-state probability of the probe qubit after 2n CZs (n >= 1).
-
-    Each of the n active CZs adds a conditional phase pi + delta; the n*pi part
-    produces the (-1)^n alternation, and decoherence shrinks the contrast.
     Only |delta| is identifiable (the model is even in delta).
     """
     return 0.5 + offset - 0.5 * contrast * np.exp(-gamma * n) * np.cos(n * delta)
