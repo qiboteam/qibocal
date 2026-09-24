@@ -35,7 +35,7 @@ Decoherence drives :math:`Q_a` towards a mixed state, so the measured probabilit
 
     P(\ket{1}_{Q_a}) = \frac{1}{2} + B - \frac{A}{2}\, e^{-\gamma n} \cos(n\,\delta),
 
-where :math:`A` is the contrast, :math:`B` an offset accounting for readout asymmetries and :math:`\gamma` the decay rate of the contrast per repetition.
+where :math:`A` is the oscillation amplitude extrapolated o :math:`n = 0` (:math:`A = 1` for ideal state preparation and readout), :math:`B` an offset accounting for readout asymmetries and :math:`\gamma` the decay rate per repetition.
 
 Parameters
 ^^^^^^^^^^
