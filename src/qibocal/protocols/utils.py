@@ -1088,7 +1088,7 @@ def quinn_fernandes_algorithm(
     speedup_flag: bool = False,
     iterations: int = 100,
     tol: float = 1e-8,
-) -> NDArray[float]:
+) -> NDArray:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
     We compute the signal sampling rate from :param:x, hence this function assumes x to be
     ordered.
@@ -1128,7 +1128,7 @@ def quinn_fernandes_algorithm(
         beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=-1) / np.sum(
             xi[..., :-1] ** 2, axis=-1
         )
-        # np.where() works with scalars as well, so there is not need to add a dimension in 1D case
+        # np.where() works with scalars as well
         beta = np.where(np.isfinite(beta), beta, 0)
         if len(buffer_beta) >= 5:
             buffer_beta.pop(0)
@@ -1258,3 +1258,69 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
         step = (stop - start) / (n - 1)
         return start, stop, step
     return start, stop, spec_[-1]
+
+
+def plot_iq_pca(
+    iq: np.ndarray, pca_centroids: np.ndarray, pca_axis: np.ndarray
+) -> list[go.Scatter]:
+    """Plot IQ plane data with PCA analysis.
+
+    Performs Principal Component Analysis on quadrature data and creates
+    scatter plots showing the data points, centroid, and principal axes.
+    """
+
+    scatters = []
+
+    # compute the principal axes and the centroid of the data
+    centroid_x, centroid_y = pca_centroids
+    axis_1, axis_2 = pca_axis
+
+    i = iq[:, 0]
+    q = iq[:, 1]
+
+    #################################################################
+    # in the first row we plot the IQ plane with the quadrature data
+    # and the principal axes.
+    scatters.append(
+        go.Scatter(
+            x=i,
+            y=q,
+            opacity=1,
+            name="Quadrature Data",
+            showlegend=True,
+            legendgroup="Quadrature Data",
+            mode="markers",
+        )
+    )
+    scatters.append(
+        go.Scatter(
+            x=[centroid_x],
+            y=[centroid_y],
+            opacity=1,
+            name="Centroid",
+            showlegend=True,
+            legendgroup="Centroid",
+            mode="markers",
+        )
+    )
+
+    halfwidth = max(np.ptp(i), np.ptp(q)) / 2
+    axis_plot = np.asarray([-halfwidth, halfwidth])
+    scatters.extend(
+        [
+            go.Scatter(
+                x=centroid_x + a[0] * axis_plot,
+                y=centroid_y + a[1] * axis_plot,
+                opacity=1,
+                name="Principal Axes",
+                showlegend=i == 0,
+                legendgroup="Principal Axes",
+                mode="lines",
+                marker={"color": "black"},
+                line={"dash": "dash"},
+            )
+            for i, a in enumerate([axis_1, axis_2])
+        ]
+    )
+
+    return scatters
