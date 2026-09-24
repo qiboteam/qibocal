@@ -225,7 +225,11 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             row=1,
             col=col + 1,
         )
-        if fit is not None and fit.successful_fit[qubit] and flux_qubit[1] != qubit:
+        if (
+            fit is not None
+            and flux_qubit in fit.fitted_parameters
+            and flux_qubit[1] != qubit
+        ):
             fig.add_trace(
                 go.Scatter(
                     x=fit_function(
