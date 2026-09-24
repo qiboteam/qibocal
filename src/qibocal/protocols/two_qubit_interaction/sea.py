@@ -58,7 +58,8 @@ def cz_sea_sequence(
                 [(qa_channel, x_pulse_a), (qb_channel, y_pulse_b)]
             )
 
-    final_channel, final_pulse = natives_a.R(theta=np.pi / 2)[0]
+    final_phi = np.pi if repetitions % 2 else 0.0
+    final_channel, final_pulse = natives_a.R(theta=np.pi / 2, phi=final_phi)[0]
     sequence |= PulseSequence([(final_channel, final_pulse)])
 
     sequence |= natives_a.MZ()
@@ -164,10 +165,7 @@ def sea_fit(n, offset, contrast, delta, gamma):
     produces the (-1)^n alternation, and decoherence shrinks the contrast.
     Only |delta| is identifiable (the model is even in delta).
     """
-    parity = np.where(np.asarray(n) % 2 == 0, 1.0, -1.0)
-    return (
-        0.5 + offset - 0.5 * contrast * parity * np.exp(-gamma * n) * np.cos(n * delta)
-    )
+    return 0.5 + offset - 0.5 * contrast * np.exp(-gamma * n) * np.cos(n * delta)
 
 
 def _fit(data: StandardErrorAmplificationData) -> StandardErrorAmplificationResults:
