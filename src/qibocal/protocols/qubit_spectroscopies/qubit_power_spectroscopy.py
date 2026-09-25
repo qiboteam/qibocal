@@ -18,11 +18,19 @@ from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.resonator_spectroscopies.resonator_punchout import (
+    ResonatorPunchoutData,
+)
+from qibocal.protocols.utils import (
+    Range,
+    RangeLike,
+    plot_iq_pca,
+    readout_frequency,
+    to_range,
+)
+from qibocal.result import magnitude, phase
+from qibocal.update import replace
 
-from ...result import magnitude, phase
-from ...update import replace
-from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
-from ..utils import Range, RangeLike, readout_frequency, to_range
 from .qubit_spectroscopy import QubitSpectroscopyResults
 
 __all__ = ["qubit_power_spectroscopy"]
@@ -175,21 +183,17 @@ def _heatmap_figure(
     amplitudes: list,
     matrix: np.ndarray,
     colorbar_title: str,
-) -> go.Figure:
+) -> go.Heatmap:
     """Build a 2D heatmap of ``matrix`` (shape ``(n_amplitudes, n_frequencies)``)."""
-    fig = go.Figure(
-        go.Heatmap(
-            x=frequencies * scipy.constants.nano,  # plotting in GHz
-            y=amplitudes,
-            z=matrix,
-            colorbar={"title": colorbar_title},
-            colorscale="Viridis",
-        )
+    heatmap = go.Heatmap(
+        x=frequencies * scipy.constants.nano,  # plotting in GHz
+        y=amplitudes,
+        z=matrix,
+        colorbar={"title": colorbar_title},
+        colorscale="Viridis",
     )
-    fig.update_xaxes(title_text="Drive frequency [GHz]")
-    fig.update_yaxes(title_text="Drive amplitude [a.u.]")
 
-    return fig
+    return heatmap
 
 
 def _signal_phase_figure(
@@ -269,9 +273,47 @@ def _plot(
         absmax_sign = np.sign(pc_matrix[np.argmax(np.abs(pc_matrix))])
         pc_matrix = (pc_matrix * absmax_sign).reshape(*raw.shape[:2])
 
-        figure = _heatmap_figure(
-            frequencies, amplitudes, pc_matrix, "Principal component signal [a.u.]"
+        figure = make_subplots(
+            rows=2,
+            cols=1,
+            vertical_spacing=0.1,
+            horizontal_spacing=0.1,
+            subplot_titles=(
+                "IQ Plane",
+                "Power Spectroscopy",
+            ),
         )
+
+        # row 1: IQ plane with quadrature data and principal axes
+        figure.add_traces(
+            plot_iq_pca(iq, pca.mean_, pca.components_),
+            rows=1,
+            cols=1,
+        )
+
+        figure.add_trace(
+            _heatmap_figure(
+                frequencies, amplitudes, pc_matrix, "Principal component signal [a.u.]"
+            ),
+            row=2,
+            col=1,
+        )
+        # confine the colorbar to the row 2 domain, otherwise it spans the full figure
+        row2_domain = figure.layout.yaxis2.domain
+        figure.data[-1].colorbar.update(
+            y=sum(row2_domain) / 2,
+            len=row2_domain[1] - row2_domain[0],
+            yanchor="middle",
+        )
+        figure.update_layout(
+            showlegend=True,
+            height=1000,
+            xaxis_title="I [a.u.]",
+            yaxis_title="Q [a.u.]",
+            yaxis2_title="Drive Amplitude [a.u.]",
+            xaxis2_title="Drive frequency [GHz]",
+        )
+
     else:
         figure = _signal_phase_figure(frequencies, amplitudes, raw)
 
