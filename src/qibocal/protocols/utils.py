@@ -1324,3 +1324,40 @@ def plot_iq_pca(
     )
 
     return scatters
+
+
+def plot_pca_projections(
+    pca_signal: np.ndarray,
+    plot_param: np.ndarray,
+) -> tuple[go.Scatter, go.Scatter]:
+    """Build scatter traces for the PCA projections of the signal.
+
+    Returns two :class:`go.Scatter` traces: the projection along the principal
+    axis (the one the fit is computed on) and the residual projection along
+    the second axis. Both are plotted against ``plot_param``.
+    """
+
+    # in the second row we define the signal projection along the principal axis
+    # we computed the fit on.
+    first_axis_proj = go.Scatter(
+        x=plot_param,
+        y=pca_signal[:, 0],
+        opacity=1,
+        name="Signal",
+        showlegend=True,
+        legendgroup="Signal",
+        mode="markers",
+    )
+
+    # in the second row we plot the signal projection along the remaining axis.
+    second_axis_proj = go.Scatter(
+        x=plot_param,
+        y=pca_signal[:, 1],
+        opacity=1,
+        name="Residual Signal",
+        showlegend=True,
+        legendgroup="Residual Signal",
+        mode="markers",
+    )
+
+    return first_axis_proj, second_axis_proj

@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from typing import cast
 
+import numpy as np
 import plotly.graph_objects as go
+import scipy.constants
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -11,16 +14,33 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
+from sklearn.decomposition import PCA
 
 from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.resonator_spectroscopies.resonator_punchout import (
+    ResonatorPunchoutData,
+)
+from qibocal.protocols.utils import (
+    Range,
+    RangeLike,
+    plot_iq_pca,
+    readout_frequency,
+    to_range,
+)
+from qibocal.result import magnitude, phase
+from qibocal.update import replace
 
-from ...update import replace
-from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
-from ..utils import HZ_TO_GHZ, Range, RangeLike, readout_frequency, to_range
 from .qubit_spectroscopy import QubitSpectroscopyResults
 
 __all__ = ["qubit_power_spectroscopy"]
+
+PCA_VARIANCE_THRESHOLD = 0.85
+"""Minimum explained variance of the first PCA component to show the PCA heatmap.
+
+If the first component explains less than this fraction of the total variance,
+the signal magnitude and phase are shown in 2D subplots instead.
+"""
 
 
 @dataclass
@@ -158,37 +178,146 @@ def _fit(data: QubitPowerSpectroscopyData) -> Results:
     return Results()
 
 
+def _heatmap_figure(
+    frequencies: np.ndarray,  # must be expressed in Hz
+    amplitudes: list,
+    matrix: np.ndarray,
+    colorbar_title: str,
+) -> go.Heatmap:
+    """Build a 2D heatmap of ``matrix`` (shape ``(n_amplitudes, n_frequencies)``)."""
+    heatmap = go.Heatmap(
+        x=frequencies * scipy.constants.nano,  # plotting in GHz
+        y=amplitudes,
+        z=matrix,
+        colorbar={"title": colorbar_title},
+        colorscale="Viridis",
+    )
+
+    return heatmap
+
+
+def _signal_phase_figure(
+    frequencies: np.ndarray,  # must be expressed in Hz
+    amplitudes: list,
+    raw: np.ndarray,
+) -> go.Figure:
+    """Build a figure with signal magnitude and phase in 2 stacked subplots."""
+    shape = (len(amplitudes), len(frequencies))
+    signal_matrix = magnitude(raw).reshape(shape)
+    phase_matrix = phase(raw).reshape(shape)
+
+    fig = make_subplots(rows=1, cols=2, shared_xaxes=True)
+    fig.add_trace(
+        go.Heatmap(
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
+            y=amplitudes,
+            z=signal_matrix,
+            name="Signal magnitude",
+            colorbar={"title": "Signal magnitude", "x": 0.45},
+            colorscale="Viridis",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Heatmap(
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
+            y=amplitudes,
+            z=phase_matrix,
+            name="Signal phase [rad]",
+            colorbar={"title": "Signal phase [rad]", "x": 1.0},
+            colorscale="Viridis",
+        ),
+        row=1,
+        col=2,
+    )
+    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=1)
+    fig.update_yaxes(title_text="Drive amplitude [a.u.]", row=1, col=1)
+    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=2)
+    fig.update_yaxes(title_text="Drive amplitude [a.u.]", row=1, col=2)
+
+    return fig
+
+
 def _plot(
     data: ResonatorPunchoutData,
     target: QubitId,
     fit: QubitSpectroscopyResults | None = None,
 ):
-    """Plot QubitPunchout."""
-    figures = []
-    fitting_report = ""
-    fig = go.Figure()
-    x, y, _ = data.grid(target)
-    fig.add_trace(
-        go.Heatmap(
-            x=x * HZ_TO_GHZ,
-            y=y,
-            z=data.normalized_signal(target).ravel(),
-            colorbar={"title": "Normalized signal"},
-            colorscale="Viridis",
+    """Plot QubitPowerSpectroscopy.
+
+    A single 2D figure is shown: the PCA-transformed signal if the first
+    principal component explains most of the variance, otherwise the signal
+    magnitude and phase in two subplots.
+    """
+    frequencies = np.asarray(data.frequencies[target])
+    amplitudes = data.amplitudes
+    raw = data.data[target]
+
+    # iq has shape (num_frequencies * num_amplitudes, 2)
+    iq = raw.reshape(-1, raw.shape[-1])
+    # fitted pca over the whole dataset
+    pca = PCA().fit(iq)
+
+    # the first component explains most of the variance -> a single 1D
+    # projection is representative, so show the PCA heatmap
+    first_component_variance = float(pca.explained_variance_ratio_[0])
+
+    if first_component_variance > PCA_VARIANCE_THRESHOLD:
+        # first principal component of the IQ signal
+        pc_matrix = pca.transform(iq)[:, 0]
+
+        # PCA eigenvectors are only defined up to a global sign: enforce a consistent
+        # orientation so that the heatmap is stable across runs and does not flip
+        # upside-down because the principal component is equivalent to its negative.
+        absmax_sign = np.sign(pc_matrix[np.argmax(np.abs(pc_matrix))])
+        pc_matrix = (pc_matrix * absmax_sign).reshape(*raw.shape[:2])
+
+        figure = make_subplots(
+            rows=2,
+            cols=1,
+            vertical_spacing=0.1,
+            horizontal_spacing=0.1,
+            subplot_titles=(
+                "IQ Plane",
+                "Power Spectroscopy",
+            ),
         )
-    )
 
-    fig.update_layout(
-        showlegend=True,
-        legend={"orientation": "h"},
-    )
+        # row 1: IQ plane with quadrature data and principal axes
+        figure.add_traces(
+            plot_iq_pca(iq, pca.mean_, pca.components_),
+            rows=1,
+            cols=1,
+        )
 
-    fig.update_xaxes(title_text="Drive frequency [GHz]")
-    fig.update_yaxes(title_text="Drive amplitude [a.u.]")
+        figure.add_trace(
+            _heatmap_figure(
+                frequencies, amplitudes, pc_matrix, "Principal component signal [a.u.]"
+            ),
+            row=2,
+            col=1,
+        )
+        # confine the colorbar to the row 2 domain, otherwise it spans the full figure
+        row2_domain = figure.layout.yaxis2.domain
+        figure.data[-1].colorbar.update(
+            y=sum(row2_domain) / 2,
+            len=row2_domain[1] - row2_domain[0],
+            yanchor="middle",
+        )
+        figure.update_layout(
+            showlegend=True,
+            height=800,
+            xaxis_title="I [a.u.]",
+            yaxis_title="Q [a.u.]",
+            yaxis2_title="Drive Amplitude [a.u.]",
+            xaxis2_title="Drive frequency [GHz]",
+        )
 
-    figures.append(fig)
+    else:
+        figure = _signal_phase_figure(frequencies, amplitudes, raw)
 
-    return figures, fitting_report
+    return [figure], ""
 
 
 qubit_power_spectroscopy = Protocol(_acquisition, _fit, _plot)
