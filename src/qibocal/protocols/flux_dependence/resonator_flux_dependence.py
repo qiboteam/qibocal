@@ -305,7 +305,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 peak_biases,
                 peak_frequencies,
                 fit_function=fit_function,
-                residual_threshold=APPROXIMATE_RESONATOR_PEAK_WIDTH,
+                residual_threshold=utils.adaptive_residual_threshold(
+                    APPROXIMATE_RESONATOR_PEAK_WIDTH, freq
+                ),
                 bounds=bounds,
             )
             fitted_parameters[qubit] = {
