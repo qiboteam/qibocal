@@ -204,3 +204,44 @@ def test_run_protocol_selects_targets_per_step(tmp_path, monkeypatch):
     assert individual["output_folders"][1].endswith(
         "step-n-plus-2-rabi_amplitude-qubit-2"
     )
+
+
+def test_accept_step_platform_merges_only_accepted_qubits(tmp_path, monkeypatch):
+    session_platform = tmp_path / "new_platform"
+    step_platform = tmp_path / "step" / "new_platform"
+    session_platform.mkdir()
+    step_platform.mkdir(parents=True)
+
+    session = SimpleNamespace(
+        platform_name="mock",
+        session_platform_path=session_platform,
+        latest_step_output=step_platform.parent,
+        latest_step_targets=[0, 1, 2],
+    )
+    current = object()
+    candidate = object()
+    dumped = []
+    updated = SimpleNamespace(dump=lambda path: dumped.append(path))
+    merges = []
+
+    calibration._active_session = session
+    monkeypatch.setattr(
+        calibration,
+        "_load_calibration_platform",
+        lambda path: current if path == session_platform else candidate,
+    )
+    monkeypatch.setattr(
+        calibration,
+        "merge_with_skipped_qubits",
+        lambda old, new, skipped: merges.append((old, new, skipped)) or updated,
+    )
+
+    try:
+        response = asyncio.run(calibration.accept_step_platform([1]))
+    finally:
+        calibration._active_session = None
+
+    assert merges == [(current, candidate, [0, 2])]
+    assert dumped == [session_platform]
+    assert response["accepted_qubits"] == [1]
+    assert response["skipped_qubits"] == [0, 2]

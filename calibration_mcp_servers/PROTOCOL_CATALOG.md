@@ -18,6 +18,10 @@ Description: Data acquisition for allXY experiment. The AllXY experiment is a si
 | --- | --- | --- | --- |
 | `beta_param` | `float` | no | Beta parameter for drag pulse. If None is given, the native rx pulse in the parameters will be used |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `allxy_resonator_depletion_tuning`
 
 Source: `src/qibocal/protocols/allxy/allxy_resonator_depletion_tuning.py`
@@ -32,6 +36,10 @@ Description: Data acquisition for allXY experiment varying delay after a measure
 | `readout_delay` | `int` | no | Delay on readout. |
 | `beta_param` | `float` | no | Beta parameter for drag pulse. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `calibrate_state_discrimination`
 
 Source: `src/qibocal/protocols/signal_experiments/calibrate_state_discrimination.py`
@@ -42,6 +50,12 @@ Description: Data acquisition for Calibrate State Discrimination experiment. Cal
 | --- | --- | --- | --- |
 | `nshots` | `int | None` | no | Number of shots. |
 | `relaxation_time` | `int | None` | no | Relaxation time (ns). |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.kernel` | Calls `qibocal.update.kernel`. |
 
 ### `cancellation_amplitude_tuning`
 
@@ -57,6 +71,12 @@ Description: Data acquisition for Hamiltonian tomography CR protocol. We measure
 | `target_ampl_range` | `tuple[float, float, float]` | yes | Amplitude range of cancellation pulse. |
 | `verbose_plot` | `bool` | no | If `True` in the report all the single Hamiltonian tomographies are plotted. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.CNOT` | Update CNOT gate calibration from cross-resonance fit parameters. Constructs and updates the CNOT gate using cross-resonance pulses with fitted parameters, including single-qubit rotations and virtual Z phases. |
+
 ### `cancellation_phase_tuning`
 
 Source: `src/qibocal/protocols/two_qubit_interaction/cross_resonance/cancellation_phase.py`
@@ -71,6 +91,12 @@ Description: Data acquisition for Hamiltonian tomography CR ctrl_phaseprotocol. 
 | `phase_range` | `tuple[float, float, float]` | yes | CR pulse phase range for control qubit. |
 | `verbose_plot` | `bool` | no | If `True` in the report all the single Hamiltonian tomographies are plotted. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.CNOT` | Update CNOT gate calibration from cross-resonance fit parameters. Constructs and updates the CNOT gate using cross-resonance pulses with fitted parameters, including single-qubit rotations and virtual Z phases. |
+
 ### `chsh`
 
 Source: `src/qibocal/protocols/two_qubit_interaction/chsh/protocol.py`
@@ -82,6 +108,10 @@ Description: Data acquisition for CHSH protocol using pulse sequences.
 | `bell_states` | `list[int]` | yes | List with Bell states to compute CHSH. The following notation it is used: 0 -> \|00>+\|11> 1 -> \|00>-\|11> 2 -> \|10>-\|01> 3 -> \|10>+\|01> |
 | `ntheta` | `int` | yes | Number of angles probed linearly between 0 and 2 pi. |
 | `native` | `bool | None` | no | If True a circuit will be created using only GPI2 and CZ gates. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `correct_virtual_z_phases`
 
@@ -98,6 +128,12 @@ Description: Acquisition for VirtualZPhases. Check the two-qubit landscape creat
 | `dt` | `float | None` | no | Time delay between flux pulses and readout. |
 | `gate_repetition` | `int` | no | Number of CZ repetition |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.{native}` | Calls `qibocal.update.virtual_phases`. |
+
 ### `cpmg`
 
 Source: `src/qibocal/protocols/coherence/cpmg.py`
@@ -111,6 +147,10 @@ Description: Data acquisition for Cpmg
 | `delay_between_pulses_step` | `int` | yes | Step delay between pulses [ns]. |
 | `single_shot` | `bool` | no |  |
 | `n` | `int` | no | Number of pi rotations. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `cr_amplitude`
 
@@ -126,6 +166,12 @@ Description: Data acquisition for Hamiltonian tomography CR protocol. We store t
 | `target_amplitude` | `float | None` | no | Amplitude of the Cancellation pulse on the target qubit |
 | `target_phase` | `float` | no | Phase of the Cancellation pulse on the target qubit |
 | `echo` | `bool` | no | Apply echo sequence or not. The ECR is described in https://arxiv.org/pdf/1210.7011 |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.CNOT` | Update CNOT gate calibration from cross-resonance fit parameters. Constructs and updates the CNOT gate using cross-resonance pulses with fitted parameters, including single-qubit rotations and virtual Z phases. |
 
 ### `cr_length`
 
@@ -143,6 +189,12 @@ Description: Data acquisition for Hamiltonian tomography CR protocol.
 | `target_amplitude` | `float | None` | no | Amplitude of cancellation pulse. |
 | `target_phase` | `float` | no | Phase of target pulse. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.CNOT` | Update CNOT gate calibration from cross-resonance fit parameters. Constructs and updates the CNOT gate using cross-resonance pulses with fitted parameters, including single-qubit rotations and virtual Z phases. |
+
 ### `cryoscope`
 
 Source: `src/qibocal/protocols/flux_dependence/cryoscope.py`
@@ -157,6 +209,12 @@ Description: Acquisition for cryoscope experiment. The following sequence is pla
 | `iir` | `bool` | yes | Whether an IIR filter should be determined. If False only an FIR filter is determined. |
 | `padding_duration` | `float` | no | Duration in ns of the leading zeros in the flux pulse. Padding is fixed during the duration sweep and added before the pulse. The waveform consists of `padding_duration` ns of zeros followed by `duration` ns of rectangular samples, for a total length of `padding_duration + duration`. Useful when hardware enforces a minimum pulse length. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[target].flux}.filters` | Mutates qibolab platform parameters using dotted paths. |
+
 ### `dispersive_shift`
 
 Source: `src/qibocal/protocols/dispersive_shift/dispersive_shift.py`
@@ -169,6 +227,15 @@ Description: Data acquisition for dispersive shift experiment. Perform spectrosc
 | `freq_width` | `int | None` | no | Width [Hz] for frequency sweep relative to the readout frequency [Hz]. |
 | `freq_step` | `int | None` | no | Frequency step for sweep [Hz]. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].readout.coupling` | Calls `qibocal.update.readout_coupling`. |
+| `calibration.single_qubits[qubit].resonator.dressed_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `platform.calibration.single_qubits[target].readout.qudits_frequency[1]` | Assigns calibration fields directly on the platform. |
+
 ### `dispersive_shift_qutrit`
 
 Source: `src/qibocal/protocols/dispersive_shift/dispersive_shift_qutrit.py`
@@ -180,6 +247,10 @@ Description: Data acquisition for dispersive shift qutrit experiment. Perform sp
 | `frequency` | `RangeLike | None` | no | Frequency range [Hz]. |
 | `freq_width` | `int | None` | no | Width [Hz] for frequency sweep relative to the readout frequency [Hz]. |
 | `freq_step` | `int | None` | no | Frequency step for sweep [Hz]. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `drag_simple`
 
@@ -195,6 +266,12 @@ Description: Acquisition function for DRAG experiments. We execute two sequences
 | `beta_step` | `float | None` | no | DRAG pulse beta sweep step parameter. |
 | `nflips` | `int` | no | Repetitions of (Xpi - Xmpi). |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX.0.1.envelope.kind`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.envelope.beta` | Update beta parameter value in platform for specific qubit. |
+
 ### `drag_tuning`
 
 Source: `src/qibocal/protocols/drag/drag.py`
@@ -208,6 +285,12 @@ Description: Data acquisition for drag pulse tuning experiment. See https://arxi
 | `beta_end` | `float | None` | no | DRAG pulse beta end sweep parameter. |
 | `beta_step` | `float | None` | no | DRAG pulse beta sweep step parameter. |
 | `nflips` | `int` | no | Repetitions of (Xpi - Xmpi). |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX.0.1.envelope.kind`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.envelope.beta` | Update beta parameter value in platform for specific qubit. |
 
 ### `filtered_rb`
 
@@ -223,6 +306,10 @@ Description: The data acquisition stage of Filtered Randomized Benchmarking. 1. 
 | `seed` | `int | None` | no | A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed. Defaults is ``None``. |
 | `nshots` | `int` | no | Just to add the default value. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `flipping`
 
 Source: `src/qibocal/protocols/flipping.py`
@@ -235,6 +322,12 @@ Description: Data acquisition for flipping. The flipping experiment correct the 
 | `nflips_step` | `int` | yes | Flip step. |
 | `delta_amplitude` | `float` | no | Amplitude detuning. |
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
 
 ### `flux_amplitude_frequency`
 
@@ -251,6 +344,13 @@ Description: FluxAmplitudeFrequency runcard inputs.
 | `crosstalk_qubit` | `QubitId | None` | no | If provided a flux pulse will be applied on this qubit. Enable to compute the crosstalk matrix. |
 | `flux_pulse_amplitude` | `float` | no | Flux pulse amplitude on target qubits to bias from sweetstpot. It should be provided only if crosstalk is not None. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.flux_crosstalk_matrix` | Update crosstalk_matrix element. |
+| `platform.calibration.single_qubits[target].qubit.flux_coefficients` | Assigns calibration fields directly on the platform. |
+
 ### `flux_gate`
 
 Source: `src/qibocal/protocols/flux_dependence/flux_gate.py`
@@ -264,6 +364,10 @@ Description: FluxGate runcard inputs.
 | `duration_step` | `float` | yes | Flux pulse duration step. |
 | `flux_pulse_amplitude` | `float` | yes | Flux pulse amplitude. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `jazz`
 
 Source: `src/qibocal/protocols/zz_interaction/jazz.py`
@@ -273,6 +377,12 @@ Description: Data acquisition for JAZZ
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `delay_range` | `tuple[float, float, float]` | yes | delay time range (start, stop, step) in the sequence. Applied twice. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.two_qubits.setdefault(pair, TwoQubitCalibration()).coupling` | Calls `qibocal.update.pair_coupling`. |
 
 ### `optimize_two_qubit_gate`
 
@@ -294,6 +404,14 @@ Description: Repetition of correct virtual phase experiment for several amplitud
 | `dt` | `float` | no | Time delay between flux pulses and readout. |
 | `native` | `str` | no | Two qubit interaction to be calibrated. iSWAP and CZ are the possible options. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.{native}` | Calls `qibocal.update.virtual_phases`. |
+| - | Calls a dynamically selected qibocal update helper. |
+| - | Calls a dynamically selected qibocal update helper. |
+
 ### `qubit_crosstalk`
 
 Source: `src/qibocal/protocols/flux_dependence/qubit_crosstalk.py`
@@ -313,6 +431,12 @@ Description: Data acquisition for Crosstalk Experiment.
 | `bias_point` | `dict[QubitId, float] | None` | no | Dictionary with {qubit_id: bias_point_qubit_id}. |
 | `flux_qubits` | `list[QubitId] | None` | no | IDs of the qubits that we will sweep the flux on. If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion. If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions). Multiple qubits may be measured in each execution as specified by the ``qubits`` option in the runcard. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.flux_crosstalk_matrix` | Update crosstalk_matrix element. |
+
 ### `qubit_flux`
 
 Source: `src/qibocal/protocols/flux_dependence/qubit_flux_dependence.py`
@@ -329,6 +453,16 @@ Description: Data acquisition for QubitFlux Experiment.
 | `bias` | `RangeLike | None` | no | Bias [a.u.] range for sweep. |
 | `drive_amplitude` | `float` | no | Amplitude of the drive pulse. |
 | `drive_duration` | `int` | no | Duration of the drive pulse. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].drive}.frequency` | Update drive frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].qubit.sweetspot` | Update sweetspot parameter in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].flux}.offset` | Update flux offset parameter in platform for specific qubit. |
+| `calibration.flux_crosstalk_matrix` | Update crosstalk_matrix element. |
+| `platform.calibration.single_qubits[qubit].qubit.maximum_frequency` | Assigns calibration fields directly on the platform. |
 
 ### `qubit_power_spectroscopy`
 
@@ -347,6 +481,10 @@ Description: Perform a qubit spectroscopy experiment with different amplitudes. 
 | `step_amp` | `float | None` | no | Step amplitude. |
 | `duration` | `int` | no | Drive duration. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `qubit_spectroscopy`
 
 Source: `src/qibocal/protocols/qubit_spectroscopies/qubit_spectroscopy.py`
@@ -360,6 +498,13 @@ Description: Data acquisition for qubit spectroscopy. Handles wideband spectrosc
 | `freq_step` | `int | None` | no | Frequency [Hz] step for sweep. |
 | `drive_duration` | `int` | no | Drive pulse duration [ns]. Same for all qubits. |
 | `drive_amplitude` | `float` | no | Drive pulse amplitude (optional). Same for all qubits. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].drive}.frequency` | Update drive frequency value in platform for specific qubit. |
+| `platform.calibration.single_qubits[target].qubit.frequency_01` | Assigns calibration fields directly on the platform. |
 
 ### `qubit_spectroscopy_ef`
 
@@ -375,6 +520,13 @@ Description: Data acquisition for qubit spectroscopy ef protocol. Similar to a q
 | `drive_duration` | `int` | no | Drive pulse duration [ns]. Same for all qubits. |
 | `drive_amplitude` | `float` | no | Drive pulse amplitude (optional). Same for all qubits. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].qubit.frequency_12`, `parameters.configs.{platform.qubits[qubit].drive_extra[1, 2]}.frequency` | Calls `qibocal.update.frequency_12_transition`. |
+| `platform.calibration.single_qubits[target].qubit.frequency_12` | Assigns calibration fields directly on the platform. |
+
 ### `qubit_vz`
 
 Source: `src/qibocal/protocols/flux_dependence/qubit_vz.py`
@@ -387,6 +539,10 @@ Description: The pulse sequence for this experiment is as follows: 1. X90 rotati
 | `duration` | `int` | no | The duration of flux pulse (ns). |
 | `use_flux_pulse` | `bool` | no | If false, will not apply the flux pulse. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `qutrit_classification`
 
 Source: `src/qibocal/protocols/classification/qutrit_classification.py`
@@ -397,6 +553,10 @@ Description: This Protocol prepares the qubits in 0,1 and 2 states and measures 
 | --- | --- | --- | --- |
 | `classifiers_list` | `list[str] | None` | no | List of models to classify the qubit states. |
 | `savedir` | `str | None` | no | Dumping folder of the classification results. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `rabi_amplitude`
 
@@ -412,6 +572,13 @@ Description: Data acquisition for Rabi experiment sweeping amplitude. In the Rab
 | `pulse_length` | `float | None` | no | RX pulse duration [ns]. |
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.duration`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.duration` | Update drive duration value in platform for specific qubit. |
+
 ### `rabi_amplitude_ef`
 
 Source: `src/qibocal/protocols/rabi/ef.py`
@@ -425,6 +592,12 @@ Description: Data acquisition for Rabi EF experiment sweeping amplitude. The rab
 | `step_amp` | `float` | yes | Step amplitude. |
 | `pulse_length` | `float | None` | no | RX pulse duration [ns]. |
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{target}.RX12` | Mutates qibolab platform parameters using dotted paths. |
 
 ### `rabi_amplitude_frequency`
 
@@ -443,6 +616,12 @@ Description: Data acquisition for Rabi experiment sweeping amplitude.
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 | `pulse_length` | `float | None` | no | RX pulse duration [ns]. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.{native}` | Calls `qibocal.update.virtual_phases`. |
+
 ### `rabi_amplitude_frequency_signal`
 
 Source: `src/qibocal/protocols/rabi/amplitude_frequency_signal.py`
@@ -460,6 +639,14 @@ Description: Data acquisition for Rabi experiment sweeping amplitude.
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 | `pulse_length` | `float | None` | no | RX pulse duration [ns]. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.duration`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.duration` | Update drive duration value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].drive}.frequency` | Update drive frequency value in platform for specific qubit. |
+
 ### `rabi_amplitude_signal`
 
 Source: `src/qibocal/protocols/rabi/amplitude_signal.py`
@@ -473,6 +660,13 @@ Description: Data acquisition for Rabi experiment sweeping amplitude. In the Rab
 | `step_amp` | `float` | yes | Step amplitude. |
 | `pulse_length` | `float | None` | no | RX pulse duration [ns]. |
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.duration`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.duration` | Update drive duration value in platform for specific qubit. |
 
 ### `rabi_length`
 
@@ -488,6 +682,13 @@ Description: Data acquisition for RabiLength Experiment. In the Rabi experiment 
 | `pulse_amplitude` | `float | None` | no | Pi pulse amplitude. Same for all qubits. |
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 | `interpolated_sweeper` | `bool` | no | Use real-time interpolation if supported by instruments. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.duration`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.duration` | Update drive duration value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
 
 ### `rabi_length_frequency`
 
@@ -507,6 +708,12 @@ Description: Data acquisition for Rabi experiment sweeping length.
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 | `interpolated_sweeper` | `bool` | no | Use real-time interpolation if supported by instruments. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.{native}` | Calls `qibocal.update.virtual_phases`. |
+
 ### `rabi_length_frequency_signal`
 
 Source: `src/qibocal/protocols/rabi/length_frequency_signal.py`
@@ -525,6 +732,14 @@ Description: Data acquisition for Rabi experiment sweeping length.
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 | `interpolated_sweeper` | `bool` | no | Use real-time interpolation if supported by instruments. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.duration`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.duration` | Update drive duration value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].drive}.frequency` | Update drive frequency value in platform for specific qubit. |
+
 ### `rabi_length_signal`
 
 Source: `src/qibocal/protocols/rabi/length_signal.py`
@@ -540,6 +755,13 @@ Description: Data acquisition for RabiLength Experiment. In the Rabi experiment 
 | `rx90` | `bool` | no | Calibration of native pi pulse, if true calibrates pi/2 pulse |
 | `interpolated_sweeper` | `bool` | no | Use real-time interpolation if supported by instruments. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.duration`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.duration` | Update drive duration value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.RX90.0.1.amplitude`, `parameters.native_gates.single_qubit.{qubit}.RX.0.1.amplitude` | Update drive frequency value in platform for specific qubit. |
+
 ### `ramsey`
 
 Source: `src/qibocal/protocols/ramsey/classification.py`
@@ -553,6 +775,14 @@ Description: Data acquisition for Ramsey Experiment.
 | `delay_between_pulses_end` | `float | None` | no | Final delay between RX(pi/2) pulses in ns. |
 | `delay_between_pulses_step` | `float | None` | no | Step delay between RX(pi/2) pulses in ns. |
 | `detuning` | `float | None` | no | Frequency detuning [Hz] (optional). If 0 standard Ramsey experiment is performed. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].drive}.frequency` | Update drive frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].t2` | Update t2 value in platform for specific qubit. |
+| `platform.calibration.single_qubits[target].qubit.frequency_01` | Assigns calibration fields directly on the platform. |
 
 ### `ramsey_signal`
 
@@ -568,6 +798,14 @@ Description: Data acquisition for Ramsey Experiment (detuned).
 | `delay_between_pulses_step` | `float | None` | no | Step delay between RX(pi/2) pulses in ns. |
 | `detuning` | `float | None` | no | Frequency detuning [Hz] (optional). If 0 standard Ramsey experiment is performed. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].drive}.frequency` | Update drive frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].t2` | Update t2 value in platform for specific qubit. |
+| `platform.calibration.single_qubits[target].qubit.frequency_01` | Assigns calibration fields directly on the platform. |
+
 ### `ramsey_zz`
 
 Source: `src/qibocal/protocols/zz_interaction/ramsey_zz.py`
@@ -579,6 +817,12 @@ Description: Data acquisition for RamseyZZ Experiment. Targets is a list of qubi
 | `delay_range` | `tuple[float, float, float]` | yes | delay time range (start, stop, step) in the sequence. Applied twice. |
 | `detuning` | `float | None` | no | Frequency detuning [Hz]. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.two_qubits.setdefault(pair, TwoQubitCalibration()).coupling` | Calls `qibocal.update.pair_coupling`. |
+
 ### `readout_characterization`
 
 Source: `src/qibocal/protocols/readout/readout_characterization.py`
@@ -588,6 +832,13 @@ Description: Data acquisition for resonator spectroscopy.
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `delay` | `float` | no | Delay between readouts, could account for resonator deplation or not [ns]. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].readout.fidelity` | Update fidelity of single shot classification. |
+| `platform.calibration.single_qubits[target].readout.effective_temperature` | Assigns calibration fields directly on the platform. |
 
 ### `readout_mitigation_matrix`
 
@@ -599,6 +850,10 @@ Description: ReadoutMitigationMatrix matrix inputs.
 | --- | --- | --- | --- |
 | `nshots` | `int | None` | no | Number of shots. |
 | `relaxation_time` | `int | None` | no | Relaxation time [ns]. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `resonator_flux`
 
@@ -617,6 +872,16 @@ Description: Data acquisition for ResonatorFlux experiment.
 | `bias_center` | `float | None` | no |  |
 | `freq_center` | `float | None` | no |  |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].resonator.dressed_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].readout.coupling` | Calls `qibocal.update.readout_coupling`. |
+| `parameters.configs.{platform.qubits[qubit].flux}.offset` | Update flux offset parameter in platform for specific qubit. |
+| `calibration.single_qubits[qubit].qubit.sweetspot` | Update sweetspot parameter in platform for specific qubit. |
+
 ### `resonator_punchout`
 
 Source: `src/qibocal/protocols/resonator_spectroscopies/resonator_punchout.py`
@@ -630,6 +895,15 @@ Description: Data acquisition for Punchout over amplitude.
 | `min_amp` | `float` | yes | Minimum amplitude. |
 | `max_amp` | `float` | yes | Maximum amplitude. |
 | `step_amp` | `float` | yes | Step amplitude. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].resonator.dressed_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].resonator.bare_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude` | Update readout amplitude value in platform for specific qubit. |
 
 ### `resonator_punchout_attenuation`
 
@@ -645,6 +919,15 @@ Description: Data acquisition for Punchout using LO attenuation sweep. Arguments
 | `max_attenuation` | `float` | yes | Maximum LO attenuation [dB]. |
 | `step_attenuation` | `float` | yes | Step LO attenuation [dB]. |
 | `attenuation_range` | `np.ndarray` | no |  |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].resonator.bare_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].resonator.dressed_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `parameters.configs.{platform.channels[channel].lo}.power` | Update LO attenuation value in platform for specific qubit. |
 
 ### `resonator_spectroscopy`
 
@@ -662,6 +945,16 @@ Description: Data acquisition for resonator spectroscopy.
 | `phase_sign` | `bool` | no | Several instruments have their convention about the sign of the phase. If True, the routine will apply a minus to the phase data. |
 | `amplitude` | `float | None` | no | Readout amplitude (optional). If defined, same amplitude will be used in all qubits. Otherwise the default amplitude defined on the platform runcard will be used |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `parameters.native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude` | Update readout amplitude value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].resonator.dressed_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].resonator.bare_frequency` | Update rbare frequency value in platform for specific qubit. |
+| `platform.calibration.single_qubits[target].resonator.bare_frequency_amplitude` | Assigns calibration fields directly on the platform. |
+
 ### `ro_amplitude`
 
 Source: `src/qibocal/protocols/readout/amplitude_optimization.py`
@@ -672,6 +965,14 @@ Description: Data acquisition for resonator amplitude optimization.
 | --- | --- | --- | --- |
 | `amplitude_range` | `RangeLike` | yes | Amplitude RangeLike object. For further information, see :class:`qibocal.protocols.utils.RangeLike`. |
 | `save_iq` | `bool` | no | Whether to save the IQ data during the acquisition. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude` | Update readout amplitude value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.iq_angle` | Update iq angle value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.threshold` | Calls `qibocal.update.threshold`. |
 
 ### `ro_amplitude_frequency`
 
@@ -686,6 +987,15 @@ Description: Protocol to optimize readout frequency and readout amplitude.
 | `delay` | `float` | no | Delay between readouts, could account for resonator depletion or not [ns]. |
 | `save_iq` | `bool` | no | Whether to save the IQ data during the acquisition. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude` | Update readout amplitude value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.iq_angle` | Update iq angle value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.threshold` | Calls `qibocal.update.threshold`. |
+
 ### `ro_frequency`
 
 Source: `src/qibocal/protocols/readout/frequency_optimization.py`
@@ -697,6 +1007,14 @@ Description: Data acquisition for readout frequency optimization.
 | `frequency_range` | `RangeLike` | yes | Frequency RangeLike object. For further information, see :class:`qibocal.protocols.utils.RangeLike`. |
 | `save_iq` | `bool` | no | Whether to save the IQ data during the acquisition. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].probe}.frequency` | Update readout frequency value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.threshold` | Calls `qibocal.update.threshold`. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.iq_angle` | Update iq angle value in platform for specific qubit. |
+
 ### `single_shot_classification`
 
 Source: `src/qibocal/protocols/classification/classification.py`
@@ -707,6 +1025,17 @@ Description: Args: nshots (int): number of times the pulse sequence will be repe
 | --- | --- | --- | --- |
 | `classifiers_list` | `list[str] | None` | no | List of models to classify the qubit states. |
 | `savedir` | `str | None` | no | Dumping folder of the classification results. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.iq_angle` | Update iq angle value in platform for specific qubit. |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.threshold` | Calls `qibocal.update.threshold`. |
+| `calibration.single_qubits[qubit].readout.ground_state` | Update mean ground state value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].readout.excited_state` | Update mean excited state value in platform for specific qubit. |
+| `calibration.single_qubits[qubit].readout.fidelity` | Update fidelity of single shot classification. |
+| `platform.calibration.single_qubits[target].readout.effective_temperature` | Assigns calibration fields directly on the platform. |
 
 ### `spin_echo`
 
@@ -721,6 +1050,12 @@ Description: Data acquisition for SpinEcho
 | `delay_between_pulses_step` | `int` | yes | Step delay between pulses [ns]. |
 | `single_shot` | `bool` | no |  |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t2_spin_echo` | Update t2 echo value in platform for specific qubit. |
+
 ### `spin_echo_signal`
 
 Source: `src/qibocal/protocols/coherence/spin_echo_signal.py`
@@ -733,6 +1068,12 @@ Description: Data acquisition for SpinEcho
 | `delay_between_pulses_end` | `int` | yes | Final delay between pulses [ns]. |
 | `delay_between_pulses_step` | `int` | yes | Step delay between pulses [ns]. |
 | `single_shot` | `bool` | no |  |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t2_spin_echo` | Update t2 echo value in platform for specific qubit. |
 
 ### `standard_rb`
 
@@ -747,6 +1088,12 @@ Description: The data acquisition stage of Standard Randomized Benchmarking. 1. 
 | `uncertainties` | `float | None` | no | Method of computing the error bars of the signal and uncertainties of the fit. If ``None``, it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`. |
 | `seed` | `int | None` | no | A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed. Defaults is ``None``. |
 | `nshots` | `int` | no | Just to add the default value. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `platform.calibration.single_qubits[target].rb_fidelity` | Assigns calibration fields directly on the platform. |
 
 ### `standard_rb_2q`
 
@@ -763,6 +1110,12 @@ Description: Data acquisition for two qubit Standard Randomized Benchmarking.
 | `nshots` | `int` | no | Just to add the default value. |
 | `file` | `str` | no | File with the cliffords to be used. |
 | `file_inv` | `str` | no | File with the cliffords to be used in an inverted dict. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `platform.calibration.two_qubits[target].rb_fidelity`, `platform.calibration.two_qubits[target]` | Assigns calibration fields directly on the platform. |
 
 ### `standard_rb_2q_inter`
 
@@ -781,6 +1134,12 @@ Description: Data acquisition for two qubit Interleaved Randomized Benchmarking.
 | `file_inv` | `str` | no | File with the cliffords to be used in an inverted dict. |
 | `interleave` | `str` | no | Gate to interleave |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `platform.calibration.two_qubits[target].cz_fidelity` | Assigns calibration fields directly on the platform. |
+
 ### `standard_rb_sweeper`
 
 Source: `src/qibocal/protocols/randomized_benchmarking/standard_rb_sweeper.py`
@@ -795,6 +1154,12 @@ Description: The data acquisition stage of Standard Randomized Benchmarking. Ins
 | `seed` | `int | None` | no | A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed. Defaults is ``None``. |
 | `nshots` | `int` | no | Just to add the default value. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.native_gates.two_qubit.{_dump_pair(pair)}.{native}` | Calls `qibocal.update.virtual_phases`. |
+
 ### `state_tomography`
 
 Source: `src/qibocal/protocols/tomographies/state_tomography.py`
@@ -804,6 +1169,10 @@ Description: Acquisition protocol for single qubit state tomography experiment.
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | None | - | - | This operation has no protocol-specific parameters. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `t1`
 
@@ -817,6 +1186,12 @@ Description: Data acquisition for T1 experiment.
 | `delay_before_readout_end` | `int` | yes | Final delay before readout [ns]. |
 | `delay_before_readout_step` | `int` | yes | Step delay before readout [ns]. |
 | `single_shot` | `bool` | no | If ``True`` save single shot signal data. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t1` | Update t1 value in platform for specific qubit. |
 
 ### `t1_flux`
 
@@ -833,6 +1208,10 @@ Description: Data acquisition for T1 flux experiment.
 | `amplitude_max` | `float` | yes | Flux pulse maximum amplitude. |
 | `amplitude_step` | `float` | yes | Flux pulse amplitude step. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `t1_signal`
 
 Source: `src/qibocal/protocols/coherence/t1_signal.py`
@@ -845,6 +1224,12 @@ Description: Data acquisition for T1 experiment. In this protocol the y axis is 
 | `delay_before_readout_end` | `int` | yes | Final delay before readout [ns]. |
 | `delay_before_readout_step` | `int` | yes | Step delay before readout [ns]. |
 | `single_shot` | `bool` | no | If ``True`` save single shot signal data. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t1` | Update t1 value in platform for specific qubit. |
 
 ### `t2`
 
@@ -862,6 +1247,12 @@ Description: Data acquisition for T2 experiment.
 | `delay_between_pulses_end` | `int` | yes | Final delay between RX(pi/2) pulses in ns. |
 | `delay_between_pulses_step` | `int` | yes | Step delay between RX(pi/2) pulses in ns. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t2` | Update t2 value in platform for specific qubit. |
+
 ### `t2_flux`
 
 Source: `src/qibocal/protocols/coherence/t2_flux.py`
@@ -877,6 +1268,10 @@ Description: Data acquisition for T2 flux experiment.
 | `amplitude_max` | `float` | yes | Flux pulse maximum amplitude. |
 | `amplitude_step` | `float` | yes | Flux pulse amplitude step. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `t2_signal`
 
 Source: `src/qibocal/protocols/coherence/t2_signal.py`
@@ -890,6 +1285,12 @@ Description: Data acquisition for T2 experiment. In this protocol the y axis is 
 | `delay_between_pulses_step` | `int` | yes | Step delay between RX(pi/2) pulses in ns. |
 | `single_shot` | `bool` | no | If ``True`` save single shot signal data. |
 
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t2` | Update t2 value in platform for specific qubit. |
+
 ### `time_of_flight_readout`
 
 Source: `src/qibocal/protocols/signal_experiments/time_of_flight_readout.py`
@@ -901,6 +1302,12 @@ Description: Data acquisition for time of flight experiment.
 | `detuning` | `float` | no | Detuning with respect to corresponding LO frequency [Hz]. |
 | `readout_amplitude` | `int | None` | no | Amplitude of the readout pulse. |
 | `window_size` | `int | None` | no | Window size for the moving average. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{platform.qubits[qubit].acquisition}.delay` | Mutates qibolab platform parameters using dotted paths. |
 
 ### `two_levels_crossing`
 
@@ -915,6 +1322,10 @@ Description: Runs the `two levels crossing` calibration protocol.
 | `duration` | `float` | no | Spectroscopic pulses duration. |
 | `amplitude` | `float | tuple[float, float]` | no | Spectroscopic pulses amplitude. |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `two_qubit_state_tomography`
 
 Source: `src/qibocal/protocols/tomographies/two_qubit_state_tomography.py`
@@ -924,6 +1335,10 @@ Description: Acquisition protocol for two qubit state tomography experiment.
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | None | - | - | This operation has no protocol-specific parameters. |
+
+**Platform update fields**
+
+This protocol does not define an `_update` function.
 
 ### `twpa_calibration`
 
@@ -942,6 +1357,10 @@ Description: Acquisition function for TwpaCalibration. First perform a scan over
 | `nshots` | `int | None` | no | Number of shots. |
 | `relaxation_time` | `int | None` | no | Relaxation time (ns). |
 
+**Platform update fields**
+
+This protocol does not define an `_update` function.
+
 ### `zeno`
 
 Source: `src/qibocal/protocols/coherence/zeno.py`
@@ -951,6 +1370,12 @@ Description: In a T1_Zeno experiment, we measure an excited qubit repeatedly. Du
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | `readouts` | `int` | yes | Number of readout pulses |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `calibration.single_qubits[qubit].t1` | Update t1 value in platform for specific qubit. |
 
 ## System-specific protocols
 
@@ -965,3 +1390,9 @@ Description: Data acquisition for mixer calibration. This routine calibrates the
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
 | None | - | - | This operation has no protocol-specific parameters. |
+
+**Platform update fields**
+
+| Field | Description |
+| --- | --- |
+| `parameters.configs.{ch.mixer}.offset_i`, `parameters.configs.{ch.mixer}.offset_q`, `parameters.configs.{ch.mixer}.scale_q`, `parameters.configs.{ch.mixer}.phase_q` | Mutates qibolab platform parameters using dotted paths. |

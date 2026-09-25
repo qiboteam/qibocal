@@ -2,12 +2,12 @@
 
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
-from qibolab import locate_platform
+from qibolab.platform import Platform, load_hardware, locate_platform
 
 from calibration_mcp_servers._common import (
     make_output_path,
@@ -16,6 +16,9 @@ from calibration_mcp_servers._common import (
     run_qq,
     write_runcard,
 )
+from qibocal.calibration import CalibrationPlatform
+from qibocal.calibration.calibration import CALIBRATION, Calibration
+from qibocal.cli.update import merge_with_skipped_qubits
 
 CATALOG = Path(__file__).with_name("PROTOCOL_CATALOG.md")
 
@@ -36,11 +39,19 @@ class CalibrationSession:
     partition: str | None
     step_counter: int = 0
     latest_step_output: Path | None = None
+    latest_step_targets: list[Any] | None = None
+    latest_operation: str | None = None
+    manual_override_operation: str | None = None
+    manual_override_targets: list[Any] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """Create a session-local platform copy that is isolated from the real registry."""
         self.step_counter = 0
         self.latest_step_output = None
+        self.latest_step_targets = None
+        self.latest_operation = None
+        self.manual_override_operation = None
+        self.manual_override_targets = []
         source = Path(locate_platform(self.platform_name))
         self.session_platform_path = self.path / "new_platform"
         if self.session_platform_path.exists():
@@ -60,6 +71,18 @@ def _session() -> CalibrationSession:
     if _active_session is None:
         raise RuntimeError("No calibration is active. Call start_calibration first.")
     return _active_session
+
+
+def _load_calibration_platform(path: Path) -> CalibrationPlatform:
+    hardware = load_hardware(path)
+    platform = Platform.load(path, **vars(hardware))
+    calibration_path = path / CALIBRATION
+    calibration = (
+        Calibration.model_validate_json(calibration_path.read_text())
+        if calibration_path.exists()
+        else Calibration()
+    )
+    return CalibrationPlatform(**vars(platform), calibration=calibration)
 
 
 def _close_session(*, accept_latest_platform: bool) -> dict[str, Any] | None:
@@ -177,7 +200,9 @@ def plan_automatic_calibration(request: str) -> str:
 This is a fully autonomous calibration run. After the initial user request, do
 not ask for approval or additional instructions at every step. Start once with
 `start_calibration`, then proceed without awaiting further user input until the
-calibration goal is reached and the session is closed with `finish_calibration`.
+calibration goal is reached and the session is closed with `finish_calibration`,
+or the calibration cannot be completed and the session is closed with
+`abort_calibration`.
 
 Read `qibocal://protocol-catalog`, then call `start_calibration` once. Before
 thinking about the strategy to adopt, call `platform_architecture` to understand
@@ -191,11 +216,12 @@ which targets each protocol needs. Then build the strategy dynamically and call
 runs `qq run` in its own step folder under the session's `data_folder`, and the
 working platform for this session is stored in a dedicated local session platform
 folder instead of the global Qibolab platform. After every call, inspect the PNG
-figures in that step's output folder and judge whether the fitted curve matches the
-measured signal and physical expectation. If the fit is good, accept the step and
-update the session working platform; if the fit is poor or inconsistent, do NOT
-accept the update, keep the previous working platform, and change the strategy
-before the next step. Pass `targets` to run only the qubits that need that step.
+figures in that step's output folder and judge for each qubit whether the fitted
+curve matches the measured signal and physical expectation. Build a list of the
+qubits with good fits and pass it as `accepted_qubits` to `accept_step_platform`;
+updates for the remaining qubits are discarded. If no fit is good, pass an empty
+list, keep the previous working platform, and change the strategy before the next
+step. Pass `targets` to run only the qubits that need that step.
 For every protocol, `targets` must be a non-empty subset of the session targets
 passed to `start_calibration`; using the entire session target set is also valid.
 Omit `targets` to use that entire set. All protocol executions are parallel by
@@ -206,7 +232,104 @@ the Qibolab registry during the step. Continue adapting until the calibration go
 is complete, then explicitly call `accept_step_platform` only for steps whose PNGs
 show a trustworthy fit, and finally call `finish_calibration`. When the
 calibration is complete, use the existing `update_platform` tool with the session's
-`data_folder` to publish the final calibrated platform to the Qibolab registry."""
+`data_folder` to publish the final calibrated platform to the Qibolab registry.
+If repeated refinements cannot produce trustworthy fits, required protocols or
+platform information are unavailable, or continuing would produce an unreliable
+calibration, call `abort_calibration` instead. Aborting preserves the collected
+step data but does not accept the latest step or publish the session platform.
+Report the reason for aborting and do not call `finish_calibration` or
+`update_platform` afterward.
+
+## Strategy Template
+
+### From-scratch calibration (user explicitly asks to calibrate "from scratch" / "from the beginning")
+
+Follow this ordered sequence. For each phase, run all applicable protocols for
+the selected targets before moving to the next phase.
+
+**Phase 1 — Resonator characterization**
+
+**Phase 2 — Qubit characterization**
+
+**Phase 3 — Signal experiments (drive calibration)**
+Calibrate the drive pulse using signal experiments
+
+**Phase 4 — Single-shot classification**
+
+**Phase 5 — Classification and Readout optimization**
+Optimize assignment fidelity and gate fidelity
+
+Iterate within Phase 5: if fidelity is below target, go back to Phase 3 or 4
+to refine the drive/readout calibration, then re-run the classification protocols.
+
+### Incremental calibration (user does NOT specify "from scratch")
+
+1. Call `platform_architecture` to understand the QPU.
+2. Inspect the current platform state (read the session platform's
+   `parameters.json` and any existing calibration data) to determine which
+   quantities are already calibrated and which are missing or stale.
+3. Identify the FIRST phase in the template above where information is missing
+   or incomplete for the target qubits.
+4. Start from that phase and proceed forward through the remaining phases,
+   skipping any phase that is already fully calibrated.
+5. If a specific quantity is missing (e.g., only `qubit_flux` is missing),
+   run only the relevant protocol rather than the entire phase.
+
+In both modes, adapt the strategy dynamically: if a fit is poor, revise
+parameters or skip to an alternative protocol before proceeding.
+
+## Parameter Selection: Quick-and-Dirty First
+
+When choosing protocol parameters (frequency ranges, sweep steps, amplitude
+ranges, pulse durations, etc.), ALWAYS prefer a quick and dirty run over an
+exhaustive one:
+
+- Use a **narrow initial range** centered on the expected value (from the
+  platform state or a previous step) rather than a wide blind sweep.
+- Use a **coarse step** (fewer data points) for the first pass.
+- Keep `nshots` at the platform default or lower for exploratory runs.
+
+After each run, inspect the PNG figures and judge whether the resolution is
+fine enough to produce a trustworthy fit:
+
+- If the peak/feature is **clearly resolved** and the fit converges well,
+  accept the step and move on.
+- If the feature is **barely visible**, the fit is noisy, or the peak position
+  is uncertain, **repeat the same protocol** with a slightly finer resolution
+  (smaller step, or a narrower range centered on the coarse peak).
+- If the feature is **missing entirely**, widen the range and re-run.
+- If the **fit is poor** (e.g., the Lorentzian/sine model does not converge,
+  or the fitted value is unphysical) but you can **confidently read the
+  quantity directly from the raw signal** (e.g., the peak is visually obvious
+  even though the automated fit failed), do the following:
+  1. Estimate the quantity from the signal (peak position, oscillation
+     period, etc.).
+  2. Look up the **Platform update fields** table for the protocol you just ran
+     in `qibocal://protocol-catalog`. Do not guess a path from scratch: pick the
+     row whose field matches the quantity you estimated. Then read the path to
+     modify carefully:
+
+     - If the path starts with `parameters`, edit the platform's
+       `parameters.json` using the exact path under that file; infer any
+       placeholder entries such as `target` or `qubit` from the actual qubit
+       being calibrated.
+     - If the path starts with `calibration`, edit the platform's
+       `calibration.json` using the exact path under that file; again infer any
+       placeholder entries such as `target` or `qubit` from the actual qubit.
+
+     When writing the new value, cast it to the same Python type as the original
+     value at that location (for example, preserve `float`, `int`, `bool`, or
+     `list` structure instead of writing a string or a different numeric type).
+     Also keep the literal path structure that the platform expects instead of
+     inventing a new one.
+  3. Re-run the **same protocol** with its sweep parameters re-centered on
+     the new estimate (eventually with different range and step) so the fit has a chance
+     to converge around the correct value.
+
+Iterate this refine-and-recheck loop (at most 2–3 refinements per protocol)
+until the fit is trustworthy, then accept the step. Never jump straight to a
+high-resolution sweep without first confirming the feature exists with a
+coarse pass."""
 
 
 @mcp.tool()
@@ -253,6 +376,21 @@ async def run_protocol(
     try:
         session = _session()
 
+        if session.manual_override_operation is not None:
+            requested_targets = list(session.targets if targets is None else targets)
+            if operation != session.manual_override_operation or set(
+                requested_targets
+            ) != set(session.manual_override_targets):
+                return {
+                    "error": (
+                        "A manual platform estimate requires the next run to repeat "
+                        f"{session.manual_override_operation!r} for exactly "
+                        f"{session.manual_override_targets!r} with focused parameters."
+                    ),
+                    "required_operation": session.manual_override_operation,
+                    "required_targets": session.manual_override_targets,
+                }
+
         step_id = session.step_counter
         session.step_counter += 1
 
@@ -261,9 +399,14 @@ async def run_protocol(
 
         step_path = session.path / f"{step_id}-{operation}-qubits-{targets_str}"
         session.latest_step_output = step_path
+        session.latest_step_targets = step_targets
+        session.latest_operation = operation
         run = await _run_targets(
             session, step_id, operation, parameters, step_targets, step_path
         )
+
+        session.manual_override_operation = None
+        session.manual_override_targets = []
 
         run.update(
             {
@@ -280,33 +423,49 @@ async def run_protocol(
 
 
 @mcp.tool()
-async def accept_step_platform() -> dict[str, Any]:
-    """Promote a successful step's updated platform to the next calibration iteration.
+async def accept_step_platform(accepted_qubits: list[Any]) -> dict[str, Any]:
+    """Promote successful qubit updates to the next calibration iteration.
 
-    This should only be called after visually checking the PNGs in the step output:
-    if the fit does not match the measured signal, the previous platform must be
-    kept and the calibration strategy revised instead of accepting the update.
+    After visually checking each qubit's PNG, pass only the qubits whose fits match
+    the measured signal and physical expectation. Updates for all other qubits in
+    the latest step are discarded.
     """
     try:
         session = _session()
 
         step_dir = session.latest_step_output
         if step_dir is None:
-            raise RuntimeError("No step has been run yet.")
+            return {"error": "No step has been run yet."}
+        step_targets = session.latest_step_targets
+        if step_targets is None:
+            return {"error": "The latest step has no recorded targets."}
 
-        next_platform = step_dir / "new_platform"
-        if not next_platform.exists():
-            raise FileNotFoundError(
-                f"No updated platform was produced in {step_dir}; missing {next_platform}."
-            )
+        unknown_qubits = set(accepted_qubits) - set(step_targets)
+        if unknown_qubits:
+            return {
+                "error": f"Accepted qubits were not part of the latest step: {sorted(unknown_qubits, key=str)}"
+            }
 
-        shutil.rmtree(session.session_platform_path)
-        shutil.copytree(next_platform, session.session_platform_path)
+        step_platform = step_dir / "new_platform"
+        if not step_platform.exists():
+            return {
+                "error": f"No updated platform was produced in {step_dir}; missing {step_platform}."
+            }
+
+        current = _load_calibration_platform(session.session_platform_path)
+        candidate = _load_calibration_platform(step_platform)
+        skipped_qubits = [
+            qubit for qubit in step_targets if qubit not in accepted_qubits
+        ]
+        updated = merge_with_skipped_qubits(current, candidate, skipped_qubits)
+        updated.dump(session.session_platform_path)
 
         return {
             "accepted_platform": str(session.session_platform_path.resolve()),
             "source_step": str(step_dir.resolve()),
             "platform": session.platform_name,
+            "accepted_qubits": accepted_qubits,
+            "skipped_qubits": skipped_qubits,
         }
     except BaseException:
         _close_session(accept_latest_platform=False)
@@ -351,10 +510,18 @@ async def _run_targets(
 
 
 @mcp.tool()
+async def abort_calibration() -> dict[str, Any]:
+    """Abort the active session without accepting the latest step platform."""
+    if _active_session is None:
+        return {"error": "No calibration is active. Call start_calibration first."}
+    return {**_close_session(accept_latest_platform=False), "aborted": True}  # type: ignore[arg-type]
+
+
+@mcp.tool()
 async def finish_calibration() -> dict[str, Any]:
     """Close the session and return a summary of its steps."""
     if _active_session is None:
-        raise RuntimeError("No calibration is active. Call start_calibration first.")
+        return {"error": "No calibration is active. Call start_calibration first."}
     return _close_session(accept_latest_platform=True)  # type: ignore[return-value]
 
 
