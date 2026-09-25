@@ -3,6 +3,7 @@ from typing import cast
 
 import numpy as np
 import plotly.graph_objects as go
+import scipy.constants
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
@@ -21,7 +22,7 @@ from qibocal.calibration import CalibrationPlatform
 from ...result import magnitude, phase
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
-from ..utils import HZ_TO_GHZ, Range, RangeLike, readout_frequency, to_range
+from ..utils import Range, RangeLike, readout_frequency, to_range
 from .qubit_spectroscopy import QubitSpectroscopyResults
 
 __all__ = ["qubit_power_spectroscopy"]
@@ -170,7 +171,7 @@ def _fit(data: QubitPowerSpectroscopyData) -> Results:
 
 
 def _heatmap_figure(
-    frequencies: np.ndarray,
+    frequencies: np.ndarray,  # must be expressed in Hz
     amplitudes: list,
     matrix: np.ndarray,
     colorbar_title: str,
@@ -178,7 +179,7 @@ def _heatmap_figure(
     """Build a 2D heatmap of ``matrix`` (shape ``(n_amplitudes, n_frequencies)``)."""
     fig = go.Figure(
         go.Heatmap(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
             y=amplitudes,
             z=matrix,
             colorbar={"title": colorbar_title},
@@ -192,7 +193,7 @@ def _heatmap_figure(
 
 
 def _signal_phase_figure(
-    frequencies: np.ndarray,
+    frequencies: np.ndarray,  # must be expressed in Hz
     amplitudes: list,
     raw: np.ndarray,
 ) -> go.Figure:
@@ -201,13 +202,14 @@ def _signal_phase_figure(
     signal_matrix = magnitude(raw).reshape(shape)
     phase_matrix = phase(raw).reshape(shape)
 
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
+    fig = make_subplots(rows=1, cols=2, shared_xaxes=True)
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
             y=amplitudes,
             z=signal_matrix,
-            colorbar={"title": "Signal magnitude"},
+            name="Signal magnitude",
+            colorbar={"title": "Signal magnitude", "x": 0.45},
             colorscale="Viridis",
         ),
         row=1,
@@ -215,17 +217,21 @@ def _signal_phase_figure(
     )
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
             y=amplitudes,
             z=phase_matrix,
-            colorbar={"title": "Signal phase [rad]"},
+            name="Signal phase [rad]",
+            colorbar={"title": "Signal phase [rad]", "x": 1.0},
             colorscale="Viridis",
         ),
-        row=2,
-        col=1,
+        row=1,
+        col=2,
     )
-    fig.update_xaxes(title_text="Drive frequency [GHz]", row=2, col=1)
+    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=1)
     fig.update_yaxes(title_text="Drive amplitude [a.u.]", row=1, col=1)
+    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=2)
+    fig.update_yaxes(title_text="Drive amplitude [a.u.]", row=1, col=2)
+
     return fig
 
 
@@ -240,7 +246,7 @@ def _plot(
     principal component explains most of the variance, otherwise the signal
     magnitude and phase in two subplots.
     """
-    frequencies = np.asarray(data.frequencies[target]) * HZ_TO_GHZ
+    frequencies = np.asarray(data.frequencies[target])
     amplitudes = data.amplitudes
     raw = data.data[target]
 
@@ -248,20 +254,21 @@ def _plot(
     iq = raw.reshape(-1, raw.shape[-1])
     # fitted pca over the whole dataset
     pca = PCA().fit(iq)
-    # first principal component of the IQ signal
-    pc_matrix = pca.transform(iq)[:, 0]
-
-    # PCA eigenvectors are only defined up to a global sign: enforce a consistent
-    # orientation so that the heatmap is stable across runs and does not flip
-    # upside-down because the principal component is equivalent to its negative.
-    absmax_sign = np.sign(pc_matrix[np.argmax(np.abs(pc_matrix))])
-    pc_matrix = (pc_matrix * absmax_sign).reshape(*raw.shape[:2])
 
     # the first component explains most of the variance -> a single 1D
     # projection is representative, so show the PCA heatmap
     first_component_variance = float(pca.explained_variance_ratio_[0])
 
     if first_component_variance > PCA_VARIANCE_THRESHOLD:
+        # first principal component of the IQ signal
+        pc_matrix = pca.transform(iq)[:, 0]
+
+        # PCA eigenvectors are only defined up to a global sign: enforce a consistent
+        # orientation so that the heatmap is stable across runs and does not flip
+        # upside-down because the principal component is equivalent to its negative.
+        absmax_sign = np.sign(pc_matrix[np.argmax(np.abs(pc_matrix))])
+        pc_matrix = (pc_matrix * absmax_sign).reshape(*raw.shape[:2])
+
         figure = _heatmap_figure(
             frequencies, amplitudes, pc_matrix, "Principal component signal [a.u.]"
         )
