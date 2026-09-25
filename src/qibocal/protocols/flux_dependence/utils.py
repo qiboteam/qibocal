@@ -124,6 +124,7 @@ def flux_dependence_plot(
             go.Scatter(
                 x=fit_function(bias, **params) * HZ_TO_GHZ,
                 y=bias,
+                mode="lines",
                 showlegend=True,
                 name="Fit",
                 marker={"color": "rgb(248, 248, 248)"},
