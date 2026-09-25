@@ -438,7 +438,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=_lorentzian_with_offset(freqrange, *params),
+                y=_lorentzian_with_offset(freqrange * scipy.constants.giga, *params),
                 name="Fit",
                 mode="lines",
             ),

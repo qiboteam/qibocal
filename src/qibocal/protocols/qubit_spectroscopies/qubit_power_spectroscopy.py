@@ -244,17 +244,26 @@ def _plot(
     amplitudes = data.amplitudes
     raw = data.data[target]
 
-    # first principal component of the IQ signal at each frequency
-    pc_matrix = np.asarray([PCA().fit_transform(x)[:, 0] for x in raw])
+    # iq has shape (num_frequencies * num_amplitudes, 2)
+    iq = raw.reshape(-1, raw.shape[-1])
+    # fitted pca over the whole dataset
+    pca = PCA().fit(iq)
+    # first principal component of the IQ signal
+    pc_matrix = pca.transform(iq)[:, 0]
+
+    # PCA eigenvectors are only defined up to a global sign: enforce a consistent
+    # orientation so that the heatmap is stable across runs and does not flip
+    # upside-down because the principal component is equivalent to its negative.
+    absmax_sign = np.sign(pc_matrix[np.argmax(np.abs(pc_matrix))])
+    pc_matrix = (pc_matrix * absmax_sign).reshape(*raw.shape[:2])
 
     # the first component explains most of the variance -> a single 1D
     # projection is representative, so show the PCA heatmap
-    first_component_variance = float(
-        PCA().fit(raw.reshape(-1, raw.shape[-1])).explained_variance_ratio_[0]
-    )
+    first_component_variance = float(pca.explained_variance_ratio_[0])
+
     if first_component_variance > PCA_VARIANCE_THRESHOLD:
         figure = _heatmap_figure(
-            frequencies, amplitudes, pc_matrix, "Normalized signal"
+            frequencies, amplitudes, pc_matrix, "Principal component signal [a.u.]"
         )
     else:
         figure = _signal_phase_figure(frequencies, amplitudes, raw)
