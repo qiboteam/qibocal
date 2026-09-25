@@ -307,7 +307,7 @@ def _plot(
         )
         figure.update_layout(
             showlegend=True,
-            height=1000,
+            height=800,
             xaxis_title="I [a.u.]",
             yaxis_title="Q [a.u.]",
             yaxis2_title="Drive Amplitude [a.u.]",
