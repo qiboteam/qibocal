@@ -124,6 +124,7 @@ def flux_dependence_plot(
             go.Scatter(
                 x=fit_function(bias, **params) * HZ_TO_GHZ,
                 y=bias,
+                mode="lines",
                 showlegend=True,
                 name="Fit",
                 marker={"color": "rgb(248, 248, 248)"},
@@ -532,6 +533,21 @@ def _continuity_score(
     ]
 
     return int(np.sum(np.square(unique_y_counts)))
+
+
+def adaptive_residual_threshold(
+    base_threshold: float, frequencies: npt.NDArray[np.floating]
+) -> float:
+    """RANSAC inlier gate lower-bounded by the frequency-axis resolution.
+
+    A peak read off a discrete frequency grid carries a quantization error of up to
+    half a bin. We sum in quadrature instead of linearly, since linear would assume
+    worst case for both errors and may be overly broad for many cases.
+    """
+    diffs = np.diff(frequencies)
+    assert np.allclose(diffs, diffs[0])
+    bin_size = float(diffs[0])
+    return float(np.sqrt(base_threshold**2 + (bin_size / 2) ** 2))
 
 
 def ransac_fit(

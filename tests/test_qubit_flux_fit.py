@@ -30,3 +30,4 @@ def test_qubit_flux_fit(results_folder):
             pytest.approx(expected.sweetspot[qubit], abs=1e-3)
             == fitted.sweetspot[qubit]
         )
+        assert fitted.successful_fit[qubit]
