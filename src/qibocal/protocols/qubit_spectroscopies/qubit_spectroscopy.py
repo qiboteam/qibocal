@@ -36,7 +36,7 @@ from qibocal.protocols.utils import (
     table_html,
     to_range,
 )
-from qibocal.result import collect, magnitude, phase
+from qibocal.result import magnitude, phase
 
 __all__ = [
     "QubitSpectroscopyData",
@@ -362,9 +362,9 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     phase.
     """
     fitting_report = ""
-    frequencies = np.array(data.drive_frequencies[target]) * scipy.constants.nano
+    frequencies = np.array(data.drive_frequencies[target])
 
-    quadratures = collect(data.data[target][:, 0], data.data[target][:, 1])
+    quadratures = data.data[target]
     pca = PCA().fit(quadratures)
     pca_signal = pca.transform(quadratures)
 
@@ -403,7 +403,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     # row 3: signal magnitude and phase
     fig.add_trace(
         go.Scatter(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
             y=data.signal(target),
             opacity=1,
             name="Signal",
@@ -416,7 +416,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     )
     fig.add_trace(
         go.Scatter(
-            x=frequencies,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
             y=data.phase(target),
             opacity=1,
             name="Phase",
@@ -437,8 +437,8 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
-                y=_lorentzian_with_offset(freqrange * scipy.constants.giga, *params),
+                x=freqrange * scipy.constants.nano,  # plotting in GHz
+                y=_lorentzian_with_offset(freqrange, *params),
                 name="Fit",
                 mode="lines",
             ),
