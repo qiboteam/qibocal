@@ -496,7 +496,7 @@ Description: Data acquisition for qubit spectroscopy. Handles wideband spectrosc
 | `frequency` | `RangeLike | None` | no | Drive frequency [Hz] range for sweep. |
 | `freq_width` | `int | None` | no | Width [Hz] for frequency sweep relative to the qubit frequency. |
 | `freq_step` | `int | None` | no | Frequency [Hz] step for sweep. |
-| `drive_duration` | `int` | no | Drive pulse duration [ns]. Same for all qubits. |
+| `drive_duration` | `int` | no | Drive pulse duration [ns]. Same for all qubits; Usually is in the 5-10 microseconds order |
 | `drive_amplitude` | `float` | no | Drive pulse amplitude (optional). Same for all qubits. |
 
 **Platform update fields**

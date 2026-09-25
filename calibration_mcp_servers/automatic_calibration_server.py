@@ -73,16 +73,38 @@ def _session() -> CalibrationSession:
     return _active_session
 
 
-def _load_calibration_platform(path: Path) -> CalibrationPlatform:
-    hardware = load_hardware(path)
-    platform = Platform.load(path, **vars(hardware))
-    calibration_path = path / CALIBRATION
-    calibration = (
-        Calibration.model_validate_json(calibration_path.read_text())
-        if calibration_path.exists()
+def _load_session_step_platform(
+    session_path: Path, step_path: Path
+) -> tuple[CalibrationPlatform, CalibrationPlatform]:
+    """Load the current session platform and the active step platform for comparison.
+
+    The session platform reflects the persisted calibration state, while the step
+    platform represents the state currently being evaluated in the calibration
+    workflow. Both are rebuilt from their respective directories and their
+    calibration metadata is rehydrated from the embedded calibration JSON files.
+    """
+
+    session_hardware = load_hardware(session_path)
+    session_platform = Platform.load(session_path, **vars(session_hardware))
+    session_calibration_path = session_path / CALIBRATION
+    session_calibration = (
+        Calibration.model_validate_json(session_calibration_path.read_text())
+        if session_calibration_path.exists()
         else Calibration()
     )
-    return CalibrationPlatform(**vars(platform), calibration=calibration)
+
+    step_platform = Platform.load(step_path, **vars(session_hardware))
+    step_calibration_path = step_path / CALIBRATION
+    step_calibration = (
+        Calibration.model_validate_json(step_calibration_path.read_text())
+        if step_calibration_path.exists()
+        else Calibration()
+    )
+
+    return (
+        CalibrationPlatform(**vars(session_platform), calibration=session_calibration),
+        CalibrationPlatform(**vars(step_platform), calibration=step_calibration),
+    )
 
 
 def _close_session(*, accept_latest_platform: bool) -> dict[str, Any] | None:
@@ -281,14 +303,8 @@ parameters or skip to an alternative protocol before proceeding.
 ## Parameter Selection: Quick-and-Dirty First
 
 When choosing protocol parameters (frequency ranges, sweep steps, amplitude
-ranges, pulse durations, etc.), ALWAYS prefer a quick and dirty run over an
-exhaustive one:
-
-- Use a **narrow initial range** centered on the expected value (from the
-  platform state or a previous step) rather than a wide blind sweep.
-- Use a **coarse step** (fewer data points) for the first pass.
-- Keep `nshots` at the platform default or lower for exploratory runs.
-
+ranges, pulse durations, etc.), do not overcomplicate the initial run;
+start with a reasonable guess and refine as needed.
 After each run, inspect the PNG figures and judge whether the resolution is
 fine enough to produce a trustworthy fit:
 
@@ -452,8 +468,9 @@ async def accept_step_platform(accepted_qubits: list[Any]) -> dict[str, Any]:
                 "error": f"No updated platform was produced in {step_dir}; missing {step_platform}."
             }
 
-        current = _load_calibration_platform(session.session_platform_path)
-        candidate = _load_calibration_platform(step_platform)
+        current, candidate = _load_session_step_platform(
+            session.session_platform_path, step_platform
+        )
         skipped_qubits = [
             qubit for qubit in step_targets if qubit not in accepted_qubits
         ]
