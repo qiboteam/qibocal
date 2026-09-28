@@ -376,13 +376,19 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 def _update(
     results: ChevronResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    target = target[::-1] if target not in results.duration else target
+    # Fit results use the acquisition order, while native gates use the platform's pair
+    # order.
+    reversed_target = (target[1], target[0])
+    result_target = target if target in results.duration else reversed_target
+    platform_target = (
+        target if target in platform.natives.two_qubit else reversed_target
+    )
 
     getattr(update, f"{results.native}_duration")(
-        np.mean(results.duration[target]), platform, target
+        np.mean(results.duration[result_target]), platform, platform_target
     )
     getattr(update, f"{results.native}_amplitude")(
-        np.mean(results.amplitude[target]), platform, target
+        np.mean(results.amplitude[result_target]), platform, platform_target
     )
 
 
