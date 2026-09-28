@@ -24,7 +24,7 @@ from qibocal.protocols.utils import HZ_TO_GHZ, minmax_scaling, table_dict, table
 
 from .... import update
 from ..utils import order_pair
-from .utils import COLORAXIS, chevron_fit, chevron_sequence
+from .utils import chevron_fit, chevron_sequence
 
 __all__ = ["chevron"]
 
@@ -282,7 +282,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                 x=data.duration,
                 y=data.amplitude,
                 z=_data.T,
-                coloraxis=COLORAXIS[i],
+                coloraxis="coloraxis",
             ),
             row=1,
             col=1 + i,
@@ -301,7 +301,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                             len(data.amplitude),
                             len(data.duration),
                         ),
-                        coloraxis=COLORAXIS[i],
+                        coloraxis="coloraxis",
                     ),
                     row=2,
                     col=i + 1,
@@ -342,8 +342,13 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         yaxis3_title="Amplitude [a.u.]",
         yaxis4_title="Amplitude [a.u.]",
         legend={"orientation": "h"},
-        coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
-        coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
+        coloraxis={
+            "colorscale": "Inferno",
+            # Fix colorbar range to [0, 1]: the plotted values are probabilities.
+            "cmin": 0,
+            "cmax": 1,
+            "colorbar": {"title": {"text": "P<sub>e</sub>"}},
+        },
         height=800,
     )
     for i in range(1, 3):
