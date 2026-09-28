@@ -656,7 +656,7 @@ def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
             {
                 "kind": "exp",
                 "amplitude": results.exp_amplitude[target],
-                "tau": results.tau[target] * platform.sampling_rate,
+                "tau": round(results.tau[target] * platform.sampling_rate),
             }
         )
     platform.update({f"configs.{platform.qubits[target].flux}.filters": filters})
