@@ -451,10 +451,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size = max(3, DERIVATIVE_WINDOW_SIZE)
         derivative_window_size += (derivative_window_size + 1) % 2
 
-        # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * durations * np.abs(demod_freq)) * (
-            norm_data
-        )
+        # find demodulation frequency
+        demod_data = np.exp(-2 * np.pi * 1j * durations * demod_freq) * norm_data
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
