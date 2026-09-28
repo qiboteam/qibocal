@@ -5,8 +5,6 @@ from qibocal.auto.operation import QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
-COLORAXIS = ["coloraxis2", "coloraxis1"]
-
 COUPLER_PULSE_START = 0
 """Start of coupler pulse."""
 COUPLER_PULSE_DURATION = 100
