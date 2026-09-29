@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from plotly.subplots import make_subplots
 
 from calibration_mcp_servers import automatic_calibration_server as calibration
-from calibration_mcp_servers._common import _export_png, report_content, run_qq
+from calibration_mcp_servers.utils import _export_png, report_content, run_qq
 
 
 def test_run_qq_terminates_process_when_cancelled(monkeypatch, tmp_path):

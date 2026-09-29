@@ -1,19 +1,63 @@
-"""Stdio MCP server for qibocal data acquisition."""
+"""Stdio Qibocal assistant MCP server."""
 
 from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
 
-from calibration_mcp_servers._common import (
+from calibration_mcp_servers.utils import (
     make_output_path,
     make_runcard,
-    report_content,
+    return_content,
     run_qq,
+    update_qq,
     write_runcard,
 )
+from qibocal.cli.fit import fit
+from qibocal.cli.report import report
 
-mcp = FastMCP("qibocal-execute")
+mcp = FastMCP("qibocal-assistant")
+
+
+#######################################################################
+# Tools definitions
+#######################################################################
+
+
+@mcp.tool()
+async def generate_fit(
+    data_folder: str,
+    output_folder: str | None = None,
+    update: bool = False,
+    force: bool = False,
+) -> dict[str, str]:
+    """Fit the acquired data."""
+    fit_folder = Path(output_folder or data_folder)
+    fit(
+        Path(data_folder),
+        update,
+        fit_folder,
+        force,
+    )
+    return return_content(fit_folder)
+
+
+@mcp.tool()
+def generate_report(data_folder: str) -> dict[str, str]:
+    """Generate index.html and protocol reports for a qibocal output folder."""
+    data_folder_path = Path(data_folder)
+    report(data_folder_path)
+    return return_content(data_folder_path)
+
+
+@mcp.tool()
+async def update_platform(
+    data_folder: str,
+) -> dict[str, str]:
+    """Apply the updated platform from a qibocal output folder."""
+    data_folder_path = Path(data_folder)
+    await update_qq(data_folder_path)
+    return return_content(data_folder_path)
 
 
 @mcp.tool()
@@ -45,7 +89,7 @@ async def acquire_experiments(
         await run_qq(runcard_path, path, update, partition)
     finally:
         runcard_path.unlink(missing_ok=True)
-    response: dict[str, Any] = {**report_content(path)}
+    response: dict[str, Any] = {**return_content(path)}
     response["platform_update_pending"] = True
     response["platform_update_message"] = (
         "Platform updates were not applied. Ask the user for approval, then "
@@ -54,5 +98,10 @@ async def acquire_experiments(
     return response
 
 
-if __name__ == "__main__":
-    mcp.run()
+#######################################################################
+# Start the MCP server (stdio transport).
+#######################################################################
+
+
+def assistant_start() -> None:
+    mcp.run(transport="stdio")

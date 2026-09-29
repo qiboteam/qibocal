@@ -11,10 +11,10 @@ from fastmcp import FastMCP
 from qibolab._core.platform.load import _load_platform
 from qibolab.platform import Platform, locate_platform
 
-from calibration_mcp_servers._common import (
+from calibration_mcp_servers.utils import (
     make_output_path,
     make_runcard,
-    report_content,
+    return_content,
     run_qq,
     write_runcard,
 )
@@ -22,7 +22,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.calibration.calibration import CALIBRATION, Calibration
 from qibocal.cli.update import merge_with_skipped_qubits
 
-mcp = FastMCP("qibocal-calibrate")
+mcp = FastMCP("qibocal-calibrator")
 
 
 @dataclass
@@ -427,8 +427,7 @@ the data should be clearly interpretable and support a reliable fit.
     Never jump straight to a high-resolution sweep without first confirming the feature
     exists with a coarse pass.
 
-    When the calibration is complete, use the existing `update_platform` tool with the
-    session's `data_folder` to publish the final calibrated platform to the Qibolab registry.
+    When the calibration is complete, call `finish_calibration` to finalize the session.
     If repeated refinements cannot produce trustworthy fits, required protocols or
     platform information are unavailable, or continuing would produce an unreliable
     calibration, call `abort_calibration` instead. Aborting preserves the collected
@@ -610,8 +609,7 @@ async def _run_targets(
     finally:
         runcard_path.unlink(missing_ok=True)
 
-    response: dict[str, Any] = {**report_content(output_path)}
-    return response
+    return return_content(output_path)
 
 
 @mcp.tool()
@@ -630,8 +628,10 @@ async def finish_calibration() -> dict[str, Any]:
     return _close_session(accept_latest_platform=True)  # type: ignore[return-value]
 
 
-if __name__ == "__main__":
-    try:
-        mcp.run()
-    finally:
-        _close_session(accept_latest_platform=False)
+#######################################################################
+# Start the MCP server (stdio transport).
+#######################################################################
+
+
+def calibrator_start() -> None:
+    mcp.run(transport="stdio")
