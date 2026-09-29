@@ -260,7 +260,6 @@ class Output:
             self.platform = CalibrationPlatform.from_datafolder(
                 folder_path=output / PLATFORM,
                 platform_name=self.meta.platform,
-                dummy_hardware=True,
             )
 
         for task_id, completed in self.history.items():

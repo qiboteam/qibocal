@@ -38,7 +38,6 @@ def update(path: pathlib.Path, skip_qubits: list[QubitId] | None):
         new_platform = CalibrationPlatform.from_datafolder(
             folder_path=new_platform_path,
             platform_name=platform_name,
-            dummy_hardware=False,
         )
         updated_platform = merge_with_skipped_qubits(
             old_platform, new_platform, skip_qubits

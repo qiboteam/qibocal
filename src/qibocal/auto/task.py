@@ -173,8 +173,6 @@ class Task:
                 )
             completed.dump_data()
         if ExecutionMode.FIT in mode:
-            if completed.data is None:
-                raise ValueError("Experiment folder does not contain data to fit.")
             completed.results, completed.results_time = operation.fit(completed.data)
             completed.dump_results()
         return completed
@@ -207,11 +205,12 @@ class Completed:
         self.task = copy.deepcopy(self.task)
 
     @property
-    def data(self):
+    def data(self) -> Data:
         """Access task's data."""
         if self._data is None:
             Data = self.task.operation.data_type
             self._data = Data.load(self.path)
+            assert self._data is not None
         return self._data
 
     @data.setter

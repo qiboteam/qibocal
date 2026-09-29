@@ -24,11 +24,8 @@ from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
 from .operation import Protocol, ProtocolsCollection
-from .output import Metadata, Output
+from .output import PLATFORM, Metadata, Output
 from .task import Action, Completed, Targets, Task
-
-PLATFORM_DIR = "platform"
-"""Folder where platform will be dumped."""
 
 
 def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
@@ -107,9 +104,8 @@ class Executor(BaseModel):
                 self.platform
                 if ExecutionMode.ACQUIRE in mode
                 else CalibrationPlatform.from_datafolder(
-                    folder_path=output / PLATFORM_DIR,
+                    folder_path=output / PLATFORM,
                     platform_name=self.platform.name,
-                    dummy_hardware=True,
                 )
             ),
             targets=self.targets,

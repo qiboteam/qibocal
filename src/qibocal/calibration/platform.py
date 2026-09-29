@@ -69,16 +69,12 @@ class CalibrationPlatform(Platform):
         return cls(**vars(platform), calibration=calibration)
 
     @classmethod
-    def from_datafolder(
-        cls, folder_path: Path, platform_name: str, dummy_hardware: bool
-    ):
+    def from_datafolder(cls, folder_path: Path, platform_name: str):
         """Create a calibration platform from a serialized data folder.
 
         The platform is rebuilt from the configuration saved in the experiment history,
         using the ``parameters.json`` and ``calibration.json`` files stored in the data folder
         rather than the platform in ``QIBOLAB_PLATFORMS``.
-        A real platform or a dummy platform is created according to
-        ``dummy_hardware``, then populated with the data in ``folder_path``.
         """
 
         parameters = Parameters.model_validate_json(
@@ -89,25 +85,14 @@ class CalibrationPlatform(Platform):
             (folder_path / CALIBRATION).read_text()
         )
 
-        if dummy_hardware:
-            return cls(
-                calibration=calibration,
-                name=platform_name,
-                parameters=parameters,
-                instruments={},  # not needed for the fit
-                qubits={q: Qubit.default(q) for q in calibration.qubits},
-                couplers={},  # not being propagated anyway
-                is_connected=False,
-            )
-
-        platform = create_platform(platform_name)
-        # overwriting platform parameters and name with the ones from the data folder
-        platform.parameters = parameters
-        platform.name = platform_name
-
         return cls(
             calibration=calibration,
-            **vars(platform),
+            name=platform_name,
+            parameters=parameters,
+            instruments={},  # not needed for the fit
+            qubits={q: Qubit.default(q) for q in calibration.qubits},
+            couplers={},
+            is_connected=False,
         )
 
     def dump(self, path: Path):
