@@ -95,7 +95,11 @@ class Executor(BaseModel):
         log.info(f"Executing mode {mode} on {task.action.id}.")
         completed = task.run(
             platform=(
-                # if I need to acquire data I need to create from scratch
+                # if data acquisition is required, the platform must be created
+                # from scratch with all its hardware configurations;
+                # when the executor is only fitting, the exact same platform of
+                # the experiment (saved in the experiment folder) is recreated,
+                # and the hardware configuration is unnecessary.
                 # the platform with all its hardware configurations;
                 # when executor is just fitting I need to create the exact same
                 # platform of the experiment (saved in the experiment folder), and here
