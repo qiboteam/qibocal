@@ -152,6 +152,12 @@ folder and deletes it when execution finishes. Each run also generates an
 can be published into the configured Qibolab platform registry, so later runs —
 which reconnect to the platform from scratch — see the updated settings.
 
+The calibration server exposes each generated report as HTML through the
+`qibocal://calibration-report?path={report_path}` resource. URL-encode the
+qibocal output folder in `path`; the returned page includes the original report,
+its HTML plots, and serialized fit results for visual review. It does not read or
+generate PNG files.
+
 The agent must inspect each round's figures and fitting results before selecting
 the next protocol, changing its parameters, choosing a target subset, or deciding
 whether to accept a platform update. When the strategy is complete, it calls

@@ -3,11 +3,13 @@
 import json
 import shutil
 from dataclasses import dataclass, field
+from html import escape
 from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
-from qibolab.platform import Platform, load_hardware, locate_platform
+from qibolab._core.platform.load import _load_platform
+from qibolab.platform import Platform, locate_platform
 
 from calibration_mcp_servers._common import (
     make_output_path,
@@ -19,8 +21,6 @@ from calibration_mcp_servers._common import (
 from qibocal.calibration import CalibrationPlatform
 from qibocal.calibration.calibration import CALIBRATION, Calibration
 from qibocal.cli.update import merge_with_skipped_qubits
-
-CATALOG = Path(__file__).with_name("PROTOCOL_CATALOG.md")
 
 mcp = FastMCP("qibocal-calibrate")
 
@@ -84,8 +84,18 @@ def _load_session_step_platform(
     calibration metadata is rehydrated from the embedded calibration JSON files.
     """
 
-    session_hardware = load_hardware(session_path)
-    session_platform = Platform.load(session_path, **vars(session_hardware))
+    session_hardware = _load_platform(session_path)
+    if isinstance(session_hardware, Platform):
+        # session platform (the one to be persisted)
+        session_platform = session_hardware
+        # platform created from the last step folder
+        step_platform = session_hardware
+    else:
+        # session platform (the one to be persisted)
+        session_platform = Platform.load(session_path, **vars(session_hardware))
+        # platform created from the last step folder
+        step_platform = Platform.load(step_path, **vars(session_hardware))
+
     session_calibration_path = session_path / CALIBRATION
     session_calibration = (
         Calibration.model_validate_json(session_calibration_path.read_text())
@@ -93,7 +103,6 @@ def _load_session_step_platform(
         else Calibration()
     )
 
-    step_platform = Platform.load(step_path, **vars(session_hardware))
     step_calibration_path = step_path / CALIBRATION
     step_calibration = (
         Calibration.model_validate_json(step_calibration_path.read_text())
@@ -130,10 +139,63 @@ def _close_session(*, accept_latest_platform: bool) -> dict[str, Any] | None:
         _active_session = None
 
 
-@mcp.resource("qibocal://protocol-catalog")
-def protocol_catalog() -> str:
+@mcp.resource("qibocal://protocol-catalog/{filename}")
+def protocol_catalog(filename: str) -> str:
     """Return the supported protocol catalog for calibration planning."""
-    return CATALOG.read_text(encoding="utf-8")
+    return Path(__file__).with_name(filename).read_text(encoding="utf-8")
+
+
+@mcp.resource(
+    "qibocal://calibration-report?path={report_path}",
+    mime_type="text/html",
+)
+def calibration_report(report_path: str) -> str:
+    """Render a run's HTML report with fit plots and results for visual review.
+
+    The report path is supplied as the `path` query parameter in the resource URI.
+    The existing HTML plots and serialized results are exposed for visual review.
+    This resource does not regenerate the report or use PNG artifacts.
+    """
+    path = Path(report_path).expanduser().resolve()
+    report_html_path = path / "index.html"
+    if not path.is_dir() or not report_html_path.is_file():
+        raise FileNotFoundError(
+            f"Expected a qibocal report folder containing index.html: {path}"
+        )
+
+    report_html = report_html_path.read_text(encoding="utf-8")
+    results_sections = []
+    for results_path in sorted((path / "data").glob("*/results.json")):
+        try:
+            results = json.loads(results_path.read_text(encoding="utf-8"))
+            result_text = json.dumps(results, indent=2, sort_keys=True)
+        except (OSError, json.JSONDecodeError) as error:
+            result_text = f"Unable to read fit results: {error}"
+        results_sections.append(
+            "<details>"
+            f"<summary>{escape(results_path.parent.name)} fit results</summary>"
+            f"<pre>{escape(result_text)}</pre>"
+            "</details>"
+        )
+
+    review_section = (
+        '<section id="fit-review"><h1>Fit review</h1>'
+        "<p>Visually compare each measured trace with its fitted model. Check that "
+        "the feature is resolved across the sweep, residual deviations are small "
+        "and unsystematic, and fitted values are physically plausible. A serialized "
+        "fit result alone does not establish fit quality.</p>"
+        f"{''.join(results_sections)}"
+        "</section>"
+    )
+    review_styles = (
+        "<style>#fit-review{font-family:sans-serif;margin:2rem auto;max-width:1200px}"
+        "#fit-review pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>"
+    )
+    if "</body>" in report_html:
+        return report_html.replace(
+            "</body>", f"{review_styles}{review_section}</body>", 1
+        )
+    return f"{report_html}{review_styles}{review_section}"
 
 
 def _analyze_platform_architecture(platform_name: str) -> dict[str, Any]:
@@ -226,13 +288,19 @@ calibration goal is reached and the session is closed with `finish_calibration`,
 or the calibration cannot be completed and the session is closed with
 `abort_calibration`.
 
-Read `qibocal://protocol-catalog`, then call `start_calibration` once. Before
-thinking about the strategy to adopt, call `platform_architecture` to understand
+Call `start_calibration` once.
+Before thinking about the strategy to adopt, call `platform_architecture` to understand
 the QPU: the number of qubits and their names, the connectivity topology
 (ancilla/coupler connections), and the kind of architecture of the whole QPU —
 whether there are couplers and whether the qubits are flux tunable (this is
 derived from the flux channels and coupler entries in the platform's
-`parameters.json`). Use that architecture to decide which protocols apply and
+`parameters.json`), then start building the calibration strategy for each calibration phase.
+Understanding the type of transmons (flux tunable or fixed frequency) and the presence of couplers is
+crucial for selecting the appropriate calibration protocols for both qubits, resonators and gates for
+running them effectively.
+Also run 2D protocols when possible, such as resonator punchout or qubit spectroscopy when varying drive power.
+For each calibration phase read `qibocal://protocol-catalog` by using the filenames of the corresponding markdown files (listed below).
+Use that architecture to decide which protocols apply and
 which targets each protocol needs. Then build the strategy dynamically and call
 `run_protocol` for one protocol at a time. Each call
 runs `qq run` in its own step folder under the session's `data_folder`, and the
@@ -245,41 +313,46 @@ updates for the remaining qubits are discarded. If no fit is good, pass an empty
 list, keep the previous working platform, and change the strategy before the next
 step. Pass `targets` to run only the qubits that need that step.
 For every protocol, `targets` must be a non-empty subset of the session targets
-passed to `start_calibration`; using the entire session target set is also valid.
+passed to `start_calibration` and ALWAYS SET ALL the protocol parameters, even the optional ones;
+using the entire session target set is also valid.
 Omit `targets` to use that entire set. All protocol executions are parallel by
 design: one runcard and one Slurm job are used for the selected targets, never a
 sequential loop. Set `update=true` only when that protocol's successful fit should
 be applied to the platform for subsequent steps; the platform is NOT published to
 the Qibolab registry during the step. Continue adapting until the calibration goal
-is complete, then explicitly call `accept_step_platform` only for steps whose PNGs
-show a trustworthy fit, and finally call `finish_calibration`. When the
-calibration is complete, use the existing `update_platform` tool with the session's
-`data_folder` to publish the final calibrated platform to the Qibolab registry.
-If repeated refinements cannot produce trustworthy fits, required protocols or
-platform information are unavailable, or continuing would produce an unreliable
-calibration, call `abort_calibration` instead. Aborting preserves the collected
-step data but does not accept the latest step or publish the session platform.
-Report the reason for aborting and do not call `finish_calibration` or
-`update_platform` afterward.
+-is complete, then explicitly call `accept_step_platform` only for steps whose HTML
+-plots show a trustworthy fit, and finally call `finish_calibration`.
 
 ## Strategy Template
 
 ### From-scratch calibration (user explicitly asks to calibrate "from scratch" / "from the beginning")
 
 Follow this ordered sequence. For each phase, run all applicable protocols for
-the selected targets before moving to the next phase.
+the selected targets before moving to the next phase. The phases must be executed in order,
+and no phase should be skipped.
+At each step read the associated markdown file for detailed instructions and protocol parameters.
+If not explicitly asked, scratch calibration means using the pre existing parameters as reference but
+not trust them, so they have to be verified and potentially updated through the calibration process.
+Each file is a list of protocols to be executed for that phase, and they are ordered in an ideal sequence;
+nevertheless, the actual execution may vary depending on the specific hardware and experimental conditions and
+multiple repetitions wirth different parameters configurations may be necessary, don't hesitate to iterate as needed.
 
-**Phase 1 — Resonator characterization**
+**Phase 1 — Resonator_Characterization.md**
 
-**Phase 2 — Qubit characterization**
+**Phase 2 — Qubit_Characterization.md**
 
-**Phase 3 — Signal experiments (drive calibration)**
-Calibrate the drive pulse using signal experiments
+**Phase 3 — Signal_Experiments.md**
+Calibrate the drive pulse using signal experiments and
+define state classifiers.
 
-**Phase 4 — Single-shot classification**
+**Phase 4 — SingleQubit_Experiments.md**
+Optimize gate fidelity
 
-**Phase 5 — Classification and Readout optimization**
-Optimize assignment fidelity and gate fidelity
+**Phase 5 — Readout_Optimization.md**
+Optimize assignment fidelity
+
+**Phase 6 - Single_Qubit_RB.md**
+Perform single qubit randomized benchmarking.
 
 Iterate within Phase 5: if fidelity is below target, go back to Phase 3 or 4
 to refine the drive/readout calibration, then re-run the classification protocols.
@@ -304,9 +377,10 @@ parameters or skip to an alternative protocol before proceeding.
 
 When choosing protocol parameters (frequency ranges, sweep steps, amplitude
 ranges, pulse durations, etc.), do not overcomplicate the initial run;
-start with a reasonable guess and refine as needed.
+start with a reasonable guess and refine as needed, the sweep range though must not be excessive.
 After each run, inspect the PNG figures and judge whether the resolution is
-fine enough to produce a trustworthy fit:
+fine enough to produce a trustworthy fit; **You have to be very critical in your assessment**,
+the data should be clearly interpretable and support a reliable fit.
 
 - If the peak/feature is **clearly resolved** and the fit converges well,
   accept the step and move on.
@@ -342,10 +416,26 @@ fine enough to produce a trustworthy fit:
      the new estimate (eventually with different range and step) so the fit has a chance
      to converge around the correct value.
 
-Iterate this refine-and-recheck loop (at most 2–3 refinements per protocol)
-until the fit is trustworthy, then accept the step. Never jump straight to a
-high-resolution sweep without first confirming the feature exists with a
-coarse pass."""
+# **IMPORTANT**
+    In every case, if at least one qubit is accepted, **you must run accept_step_platform tool** to accept the
+    current step before proceeding with further refinements.
+    Don't be greedy in repeating experiments, even with single qubits, we are aiming good quality
+    calibration so performing multiple iterations of the same protocol, even with different qubits and list
+    and parameters range is often necessary.
+    Iterate this refine-and-recheck loop (at most 2–3 refinements per protocol)
+    until the fit is trustworthy, then accept the step or keep the previous value.
+    Never jump straight to a high-resolution sweep without first confirming the feature
+    exists with a coarse pass.
+
+    When the calibration is complete, use the existing `update_platform` tool with the
+    session's `data_folder` to publish the final calibrated platform to the Qibolab registry.
+    If repeated refinements cannot produce trustworthy fits, required protocols or
+    platform information are unavailable, or continuing would produce an unreliable
+    calibration, call `abort_calibration` instead. Aborting preserves the collected
+    step data but does not accept the latest step or publish the session platform.
+    Report the reason for aborting and do not call `finish_calibration` or
+    `update_platform` afterward.
+"""
 
 
 @mcp.tool()
@@ -362,10 +452,8 @@ async def start_calibration(
     calls run on the local host.
     """
     global _active_session
-    if _active_session is not None:
-        raise RuntimeError(
-            "A calibration is already active. Finish it before starting another."
-        )
+    # close any existing session before starting a new one
+    _close_session(accept_latest_platform=False)
 
     path = make_output_path(parent_folder, platform)
     _active_session = CalibrationSession(
@@ -442,9 +530,9 @@ async def run_protocol(
 async def accept_step_platform(accepted_qubits: list[Any]) -> dict[str, Any]:
     """Promote successful qubit updates to the next calibration iteration.
 
-    After visually checking each qubit's PNG, pass only the qubits whose fits match
-    the measured signal and physical expectation. Updates for all other qubits in
-    the latest step are discarded.
+    After visually checking each qubit's HTML report plot, pass only the qubits
+    whose fits match the measured signal and physical expectation. Updates for all
+    other qubits in the latest step are discarded.
     """
     try:
         session = _session()

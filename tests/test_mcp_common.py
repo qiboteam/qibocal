@@ -4,7 +4,102 @@ from types import SimpleNamespace
 from plotly.subplots import make_subplots
 
 from calibration_mcp_servers import automatic_calibration_server as calibration
-from calibration_mcp_servers._common import _export_png
+from calibration_mcp_servers._common import _export_png, report_content, run_qq
+
+
+def test_run_qq_terminates_process_when_cancelled(monkeypatch, tmp_path):
+    class FakeProcess:
+        def __init__(self):
+            self.communicating = asyncio.Event()
+            self.terminated = asyncio.Event()
+            self.returncode = None
+
+        async def communicate(self):
+            self.communicating.set()
+            await self.terminated.wait()
+            return b"", b""
+
+        def terminate(self):
+            self.returncode = -15
+            self.terminated.set()
+
+        def kill(self):
+            self.returncode = -9
+            self.terminated.set()
+
+    process = FakeProcess()
+    monkeypatch.setattr("calibration_mcp_servers._common._qq_executable", lambda: "qq")
+
+    async def create_subprocess_exec(*args, **kwargs):
+        return process
+
+    monkeypatch.setattr(
+        "calibration_mcp_servers._common.asyncio.create_subprocess_exec",
+        create_subprocess_exec,
+    )
+
+    async def cancel_run():
+        task = asyncio.create_task(
+            run_qq(tmp_path / "runcard.yml", tmp_path, True, None)
+        )
+        await process.communicating.wait()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        else:
+            raise AssertionError("run_qq should propagate task cancellation")
+
+    asyncio.run(cancel_run())
+
+    assert process.returncode == -15
+
+
+def test_run_protocol_aborts_session_when_cancelled(tmp_path, monkeypatch):
+    session = SimpleNamespace(
+        platform_name="mock",
+        targets=[2],
+        path=tmp_path,
+        session_platform_path=tmp_path / "new_platform",
+        step_counter=0,
+        manual_override_operation=None,
+        manual_override_targets=[],
+    )
+    calibration._active_session = session
+    started = asyncio.Event()
+
+    async def wait_for_cancellation(*args):
+        started.set()
+        await asyncio.Future()
+
+    monkeypatch.setattr(calibration, "_run_targets", wait_for_cancellation)
+
+    async def cancel_run():
+        task = asyncio.create_task(
+            calibration.run_protocol("rabi_amplitude", {}, targets=[2])
+        )
+        await started.wait()
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        else:
+            raise AssertionError("run_protocol should propagate task cancellation")
+
+    try:
+        asyncio.run(cancel_run())
+        assert calibration._active_session is None
+    finally:
+        calibration._active_session = None
+
+
+def test_report_content_does_not_generate_pngs(tmp_path):
+    response = report_content(tmp_path)
+
+    assert response == {"output_folder": str(tmp_path.resolve())}
+    assert not (tmp_path / "agent_report").exists()
 
 
 def test_export_png_with_matplotlib(tmp_path):
