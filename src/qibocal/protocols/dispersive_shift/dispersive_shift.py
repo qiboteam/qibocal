@@ -230,11 +230,11 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
         fit_group = f"state{state}-fit"
         q_data = data[target, state]
 
-        frequencies = q_data.freq * scipy.constants.nano
+        frequencies = q_data.freq
         for col, y in enumerate([q_data.signal, q_data.phase], start=1):
             fig.add_trace(
                 go.Scatter(
-                    x=frequencies,
+                    x=frequencies * scipy.constants.nano,
                     y=y,
                     name=f"{label} data",
                     showlegend=(col == 1),
@@ -258,7 +258,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             params = fit.fitted_parameters[target][state]
             fig.add_trace(
                 go.Scatter(
-                    x=freqrange,
+                    x=freqrange * scipy.constants.nano,
                     y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} fit",
                     showlegend=True,

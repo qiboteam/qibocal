@@ -105,7 +105,7 @@ class QubitFit:
             x_values_state1
         )
         cum_distribution_state0 = cumulative(x_values, x_values_state0) / len(
-            x_values_state1
+            x_values_state0
         )
 
         cum_distribution_diff = np.abs(

@@ -2,6 +2,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 import plotly.graph_objects as go
+import scipy.constants
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
@@ -9,7 +10,6 @@ from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
-    HZ_TO_GHZ,
     lorentzian_fit,
     lorentzian_with_linear_background,
     readout_frequency,
@@ -212,10 +212,10 @@ def _plot(
         )
     ):
         opacity = 1
-        frequencies = q_data.freq * HZ_TO_GHZ
+        frequencies = q_data.freq
         fig.add_trace(
             go.Scatter(
-                x=frequencies,
+                x=frequencies * scipy.constants.nano,
                 y=q_data.signal,
                 opacity=opacity,
                 name=f"{label}",
@@ -228,7 +228,7 @@ def _plot(
         )
         fig.add_trace(
             go.Scatter(
-                x=frequencies,
+                x=frequencies * scipy.constants.nano,
                 y=q_data.phase,
                 opacity=opacity,
                 showlegend=False,
@@ -258,7 +258,7 @@ def _plot(
             ][target]
             fig.add_trace(
                 go.Scatter(
-                    x=freqrange,
+                    x=freqrange * scipy.constants.nano,
                     y=lorentzian_with_linear_background(freqrange, *params),
                     name=f"{label} Fit",
                     mode="lines",
