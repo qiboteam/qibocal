@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from qibolab import Parameters, Platform, create_platform, locate_platform
-from qibolab.platform import create_dummy_platform
+from qibolab import Parameters, Platform, Qubit, create_platform, locate_platform
 
 from .calibration import CALIBRATION, Calibration
 
@@ -90,11 +89,19 @@ class CalibrationPlatform(Platform):
             (folder_path / CALIBRATION).read_text()
         )
 
-        platform = (
-            create_dummy_platform(calibration.qubits)
-            if dummy_hardware
-            else create_platform(platform_name)
-        )
+        if dummy_hardware:
+            return cls(
+                calibration=calibration,
+                name=platform_name,
+                parameters=parameters,
+                instruments={},  # not needed for the fit
+                qubits={q: Qubit.default(q) for q in calibration.qubits},
+                couplers={},  # not being propagated anyway
+                is_connected=False,
+            )
+
+        platform = create_platform(platform_name)
+        # overwriting platform parameters and name with the ones from the data folder
         platform.parameters = parameters
         platform.name = platform_name
 

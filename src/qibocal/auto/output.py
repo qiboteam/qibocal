@@ -258,7 +258,7 @@ class Output:
             # Use parameters saved in the data folder because those in the live
             # platform folder might have changed.
             self.platform = CalibrationPlatform.from_datafolder(
-                folder_path=output / "platform",
+                folder_path=output / PLATFORM,
                 platform_name=self.meta.platform,
                 dummy_hardware=True,
             )
