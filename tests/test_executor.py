@@ -2,6 +2,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+from shutil import copy2
 
 import pytest
 from qibolab import Platform
@@ -12,7 +13,9 @@ from qibocal import Executor
 from qibocal.auto.execute import check_overlap_in_input_qubits
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
+from qibocal.auto.output import PLATFORM
 from qibocal.auto.runcard import Action
+from qibocal.auto.task import Task
 from qibocal.calibration.platform import (
     CalibrationPlatform,
     create_calibration_platform,
@@ -50,6 +53,50 @@ def test_executor(params: dict | Action, platform: Platform | str, tmp_path: Pat
     executor.run_protocol(
         flipping, Action.cast(params, "flipping"), mode=ExecutionMode.ACQUIRE
     )
+
+
+def test_executor_fit_uses_saved_platform(executor: Executor, monkeypatch):
+    # FIT-only execution reconstructs its platform from this serialized folder.
+    platform_folder = executor.path / PLATFORM
+    platform_folder.mkdir(parents=True)
+    executor.platform.dump(platform_folder)
+
+    action = deepcopy(ACTION)
+    action.update = False
+    executor.run_protocol(flipping, action, mode=ExecutionMode.ACQUIRE)
+
+    acquired_folder = executor.history.task_path(
+        executor.history._executed_task_id(action.id), executor.path
+    )
+    fit_folder = executor.history.task_path(
+        executor.history._pending_task_id(action.id), executor.path
+    )
+    fit_folder.mkdir(parents=True)
+    # FIT creates the next task iteration, and Task.run loads data from that folder.
+    # Copy the acquisition payload there so the FIT call can run without reacquiring.
+    for data_file in acquired_folder.glob("data.*"):
+        copy2(data_file, fit_folder)
+
+    observed_platforms = []
+    # Save the original before patching: the wrapper records Executor's platform choice,
+    # then delegates to Task.run so the normal data loading and fit still happen.
+    task_run = Task.run
+
+    def observe_platform(self, mode, folder, platform=None, targets=None):
+        observed_platforms.append(platform)
+        return task_run(self, mode, folder, platform, targets)
+
+    monkeypatch.setattr(Task, "run", observe_platform)
+
+    executor.run_protocol(flipping, action, mode=ExecutionMode.FIT)
+
+    assert len(observed_platforms) == 1
+    fit_platform = observed_platforms[0]
+    assert fit_platform is not None
+    assert fit_platform is not executor.platform
+    assert fit_platform.parameters == executor.platform.parameters
+    assert fit_platform.instruments == {}
+    assert not fit_platform.is_connected
 
 
 SCRIPTS = Path(__file__).parent / "scripts"

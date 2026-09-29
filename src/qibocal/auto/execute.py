@@ -97,10 +97,6 @@ class Executor(BaseModel):
                 # when the executor is only fitting, the exact same platform of
                 # the experiment (saved in the experiment folder) is recreated,
                 # and the hardware configuration is unnecessary.
-                # the platform with all its hardware configurations;
-                # when executor is just fitting I need to create the exact same
-                # platform of the experiment (saved in the experiment folder), and here
-                # the hardware configuration is unnecessary.
                 self.platform
                 if ExecutionMode.ACQUIRE in mode
                 else CalibrationPlatform.from_datafolder(
