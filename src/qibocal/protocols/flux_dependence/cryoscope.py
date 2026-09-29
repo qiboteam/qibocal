@@ -467,13 +467,19 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             )
             * sampling_rate
         )
-        detuning[qubit] = (
-            raw_detuning + demod_freq + sampling_rate * nyquist_order
-        ).tolist()
 
         # invert frequency amplitude formula
         p = np.poly1d(data.flux_coefficients[qubit])
-        amplitude[qubit] = [max((p - freq).roots).real for freq in detuning[qubit]]
+
+        detuning_wrt_zero_flux = (
+            raw_detuning + demod_freq + sampling_rate * nyquist_order
+        )
+        detuning_wrt_drive_freq = detuning_wrt_zero_flux + p(0.0)
+
+        detuning[qubit] = detuning_wrt_drive_freq.tolist()
+        amplitude[qubit] = [
+            max((p - frequency).roots).real for frequency in detuning_wrt_drive_freq
+        ]
 
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
