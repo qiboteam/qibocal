@@ -26,6 +26,12 @@ def test_validation_calibration_platform(monkeypatch):
 def test_from_datafolder_does_not_load_hardware_platform(
     tmp_path, platform, monkeypatch
 ):
+    """Verifies that a platform dumped to a data folder and reconstructed from it
+    preserves its parameters and calibration, and that the reconstruction does not
+    require (or attempt) loading the original hardware platform from the platform
+    registry.
+    """
+
     # Fail immediately if reconstruction tries to load the named platform from the
     # hardware/platform registry by calling create_platform instead of using the saved
     # data folder.
@@ -51,6 +57,7 @@ def test_from_datafolder_does_not_load_hardware_platform(
     # not retain hardware instruments/couplers or claim a connection.
     assert list(reconstructed.qubits) == platform.calibration.qubits
     assert reconstructed.instruments == {}
-    # TODO: at some point we should also load the couplers
+    # TODO: The couplers are tested to reflect current behaviour, ideally at some point
+    # couplers are also loaded by `from_datafolder`
     assert reconstructed.couplers == {}
     assert not reconstructed.is_connected

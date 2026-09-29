@@ -55,13 +55,21 @@ def test_executor(params: dict | Action, platform: Platform | str, tmp_path: Pat
     )
 
 
-def test_executor_fit_uses_saved_platform(executor: Executor, monkeypatch):
+def test_executor_fit_reconstructs_platform_from_datafolder(
+    executor: Executor, monkeypatch
+):
+    """Verifies that when the executor runs a FIT-only protocol, it reconstructs
+    the platform from the serialized data folder (rather than reusing the live hardware
+    platform) and passes that reconstructed platform to Task.run.
+    """
     # FIT-only execution reconstructs its platform from this serialized folder.
     platform_folder = executor.path / PLATFORM
     platform_folder.mkdir(parents=True)
     executor.platform.dump(platform_folder)
 
     action = deepcopy(ACTION)
+    # Disable update so the ACQUIRE run doesn't mutate the platform's calibration,
+    # keeping the saved snapshot identical to what FIT will reconstruct.
     action.update = False
     executor.run_protocol(flipping, action, mode=ExecutionMode.ACQUIRE)
 
@@ -82,9 +90,9 @@ def test_executor_fit_uses_saved_platform(executor: Executor, monkeypatch):
     # then delegates to Task.run so the normal data loading and fit still happen.
     task_run = Task.run
 
-    def observe_platform(self, mode, folder, platform=None, targets=None):
+    def observe_platform(self, *args, platform=None, **kwargs):
         observed_platforms.append(platform)
-        return task_run(self, mode, folder, platform, targets)
+        return task_run(self, *args, platform=platform, **kwargs)
 
     monkeypatch.setattr(Task, "run", observe_platform)
 
@@ -93,8 +101,12 @@ def test_executor_fit_uses_saved_platform(executor: Executor, monkeypatch):
     assert len(observed_platforms) == 1
     fit_platform = observed_platforms[0]
     assert fit_platform is not None
+    # The executor must pass a *reconstructed* platform, not the live one.
     assert fit_platform is not executor.platform
+    # The reconstructed platform handed to Task.run must be a complete, usable
+    # snapshot: same parameters and calibration, and no live hardware attached.
     assert fit_platform.parameters == executor.platform.parameters
+    assert fit_platform.calibration == executor.platform.calibration
     assert fit_platform.instruments == {}
     assert not fit_platform.is_connected
 
