@@ -5,13 +5,13 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.constants
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
-    HZ_TO_GHZ,
     chi2_reduced,
     table_dict,
     table_html,
@@ -205,14 +205,14 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    frequencies = data.frequencies(target) * HZ_TO_GHZ
+    frequencies = data.frequencies(target)
     amplitudes = data.amplitudes(target)
     qubit_data = data[target]
 
     fig.add_trace(
         go.Heatmap(
             x=amplitudes,
-            y=frequencies,
+            y=frequencies * scipy.constants.nano,
             z=qubit_data.prob.reshape(len(amplitudes), len(frequencies)).T,
         ),
     )
@@ -228,7 +228,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[min(amplitudes), max(amplitudes)],
-                y=[selected_frequency * HZ_TO_GHZ] * 2,
+                y=[selected_frequency * scipy.constants.nano] * 2,
                 mode="lines",
                 line={"color": "white", "width": 4, "dash": "dash"},
             ),
