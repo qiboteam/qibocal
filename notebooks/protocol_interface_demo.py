@@ -47,18 +47,10 @@ def __():
 def __():
     import numpy as np
 
-    from qibocal.auto.execute import SimpleBoundProtocolExecutor
+    from qibocal.auto.execute import Executor
     from qibocal.auto.operation import BoundProtocol, Completed, Protocol
 
-    return (
-        Protocol,
-        BoundProtocol,
-        Completed,
-        SimpleBoundProtocolExecutor,
-        dataclass,
-        Optional,
-        np,
-    )
+    return Protocol, BoundProtocol, Completed, Executor, dataclass, Optional, np
 
 
 @app.cell
@@ -257,7 +249,7 @@ def __():
 
 
 @app.cell
-def __(SimpleBoundProtocolExecutor):
+def __(Executor):
     # Create mock platform (would be real hardware in production)
     class MockPlatform:
         """Mock platform for testing."""
@@ -265,7 +257,7 @@ def __(SimpleBoundProtocolExecutor):
         def update(self, results):
             pass
 
-    executor = SimpleBoundProtocolExecutor(MockPlatform())
+    executor = Executor(MockPlatform())
     return executor, MockPlatform
 
 

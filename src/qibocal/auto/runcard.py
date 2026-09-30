@@ -11,7 +11,7 @@ from qibo.backends import construct_backend
 from qibocal.calibration.platform import CalibrationPlatform
 
 from .. import protocols
-from .execute import Executor
+from .execute import CalibrationExecutor
 from .history import History
 from .mode import ExecutionMode
 from .output import Metadata
@@ -62,7 +62,7 @@ class Runcard:
         history = History.load(output)
         update = update and self.update
         backend = construct_backend(backend="qibolab", platform=platform)
-        instance = Executor(
+        instance = CalibrationExecutor(
             history=history,
             platform=platform,
             targets=targets,
