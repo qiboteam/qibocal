@@ -62,7 +62,7 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool, axis: int = -1):
     phase_guess = np.pi if not signal else np.pi / 2
     zeros = 0
 
-    if not period.ndim > 0:
+    if period.ndim > 0:
         zeros = np.zeros_like(period)
         phase_guess = np.full(period.shape, phase_guess)
 
