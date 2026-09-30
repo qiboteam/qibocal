@@ -220,6 +220,8 @@ def _plot(
         title="Probability",
         xaxis_title="Amplitude [a.u.]",
         yaxis_title="Frequency [GHz]",
+        margin={"r": 50},
+        legend={"orientation": "h", "yanchor": "top", "y": -0.1, "xanchor": "left"},
     )
 
     if fit is not None:
@@ -230,9 +232,12 @@ def _plot(
                 x=[min(amplitudes), max(amplitudes)],
                 y=[selected_frequency * scipy.constants.nano] * 2,
                 mode="lines",
-                line={"color": "white", "width": 4, "dash": "dash"},
+                line={"color": "black", "width": 4, "dash": "dash"},
+                name="Fit frequency",
+                showlegend=True,
             ),
         )
+
         pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
 
         fitting_report = table_html(
