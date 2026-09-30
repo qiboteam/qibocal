@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.constants
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from sklearn.decomposition import PCA
 
@@ -15,7 +16,7 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ...result import collect
-from ..utils import HZ_TO_GHZ, readout_frequency
+from ..utils import readout_frequency
 from .length_signal import RabiLengthSignalResults
 from .utils import fit_length_function, plot, rabi_initial_guess, sequence_length
 
@@ -258,7 +259,7 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    frequencies = data.frequencies(target) * HZ_TO_GHZ
+    frequencies = data.frequencies(target)
     durations = data.durations(target)
     qubit_data = data[target]
 
@@ -273,7 +274,7 @@ def _plot(
     fig.add_trace(
         go.Heatmap(
             x=durations,
-            y=frequencies,
+            y=frequencies * scipy.constants.nano,
             z=pc_matrix,
             colorbar_x=1.0,
         ),
@@ -282,6 +283,8 @@ def _plot(
         title="Rabi 2D IQ Signal",
         xaxis_title="Time [ns]",
         yaxis_title="Frequency [GHz]",
+        margin={"r": 50},
+        legend={"orientation": "h", "yanchor": "top", "y": -0.1, "xanchor": "left"},
     )
 
     if fit is not None:
@@ -290,9 +293,11 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[min(durations), max(durations)],
-                y=[selected_frequency * HZ_TO_GHZ] * 2,
+                y=[selected_frequency * scipy.constants.nano] * 2,
                 mode="lines",
-                line={"color": "white", "width": 4, "dash": "dash"},
+                line={"color": "black", "width": 4, "dash": "dash"},
+                name="Fit frequency",
+                showlegend=True,
             ),
         )
         pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
