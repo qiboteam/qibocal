@@ -135,7 +135,10 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
                 pguess,
                 sigma=qubit_data.error,
             )
-            durations[qubit] = [pi_pulse_parameter, perr[2]]
+            durations[qubit] = [
+                pi_pulse_parameter,
+                perr[2] / 2 * utils.period_correction_factor(popt[3]),
+            ]
             fitted_parameters[qubit] = popt
             amplitudes = {key: [value, 0] for key, value in data.amplitudes.items()}
             chi2[qubit] = [

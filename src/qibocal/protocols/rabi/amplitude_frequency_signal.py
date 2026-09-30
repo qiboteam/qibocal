@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.constants
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from sklearn.decomposition import PCA
 
@@ -13,7 +14,6 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
-    HZ_TO_GHZ,
     readout_frequency,
     table_dict,
     table_html,
@@ -249,22 +249,25 @@ def _plot(
     fitting_report = ""
     fig = go.Figure()
     qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    amplitudes = qubit_data.amp
+    frequencies = data.frequencies(target)
+    amplitudes = data.amplitudes(target)
 
     quadratures_matrix = collect(qubit_data.i, qubit_data.q).reshape(
-        len(data.amplitudes(target)), len(data.frequencies(target)), -1
+        len(amplitudes), len(frequencies), -1
     )
+
+    # note quadratures_matrix has shape (n_freqs, n_amps, n_shots) after reshaping
     quadratures_matrix = np.moveaxis(quadratures_matrix, 0, 1)
 
     # computing PCA for each frequency value and only take the most relevant component
-    pc_matrix = np.asarray([PCA().fit_transform(x)[:, 0] for x in quadratures_matrix]).T
+    # pc_matrix has shape (n_freqs, n_amps)
+    pc_matrix = np.asarray([PCA().fit_transform(x)[:, 0] for x in quadratures_matrix])
 
     fig.add_trace(
         go.Heatmap(
             x=amplitudes,
-            y=frequencies,
-            z=pc_matrix.ravel(),
+            y=frequencies * scipy.constants.nano,
+            z=pc_matrix,
             colorbar_x=1.0,
         ),
     )
@@ -280,7 +283,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[min(amplitudes), max(amplitudes)],
-                y=[selected_frequency * HZ_TO_GHZ] * 2,
+                y=[selected_frequency * scipy.constants.nano] * 2,
                 mode="lines",
                 line={"color": "white", "width": 4, "dash": "dash"},
             ),
