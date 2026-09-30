@@ -1313,13 +1313,13 @@ def plot_iq_pca(
                 y=centroid_y + a[1] * axis_plot,
                 opacity=1,
                 name="Principal Axes",
-                showlegend=i == 0,
+                showlegend=idx == 0,
                 legendgroup="Principal Axes",
                 mode="lines",
                 marker={"color": "black"},
                 line={"dash": "dash"},
             )
-            for i, a in enumerate([axis_1, axis_2])
+            for idx, a in enumerate([axis_1, axis_2])
         ]
     )
 

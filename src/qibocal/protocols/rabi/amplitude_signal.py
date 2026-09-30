@@ -44,10 +44,10 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    length: dict[QubitId, float] | dict[QubitId, list[float]]
-    """Pulse duration for each qubit."""
     amplitude: dict[QubitId, float] | dict[QubitId, list[float]]
     """Pulse amplitude. Same for all qubits."""
+    length: dict[QubitId, float] | dict[QubitId, list[float]]
+    """Pulse duration for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     rx90: bool
@@ -156,7 +156,10 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiAmplitudeSignalResults(
-        pi_pulse_amplitudes, data.durations, fitted_parameters, data.rx90
+        amplitude=pi_pulse_amplitudes,
+        length=data.durations,
+        fitted_parameters=fitted_parameters,
+        rx90=data.rx90,
     )
 
 

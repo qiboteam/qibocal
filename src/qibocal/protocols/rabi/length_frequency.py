@@ -21,6 +21,7 @@ from .length_frequency_signal import (
 )
 from .utils import (
     fit_length_function,
+    period_correction_factor,
     plot_probabilities,
     rabi_initial_guess,
     rabi_length_function,
@@ -182,7 +183,10 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
                 sigma=error,
             )
             fitted_frequencies[qubit] = frequency
-            fitted_durations[qubit] = [pi_pulse_parameter, perr[2]]
+            fitted_durations[qubit] = [
+                pi_pulse_parameter,
+                perr[2] / 2 * period_correction_factor(popt[3]),
+            ]
             fitted_parameters[qubit] = popt
             chi2[qubit] = [
                 chi2_reduced(
