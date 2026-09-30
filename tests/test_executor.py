@@ -12,8 +12,15 @@ import qibocal.protocols
 from qibocal import Executor
 from qibocal.auto.execute import check_overlap_in_input_qubits
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
-from qibocal.auto.output import PLATFORM
+from qibocal.auto.operation import (
+    Completed,
+    Data,
+    Parameters,
+    Protocol,
+    QubitId,
+    Results,
+)
+from qibocal.auto.output import PLATFORM, Output
 from qibocal.auto.runcard import Action
 from qibocal.auto.task import Task
 from qibocal.calibration.platform import (
@@ -34,6 +41,105 @@ PARAMETERS = {
 action = deepcopy(PARAMETERS)
 action["operation"] = "flipping"
 ACTION = Action(**action)
+
+
+@pytest.fixture
+def bound_protocol(mocker):
+    protocol = Protocol(
+        acquisition=mocker.Mock(return_value=7),
+        fit=mocker.Mock(return_value=11),
+        report=mocker.Mock(),
+        update=mocker.Mock(),
+    )
+    return protocol(pars=3, fit={"fit": True}, report={"report": True})
+
+
+def test_bound_protocol_executor(bound_protocol, platform):
+    executor = Executor(platform)
+    completed = executor(bound_protocol)
+
+    assert isinstance(completed, Completed)
+    assert completed.data == 7
+    assert completed.results == 11
+    assert completed.success
+    bound_protocol.protocol.acquisition.assert_called_once_with(3)
+    bound_protocol.protocol.fit.assert_called_once_with(7, {"fit": True})
+    bound_protocol.protocol.report.assert_called_once_with(7, 11, {"report": True})
+    bound_protocol.protocol.update.assert_called_once_with(11, platform)
+    assert executor.path is None
+    assert list(executor.history) == []
+    assert not hasattr(qibocal, "CalibrationExecutor")
+
+
+@pytest.mark.parametrize("skip_fit", [False, True])
+def test_bound_protocol_without_fit(bound_protocol, platform, skip_fit):
+    fit = bound_protocol.protocol.fit
+    if not skip_fit:
+        bound_protocol.protocol.fit = None
+    completed = Executor(platform)(bound_protocol, skip_fit=skip_fit)
+
+    assert completed.data == 7
+    assert completed.results is None
+    fit.assert_not_called()
+    bound_protocol.protocol.report.assert_not_called()
+    bound_protocol.protocol.update.assert_not_called()
+
+
+def test_bound_protocol_optional_report_and_update(bound_protocol, platform):
+    bound_protocol.protocol.report = None
+    bound_protocol.protocol.update = None
+    completed = Executor(platform)(bound_protocol)
+
+    assert completed.results == 11
+
+
+def test_bound_protocol_update_disabled(bound_protocol, platform):
+    executor = Executor(platform, update=False)
+    completed = executor(bound_protocol)
+
+    bound_protocol.protocol.update.assert_not_called()
+    executor.update(completed.results, bound_protocol)
+    bound_protocol.protocol.update.assert_called_once_with(11, platform)
+
+
+def test_bound_protocol_individual_phases(bound_protocol, platform):
+    executor = Executor(platform)
+    data = executor.acquire(bound_protocol)
+    results = executor.fit(data, bound_protocol)
+    executor.report(data, results, bound_protocol)
+    executor.update(results, bound_protocol)
+
+    bound_protocol.protocol.acquisition.assert_called_once_with(3)
+    bound_protocol.protocol.fit.assert_called_once_with(7, {"fit": True})
+    bound_protocol.protocol.report.assert_called_once_with(7, 11, {"report": True})
+    bound_protocol.protocol.update.assert_called_once_with(11, platform)
+
+
+@pytest.mark.parametrize("phase", ["fit", "report", "update"])
+def test_bound_protocol_missing_phase(bound_protocol, platform, phase):
+    setattr(bound_protocol.protocol, phase, None)
+    executor = Executor(platform)
+    args = {
+        "fit": (7, bound_protocol),
+        "report": (7, 11, bound_protocol),
+        "update": (11, bound_protocol),
+    }
+
+    with pytest.raises(ValueError, match="Protocol does not support"):
+        getattr(executor, phase)(*args[phase])
+
+
+def test_bound_protocol_update_requires_platform(bound_protocol):
+    with pytest.raises(ValueError, match="does not have a platform"):
+        Executor(None).update(11, bound_protocol)
+
+
+@pytest.mark.parametrize("phase", ["acquisition", "fit", "report", "update"])
+def test_bound_protocol_propagates_errors(bound_protocol, platform, phase):
+    getattr(bound_protocol.protocol, phase).side_effect = RuntimeError(phase)
+
+    with pytest.raises(RuntimeError, match=phase):
+        Executor(platform)(bound_protocol)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
@@ -144,6 +250,44 @@ def _plot(data: FakeData, target: QubitId, fit: FakeResults | None = None):
 
 def _update(results: FakeResults, platform, qubit):
     pass
+
+
+def test_calibration_task_uses_bound_executor(tmp_path, platform, mocker):
+    acquire = mocker.spy(Executor, "acquire")
+    fit = mocker.spy(Executor, "fit")
+    protocol = Protocol(_acquisition, _fit, _plot, _update)
+    task = Task(Action("fake", "fake", parameters={"par": 7}), protocol)
+
+    completed = task.run(
+        mode=ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+        folder=tmp_path,
+        platform=platform,
+        targets=[0],
+    )
+
+    acquire.assert_called_once()
+    fit.assert_called_once()
+    assert completed.data.par == 7
+    assert completed.results.par == {0: 7}
+    assert completed.task.targets == [0]
+    assert completed.data_time >= 0
+    assert completed.results_time >= 0
+
+
+def test_calibration_without_optional_phases(tmp_path, platform):
+    executor = Executor.create(tmp_path, targets=[0], platform=platform)
+    executor.init(force=True)
+    protocol = Protocol(_acquisition)
+    action = Action("fake", "fake", parameters={"par": 7})
+
+    completed = executor.run_protocol(protocol, action)
+    assert completed.data.par == 7
+    assert completed.results is None
+
+    output = Output(executor.history, executor.meta, executor.platform)
+    output.process(tmp_path, mode=ExecutionMode.FIT)
+    assert next(output.history.values()).results is None
+    executor.close()
 
 
 @pytest.fixture

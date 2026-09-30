@@ -2,6 +2,7 @@
 
 import copy
 import json
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, NewType, Union
@@ -136,6 +137,8 @@ class Task:
         platform: Platform | None = None,
         targets: Targets | None = None,
     ) -> "Completed":
+        from .execute import Executor
+
         if self.targets is None:
             self.action.targets = targets
 
@@ -160,20 +163,34 @@ class Task:
             parameters = DummyPars()
         completed.dump_parameters()
 
+        # Adapt calibration signatures here rather than changing individual protocols.
+        def acquire(parameters):
+            kwargs = {}
+            if operation.platform_dependent:
+                kwargs["platform"] = platform
+            if operation.targets_dependent:
+                kwargs["targets"] = self.targets
+            return operation.acquisition(parameters, **kwargs)
+
+        def fit(data, fitpars):
+            return operation.fit(data)
+
+        bound = Protocol(
+            acquisition=acquire,
+            fit=fit if operation.fit is not None else None,
+        )(pars=parameters)
+        executor = Executor(platform)
+
         if ExecutionMode.ACQUIRE in mode:
-            if operation.platform_dependent and operation.targets_dependent:
-                completed.data, completed.data_time = operation.acquisition(
-                    parameters,
-                    platform=platform,
-                    targets=self.targets,
-                )
-            else:
-                completed.data, completed.data_time = operation.acquisition(
-                    parameters, platform=platform
-                )
+            start = time.perf_counter()
+            completed.data = executor.acquire(bound)
+            completed.data_time = time.perf_counter() - start
             completed.dump_data()
-        if ExecutionMode.FIT in mode:
-            completed.results, completed.results_time = operation.fit(completed.data)
+        if ExecutionMode.FIT in mode and operation.fit is not None:
+            data = completed.data
+            start = time.perf_counter()
+            completed.results = executor.fit(data, bound)
+            completed.results_time = time.perf_counter() - start
             completed.dump_results()
         return completed
 
@@ -222,7 +239,8 @@ class Completed:
         """Access task's results."""
         if self._results is None:
             Results = self.task.operation.results_type
-            self._results = Results.load(self.path)
+            if Results is not None:
+                self._results = Results.load(self.path)
         return self._results
 
     @results.setter

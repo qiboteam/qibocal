@@ -6,6 +6,35 @@ How to use Qibocal as a library
 
 Qibocal also allows executing protocols without the standard :ref:`interface <interface>`.
 
+The :class:`~qibocal.Executor` directly executes a protocol with explicitly bound
+acquisition, fit and report parameters:
+
+.. code-block:: python
+
+    from qibocal import Executor, Protocol, create_calibration_platform
+
+    protocol = Protocol(
+        acquisition=lambda samples: samples,
+        fit=lambda data, fitpars: sum(data) / len(data),
+    )
+    bound = protocol(pars=[1.0, 2.0, 3.0])
+    executor = Executor(create_calibration_platform("mock"))
+    completed = executor(bound)
+    print(completed.results)  # 2.0
+
+Only acquisition is required. Optional fit, report and update functions are run
+when provided; ``executor(bound, skip_fit=True)`` performs acquisition alone.
+Updates use the protocol's update function, passing the results and executor's
+platform. ``Executor(platform, update=False)`` disables automatic updates.
+Individual phases can also be invoked through ``acquire(bound)``,
+``fit(data, bound)``, ``report(data, results, bound)`` and
+``update(results, bound)``.
+
+The same executor supports output directories, execution history and platform
+connection management through ``Executor.create`` and ``Executor.open``.
+Existing calibration protocols are adapted by the task execution layer, without
+requiring changes to their acquisition, fitting or update functions.
+
 In the following tutorial we show how to run a single protocol using Qibocal as a library.
 For this particular example we will focus on the `t1_signal protocol
 <https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/coherence/t1_signal.py>`_ (see also :ref:`t1`).
