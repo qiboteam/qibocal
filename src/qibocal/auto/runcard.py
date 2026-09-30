@@ -76,7 +76,6 @@ class Runcard:
                 protocol=getattr(protocols, action.operation),
                 parameters=action,
                 mode=mode,
-                output=output,
             )
         instance.history.dump(output)
         return instance.history
