@@ -2,13 +2,12 @@
 
 from . import auto, protocols
 from .auto import *
-from .auto.execute import CalibrationExecutor, Executor
+from .auto.execute import Executor
 from .calibration import create_calibration_platform
 from .cli import command
 from .version import __version__
 
 __all__ = [
-    "CalibrationExecutor",
     "Executor",
     "__version__",
     "command",

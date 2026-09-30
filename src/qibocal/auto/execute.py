@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import importlib
-import importlib.util
 import operator
 import os
-import sys
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import fields
@@ -15,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
+from pydantic import TypeAdapter
 from qibo.backends import construct_backend
 from qibolab import Platform
 
@@ -44,15 +41,45 @@ class Executor:
 
     This executor executes BoundProtocol instances without requiring
     protocol registration or convention-based behavior.
+    Calibration output, history and lifecycle management are optional.
     """
 
-    def __init__(self, platform: Platform):
+    def __init__(
+        self,
+        platform: Platform | None,
+        *,
+        history: History | None = None,
+        targets: Targets | None = None,
+        update: bool = True,
+        path: os.PathLike | None = None,
+        meta: Metadata | None = None,
+        sources: list[ProtocolsCollection] | None = None,
+    ):
         """Initialize the executor with a platform.
 
         Args:
-            platform: The hardware platform to use for acquisition.
+            platform: The hardware platform to use for acquisition and updates.
+            history: Calibration execution history.
+            targets: Default calibration targets.
+            update: Whether to apply fitted results to the platform.
+            path: Optional calibration output directory.
+            meta: Calibration execution metadata.
+            sources: Additional calibration protocols.
         """
         self.platform = platform
+        self.history = history if history is not None else History()
+        self.targets = TypeAdapter(Targets).validate_python(
+            targets if targets is not None else []
+        )
+        self._update_enabled = update
+        self.path = Path(path) if path is not None else None
+        self.meta = meta
+        self.sources = sources if sources is not None else []
+        check_overlap_in_input_qubits(self.targets)
+
+        if self.path is not None:
+            for name, protocol in self.protocols.items():
+                setattr(self, name, self._wrapped_protocol(protocol, name))
 
     def __call__(
         self,
@@ -84,8 +111,12 @@ class Executor:
             self.report(data, results, bound)
 
         # Execute update if available
-        if results is not None and bound.protocol.update is not None:
-            self.update(results)
+        if (
+            results is not None
+            and bound.protocol.update is not None
+            and self._update_enabled
+        ):
+            self.update(results, bound)
 
         return ProtocolCompleted(
             data=data,
@@ -146,53 +177,23 @@ class Executor:
 
         bound.protocol.report(data, results, bound.reportpars)
 
-    def update(self, results: object) -> None:
+    def update(self, results: object, bound: BoundProtocol) -> None:
         """Execute the update phase to apply results to platform.
 
         Args:
             results: Results from fitting.
+            bound: The bound protocol defining the update function.
 
         Raises:
-            ValueError: If the executor does not have an update function.
+            ValueError: If the protocol has no update function or no platform
+                is configured.
         """
+        if bound.protocol.update is None:
+            raise ValueError("Protocol does not support updating")
         if self.platform is None:
             raise ValueError("Executor does not have a platform configured")
 
-        return self.platform.update(results)
-
-
-class CalibrationExecutor(BaseModel):
-    """Calibration task executor that tracks history and state.
-
-    This is the original executor implementation, preserved for backward
-    compatibility with calibration runcard-based execution workflows.
-    """
-
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
-
-    history: History
-    """The execution history, with results and exit states."""
-    targets: Targets
-    """Qubits/Qubit Pairs to be calibrated."""
-    platform: CalibrationPlatform
-    """Qubits' platform."""
-    update: bool = True
-    """Runcard update mechanism."""
-    path: Path
-    meta: Metadata
-
-    sources: list[ProtocolsCollection] = Field(default_factory=list)
-    """Sources to extend core protocol set."""
-
-    def model_post_init(self, context: Any) -> None:
-        """Register protocols for execution."""
-        # explicitly unused
-        _ = context
-
-        for name, protocol in self.protocols.items():
-            object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
-
-        check_overlap_in_input_qubits(self.targets)
+        bound.protocol.update(results, self.platform)
 
     @cached_property
     def protocols(self) -> ProtocolsCollection:
@@ -216,6 +217,10 @@ class CalibrationExecutor(BaseModel):
         """
 
         output = self.path
+        if output is None or self.platform is None:
+            raise ValueError(
+                "Calibration execution requires an output path and platform"
+            )
 
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
@@ -243,7 +248,13 @@ class CalibrationExecutor(BaseModel):
 
         # TODO: drop, as the conditions won't be necessary any longer, and then it could
         # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
-        if ExecutionMode.FIT in mode and self.update and task.update:
+        if (
+            ExecutionMode.FIT in mode
+            and self._update_enabled
+            and task.update
+            and protocol.update is not None
+            and completed.results is not None
+        ):
             completed.update_platform(platform=self.platform)
 
         return completed
@@ -356,6 +367,10 @@ class CalibrationExecutor(BaseModel):
 
     def init(self, force: bool = False):
         """Initialize execution."""
+        if self.path is None or self.meta is None or self.platform is None:
+            raise ValueError(
+                "Calibration initialization requires an output path, metadata and platform"
+            )
         # generate output folder
         path = Output.mkdir(self.path, force)
 
@@ -371,7 +386,10 @@ class CalibrationExecutor(BaseModel):
 
     def close(self):
         """Close execution."""
-        assert self.meta is not None and self.path is not None
+        if self.path is None or self.meta is None or self.platform is None:
+            raise ValueError(
+                "Calibration finalization requires an output path, metadata and platform"
+            )
 
         # stop and disconnect platform
         self.platform.disconnect()
@@ -417,6 +435,8 @@ class CalibrationExecutor(BaseModel):
         It should not be used with new executors. In which case, cf. :meth:`__open__`.
         """
         # connect and initialize platform
+        if self.platform is None:
+            raise ValueError("Executor does not have a platform configured")
         self.platform.connect()
         return self
 
@@ -427,40 +447,3 @@ class CalibrationExecutor(BaseModel):
         """
         self.close()
         return False
-
-
-def _register(name: str, obj: Any) -> None:
-    """Register object as module.
-
-    With a small abuse of the Python module system, the object is registered as a
-    module, with the given `name`.
-    `name` may contain dots, cf. :attr:`Executor.name` for clarifications about their
-    meaning.
-
-    .. note::
-
-        This is mainly used to register executors, such that the protocols can be
-        bound to it through the `import` keyword, in order to construct an intuitive
-        syntax, apparently purely functional, maintaining the context in a single
-        `Executor` "global" object.
-    """
-    # prevent overwriting existing modules
-    if name in sys.modules:
-        raise ValueError(
-            f"Module '{name}' already present. "
-            "Choose a different one to avoid overwriting it."
-        )
-
-    # allow relative paths, where relative is intended respect to package root
-    root = __name__.split(".")[0]
-    qualified = importlib.util.resolve_name(name, root)
-
-    # allow to nest module in arbitrary subpackage
-    if "." in qualified:
-        parent_name, _, child_name = qualified.rpartition(".")
-        parent_module = importlib.import_module(parent_name)
-        setattr(parent_module, child_name, obj)
-
-    sys.modules[qualified] = obj
-    obj.__name__ = qualified
-    obj.__spec__ = None
