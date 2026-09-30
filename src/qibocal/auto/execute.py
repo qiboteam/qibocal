@@ -25,9 +25,9 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import Protocol, ProtocolsCollection
+from .operation import BoundProtocol, Protocol, ProtocolsCollection
+from .operation import Completed as ProtocolCompleted
 from .output import PLATFORM, Metadata, Output
-from .protocol import BoundProtocol
 from .task import Action, Completed, Targets, Task
 
 
@@ -393,9 +393,6 @@ class SimpleBoundProtocolExecutor:
         # Execute update if available
         if results is not None and bound.protocol.update is not None:
             self.update(results)
-
-        # Import Completed from protocol module
-        from .protocol import Completed as ProtocolCompleted
 
         return ProtocolCompleted(
             data=data,
