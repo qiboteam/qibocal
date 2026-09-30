@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 import json
 import time
@@ -6,19 +8,18 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
-from typing import Generic, NewType, TypeVar
+from typing import Any, Generic, NewType, TypeVar
 
 import numpy as np
 import numpy.typing as npt
 from qibolab import Platform, Qubit
 
 from qibocal.calibration.calibration import QubitId, QubitPairId
-from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
 
-__all__ = ["Protocol", "ProtocolsCollection"]
+__all__ = ["BoundProtocol", "Completed", "Protocol", "ProtocolsCollection"]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -249,64 +250,147 @@ class Results(AbstractData):
         super().save(path, filename)
 
 
-# Internal types, in particular `_ParametersT_contra` is used to address function
-# contravariance on parameter type
-_ParametersT_contra = TypeVar(
-    "_ParametersT_contra", bound=Parameters, contravariant=True
-)
-_DataT = TypeVar("_DataT", bound=Data)
-_ResultsT = TypeVar("_ResultsT", bound=Results)
+# Type variables for generic Protocol
+_ParametersT = TypeVar("_ParametersT")
+_FitParsT = TypeVar("_FitParsT")
+_ReportParsT = TypeVar("_ReportParsT")
+_DataT = TypeVar("_DataT")
+_ResultsT = TypeVar("_ResultsT")
 
 
 @dataclass
-class Protocol(Generic[_ParametersT_contra, _DataT, _ResultsT]):
-    """A wrapped calibration routine."""
+class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]):
+    """A calibration protocol with explicit type-safe interface.
 
-    acquisition: Callable[[_ParametersT_contra], _DataT]
-    """Data acquisition function."""
-    fit: Callable[[_DataT], _ResultsT] | None = None
-    """Post-processing function."""
-    report: Callable[[_DataT, _ResultsT], None] | None = None
-    """Plotting function."""
-    update: Callable[[_ResultsT, CalibrationPlatform], None] | None = None
-    """Update function platform."""
+    This protocol definition separates concerns into distinct phases:
+    - acquisition: collects raw data from hardware
+    - fit: processes data and produces results
+    - report: generates visualizations and summaries
+    - update: applies results back to the platform configuration
+
+    All phases except acquisition are optional, allowing flexible workflow composition.
+
+    Type Parameters:
+        _ParametersT: Type of acquisition parameters
+        _FitParsT: Type of fit function parameters
+        _ReportParsT: Type of report function parameters
+        _DataT: Type of data returned by acquisition
+        _ResultsT: Type of results returned by fit
+    """
+
+    acquisition: Callable[[_ParametersT], _DataT]
+    """Acquire data from hardware. Takes parameters, returns data."""
+
+    fit: Callable[[_DataT, _FitParsT | None], _ResultsT] | None = None
+    """Process data and produce results. Takes data and optional fit params."""
+
+    report: Callable[[_DataT, _ResultsT, _ReportParsT | None], None] | None = None
+    """Generate reports/visualizations. Takes data, results, and optional report params."""
+
+    update: Callable[[_ResultsT, Platform], None] | None = None
+    """Update platform with results."""
+
     two_qubit_gates: bool | None = False
     """Flag to determine whether to allocate list of Qubits or Pairs."""
 
-    def __post_init__(self):
-        # add decorator to show logs
-        self.acquisition = show_logs(self.acquisition)
-        self.fit = show_logs(self.fit)
-        if self.update is None:
-            self.update = _dummy_update
-
     @property
-    def parameters_type(self):
-        """Input parameters type."""
+    def parameters_type(self) -> type:
+        """Extract the type of acquisition parameters."""
         sig = inspect.signature(self.acquisition)
         param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
-    def data_type(self):
-        """Data object type return by data acquisition."""
+    def data_type(self) -> type:
+        """Extract the return type of acquisition."""
         return inspect.signature(self.acquisition).return_annotation
 
     @property
-    def results_type(self):
-        """Results object type returned by data acquisition."""
+    def results_type(self) -> type:
+        """Extract the return type of fit."""
+        if self.fit is None:
+            return None
         return inspect.signature(self.fit).return_annotation
 
-    # TODO: I don't like these properties but it seems to work
     @property
-    def platform_dependent(self):
+    def platform_dependent(self) -> bool:
         """Check if acquisition involves platform."""
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
-    def targets_dependent(self):
+    def targets_dependent(self) -> bool:
         """Check if acquisition involves qubits."""
         return "targets" in inspect.signature(self.acquisition).parameters
+
+    def __call__(
+        self,
+        pars: _ParametersT | None = None,
+        fit: _FitParsT | None = None,
+        report: _ReportParsT | None = None,
+        **kwargs: Any,
+    ) -> BoundProtocol:
+        """Bind parameters to this protocol.
+
+        Returns a BoundProtocol that can be executed with all necessary information.
+
+        Args:
+            pars: Protocol acquisition parameters. If None, will be constructed from kwargs.
+            fit: Optional parameters for the fit phase.
+            report: Optional parameters for the report phase.
+            **kwargs: Keyword arguments used to construct parameters if pars is None.
+
+        Returns:
+            A BoundProtocol ready for execution.
+        """
+        if pars is None:
+            pars = self.parameters_type(**kwargs)
+        return BoundProtocol(
+            protocol=self, parameters=pars, fitpars=fit, reportpars=report
+        )
+
+
+@dataclass
+class BoundProtocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]):
+    """A protocol bound with specific parameters and execution configuration.
+
+    This represents a specific protocol execution with all required parameters
+    and optional phase parameters already determined.
+    """
+
+    protocol: Protocol[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
+    """The protocol being bound."""
+
+    parameters: _ParametersT
+    """Acquisition parameters."""
+
+    fitpars: _FitParsT | None = None
+    """Optional fit phase parameters."""
+
+    reportpars: _ReportParsT | None = None
+    """Optional report phase parameters."""
+
+
+@dataclass
+class Completed:
+    """Result of a protocol execution.
+
+    Stores the outcomes and metadata of a complete or partial protocol execution.
+    """
+
+    data: Any = None
+    """Data acquired during execution."""
+
+    results: Any = None
+    """Results produced by fitting."""
+
+    protocol_id: str | None = None
+    """Identifier for the protocol that was executed."""
+
+    error: Exception | None = None
+    """Error that occurred during execution, if any."""
+
+    success: bool = True
+    """Whether execution completed successfully."""
 
 
 ProtocolsCollection = dict[str, Protocol]

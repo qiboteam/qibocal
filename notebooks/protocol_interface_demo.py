@@ -48,7 +48,7 @@ def __():
     import numpy as np
 
     from qibocal.auto.execute import SimpleBoundProtocolExecutor
-    from qibocal.auto.protocol import BoundProtocol, Completed, Protocol
+    from qibocal.auto.operation import BoundProtocol, Completed, Protocol
 
     return (
         Protocol,
