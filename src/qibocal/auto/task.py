@@ -163,23 +163,8 @@ class Task:
             parameters = DummyPars()
         completed.dump_parameters()
 
-        # Adapt calibration signatures here rather than changing individual protocols.
-        def acquire(parameters):
-            kwargs = {}
-            if operation.platform_dependent:
-                kwargs["platform"] = platform
-            if operation.targets_dependent:
-                kwargs["targets"] = self.targets
-            return operation.acquisition(parameters, **kwargs)
-
-        def fit(data, fitpars):
-            return operation.fit(data)
-
-        bound = Protocol(
-            acquisition=acquire,
-            fit=fit if operation.fit is not None else None,
-        )(pars=parameters)
-        executor = Executor(platform)
+        bound = operation(pars=parameters)
+        executor = Executor(platform, targets=self.targets)
 
         if ExecutionMode.ACQUIRE in mode:
             start = time.perf_counter()

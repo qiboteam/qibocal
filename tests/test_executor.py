@@ -45,11 +45,23 @@ ACTION = Action(**action)
 
 @pytest.fixture
 def bound_protocol(mocker):
+    def acquire(parameters):
+        pass
+
+    def fit(data, fitpars):
+        pass
+
+    def report(data, results, reportpars):
+        pass
+
+    def update(results, platform):
+        pass
+
     protocol = Protocol(
-        acquisition=mocker.Mock(return_value=7),
-        fit=mocker.Mock(return_value=11),
-        report=mocker.Mock(),
-        update=mocker.Mock(),
+        acquisition=mocker.create_autospec(acquire, return_value=7),
+        fit=mocker.create_autospec(fit, return_value=11),
+        report=mocker.create_autospec(report, return_value="report"),
+        update=mocker.create_autospec(update),
     )
     return protocol(pars=3, fit={"fit": True}, report={"report": True})
 
@@ -61,11 +73,14 @@ def test_bound_protocol_executor(bound_protocol, platform):
     assert isinstance(completed, Completed)
     assert completed.data == 7
     assert completed.results == 11
+    assert completed.reports == "report"
     assert completed.success
     bound_protocol.protocol.acquisition.assert_called_once_with(3)
-    bound_protocol.protocol.fit.assert_called_once_with(7, {"fit": True})
-    bound_protocol.protocol.report.assert_called_once_with(7, 11, {"report": True})
-    bound_protocol.protocol.update.assert_called_once_with(11, platform)
+    bound_protocol.protocol.fit.assert_called_once_with(7, fitpars={"fit": True})
+    bound_protocol.protocol.report.assert_called_once_with(
+        7, results=11, reportpars={"report": True}
+    )
+    bound_protocol.protocol.update.assert_called_once_with(11, platform=platform)
     assert executor.path is None
     assert list(executor.history) == []
     assert not hasattr(qibocal, "CalibrationExecutor")
@@ -80,6 +95,7 @@ def test_bound_protocol_without_fit(bound_protocol, platform, skip_fit):
 
     assert completed.data == 7
     assert completed.results is None
+    assert completed.reports is None
     fit.assert_not_called()
     bound_protocol.protocol.report.assert_not_called()
     bound_protocol.protocol.update.assert_not_called()
@@ -99,20 +115,22 @@ def test_bound_protocol_update_disabled(bound_protocol, platform):
 
     bound_protocol.protocol.update.assert_not_called()
     executor.update(completed.results, bound_protocol)
-    bound_protocol.protocol.update.assert_called_once_with(11, platform)
+    bound_protocol.protocol.update.assert_called_once_with(11, platform=platform)
 
 
 def test_bound_protocol_individual_phases(bound_protocol, platform):
     executor = Executor(platform)
     data = executor.acquire(bound_protocol)
     results = executor.fit(data, bound_protocol)
-    executor.report(data, results, bound_protocol)
+    assert executor.report(data, results, bound_protocol) == "report"
     executor.update(results, bound_protocol)
 
     bound_protocol.protocol.acquisition.assert_called_once_with(3)
-    bound_protocol.protocol.fit.assert_called_once_with(7, {"fit": True})
-    bound_protocol.protocol.report.assert_called_once_with(7, 11, {"report": True})
-    bound_protocol.protocol.update.assert_called_once_with(11, platform)
+    bound_protocol.protocol.fit.assert_called_once_with(7, fitpars={"fit": True})
+    bound_protocol.protocol.report.assert_called_once_with(
+        7, results=11, reportpars={"report": True}
+    )
+    bound_protocol.protocol.update.assert_called_once_with(11, platform=platform)
 
 
 @pytest.mark.parametrize("phase", ["fit", "report", "update"])
