@@ -27,16 +27,17 @@ when provided; ``executor(bound, skip_fit=True)`` performs acquisition alone.
 Updates use the protocol's update function, passing the results and executor's
 platform. ``Executor(platform, update=False)`` disables automatic updates.
 Individual phases can also be invoked through ``acquire(bound)``,
-``fit(data, bound)``, ``report(data, results, bound)`` and
-``update(results, bound)``.
+``fit(completed)``, ``report(completed)`` and ``update(completed)``.
+Every phase returns a new :class:`~qibocal.auto.task.Completed` instance,
+preserving the input execution. Acquisition stores its bound protocol in
+``completed.bound``; downstream phases reuse that binding and attach their
+outputs to the returned instance. Fitting attaches ``results`` and reporting
+attaches ``reports``. Re-fitting clears previous reports.
 
-Each of these methods also accepts an unbound protocol and keyword arguments
-to bind it internally. For example, ``executor(protocol, pars=[1.0, 2.0, 3.0])``
-is equivalent to ``executor(protocol(pars=[1.0, 2.0, 3.0]))``.
-Acquisition parameters can be provided directly as keywords; ``pars``, ``fit``
-and ``report`` are forwarded to the protocol's binding interface. Binding
-arguments cannot be supplied alongside an already-bound protocol, except for
-execution settings such as ``nshots`` and ``relaxation_time``.
+``executor(...)`` and ``acquire(...)`` require an explicitly bound protocol.
+Bind acquisition, fit and report parameters through ``protocol(pars=..., fit=...,
+report=...)`` before executing it. Acquisition parameters can also be supplied
+directly as keywords to the protocol's binding interface.
 
 Built-in protocols can be bound directly from keywords, including ``nshots`` and
 ``relaxation_time``, or from an existing parameter object using ``pars=...``.
@@ -44,28 +45,31 @@ Required sweep fields must be provided; optional protocol fields retain their
 defaults. Unspecified execution parameters use the selected platform's settings
 at acquisition time, without modifying the bound parameters.
 ``acquire`` and ``executor(...)`` also accept these settings directly as keyword
-arguments. They take priority over both bound parameters and an explicit
-``pars=...`` object, without modifying either.
+arguments. They take priority over bound parameters without modifying them.
+The completed execution retains the effective binding, including platform
+defaults and execution overrides.
 
 The executor supplies ``platform`` and ``targets`` to callbacks that declare
 those arguments. Every phase and ``executor(bound)`` accept ``targets=...`` in
 their keyword arguments, overriding executor defaults without changing them.
 Each executor is bound to one platform; method calls cannot override it.
-``platform`` in method keyword arguments is treated like any other protocol
-binding argument, not as a platform override.
+Protocol parameters named ``platform`` must be supplied when binding the
+protocol, not to executor methods.
 Default targets are optional in ``Executor(...)``, ``Executor.create(...)`` and
-``Executor.open(...)``. When omitted, each invocation must supply ``targets=...``.
+``Executor.open(...)``. When omitted, acquisition must supply ``targets=...``.
 An explicit empty list is valid for protocols that do not use targets.
+Downstream phases infer targets from ``completed.data`` (qubits or pairs as
+appropriate), rather than the executor's defaults. For custom data without
+target metadata, the acquisition selection is retained in ``Completed``.
 
 Fit parameters are passed only to callbacks declaring ``fitpars`` (or
 ``fit_params``); built-in ``fit(data)`` callbacks receive only data. Similarly,
 report parameters are passed only when ``reportpars`` (or ``report_params``)
 is declared. Report results are passed as ``fit=results`` for built-in reports,
 or ``results=results`` for custom callbacks. Callbacks declaring a singular
-``target`` report once per selected target; ``executor.report(...)`` returns
+``target`` report once per selected target; ``completed.reports`` contains
 a mapping from each target to its callback output (typically figures and an
-HTML table). Other report callbacks return their output directly.
-``completed.reports`` preserves this output during a complete workflow.
+HTML table). Other report callbacks store their output directly in that field.
 Update callbacks declaring ``target`` or ``qubit`` run once per selected target;
 callbacks declaring ``targets`` receive the full selection. Callback exceptions
 propagate, including failures for targets without fit results.
@@ -86,14 +90,14 @@ The caller owns the connection lifecycle, including exception-safe cleanup:
     )
     try:
         platform.connect()
-        data = executor.acquire(bound)
+        acquired = executor.acquire(bound)
     finally:
         platform.disconnect()
 
-    results = executor.fit(data, bound)
-    reports = executor.report(data, results, bound)
-    figures, table = reports[0]
-    executor.update(results, bound, targets=[0])  # explicit opt-in session update
+    fitted = executor.fit(acquired)
+    reported = executor.report(fitted)
+    figures, table = reported.reports[0]
+    executor.update(fitted, targets=[0])  # explicit opt-in session update
 
 The same executor supports output directories and platform connection management
 through ``Executor.create`` and ``Executor.open``. ``create`` constructs the
@@ -138,10 +142,11 @@ inside the ``with`` statement:
 .. code-block:: python
 
     output = e(
-        t1_signal,
-        delay_before_readout_start=0,
-        delay_before_readout_end=20_000,
-        delay_before_readout_step=50,
+        t1_signal(
+            delay_before_readout_start=0,
+            delay_before_readout_end=20_000,
+            delay_before_readout_step=50,
+        )
     )
 
 
@@ -152,7 +157,7 @@ an arbitrary post-processing analysis. This is one of the main advantages of thi
 compared to the cli execution.
 
 Both the raw data and the fit results are available on the returned
-:class:`qibocal.auto.operation.Completed` object:
+:class:`qibocal.auto.task.Completed` object:
 
 .. code-block:: python
 
@@ -160,7 +165,7 @@ Both the raw data and the fit results are available on the returned
     results = output.results  # fit results
     figures, table = output.reports[0]  # report for target 0
 
-Use ``e(t1_signal, skip_fit=True, ...)`` to acquire without fitting. Save data,
+Use ``e(t1_signal(...), skip_fit=True)`` to acquire without fitting. Save data,
 results or figures explicitly if they are needed after the session.
 
 How to add a new protocol

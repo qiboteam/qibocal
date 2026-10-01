@@ -19,7 +19,7 @@ from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
 
-__all__ = ["BoundProtocol", "Completed", "Protocol", "ProtocolsCollection"]
+__all__ = ["BoundProtocol", "Protocol", "ProtocolsCollection"]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -374,32 +374,6 @@ class BoundProtocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _Resu
 
     reportpars: _ReportParsT | None = None
     """Optional report phase parameters."""
-
-
-@dataclass
-class Completed:
-    """Result of a protocol execution.
-
-    Stores the outcomes and metadata of a complete or partial protocol execution.
-    """
-
-    data: Any = None
-    """Data acquired during execution."""
-
-    results: Any = None
-    """Results produced by fitting."""
-
-    protocol_id: str | None = None
-    """Identifier for the protocol that was executed."""
-
-    error: Exception | None = None
-    """Error that occurred during execution, if any."""
-
-    success: bool = True
-    """Whether execution completed successfully."""
-
-    reports: Any = None
-    """Report output, keyed by target for per-target callbacks."""
 
 
 ProtocolsCollection = dict[str, Protocol]
