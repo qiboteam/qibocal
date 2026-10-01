@@ -129,6 +129,7 @@ class Executor:
         self._update_enabled = update
         self.path = Path(path) if path is not None else None
         self.meta = meta
+        self._initialized = False
         if self.targets is not None:
             check_overlap_in_input_qubits(self.targets)
 
@@ -167,21 +168,23 @@ class Executor:
             **kwargs,
         )
 
-    def init(self, force: bool = False):
-        """Initialize execution."""
+    def _init(self, force: bool = False):
+        """Initialize execution once and connect the platform."""
         if self.path is None or self.meta is None or self.platform is None:
             raise ValueError(
                 "Calibration initialization requires an output path, metadata and platform"
             )
-        # generate output folder
-        path = Output.mkdir(self.path, force)
+        if not self._initialized:
+            # generate output folder
+            path = Output.mkdir(self.path, force)
 
-        # generate meta
-        output = Output(History(), self.meta, self.platform)
-        output.dump(path)
+            # generate meta
+            output = Output(History(), self.meta, self.platform)
+            output.dump(path)
 
-        # start timer
-        self.meta.start()
+            # start timer
+            self.meta.start()
+            self._initialized = True
 
         # connect and initialize platform
         self.platform.connect()
@@ -221,7 +224,7 @@ class Executor:
             kwargs["update"] = update
 
         ex = cls.create(path=path, platform=platform, targets=targets, **kwargs)
-        ex.init(force)
+        ex._init(force)
 
         try:
             yield ex
@@ -229,17 +232,12 @@ class Executor:
             ex.close()
 
     def __enter__(self):
-        """Reenter the execution context.
+        """Enter or reenter the execution context.
 
-        This method its here to reuse an already existing (and
-        initialized) executor, in a new context.
-
-        It should not be used with new executors. In which case, cf. :meth:`__open__`.
+        Initialize calibration output on first entry and reconnect the platform
+        on subsequent entries.
         """
-        # connect and initialize platform
-        if self.platform is None:
-            raise ValueError("Executor does not have a platform configured")
-        self.platform.connect()
+        self._init()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):

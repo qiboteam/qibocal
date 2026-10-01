@@ -297,7 +297,7 @@ def test_calibration_task_uses_bound_executor(tmp_path, platform, mocker):
 
 def test_calibration_without_optional_phases(tmp_path, platform, monkeypatch):
     executor = Executor.create(tmp_path, targets=[0], platform=platform)
-    executor.init(force=True)
+    executor._init(force=True)
     protocol = Protocol(_acquisition)
     monkeypatch.setattr(qibocal.protocols, "fake", protocol, raising=False)
     action = Action("fake", "fake", parameters={"par": 7})
@@ -322,21 +322,63 @@ def executor(tmp_path: Path, platform: CalibrationPlatform):
     return Executor.create(tmp_path / "out", targets=[0])
 
 
-def test_init(executor: Executor):
-    init = executor.init
+def test_init(executor: Executor, mocker):
+    mkdir = mocker.spy(Output, "mkdir")
+    dump = mocker.spy(Output, "dump")
+    start = mocker.spy(executor.meta, "start")
+    connect = mocker.spy(executor.platform, "connect")
 
-    init()
+    assert not executor._initialized
+    assert not hasattr(executor, "init")
+    executor._init()
+    marker = executor.path / "keep"
+    marker.touch()
+    executor._init()
+    executor._init(force=True)
+
+    mkdir.assert_called_once_with(executor.path, False)
+    dump.assert_called_once()
+    start.assert_called_once_with()
+    assert connect.call_count == 3
+    assert executor._initialized
+    assert executor.meta.start_time is not None
+    assert marker.exists()
+
+
+def test_init_existing_directory(executor: Executor):
+    executor.path.mkdir()
+
     with pytest.raises(RuntimeError, match="Directory .* already exists"):
-        init()
+        executor._init()
 
-    init(force=True)
+    assert not executor._initialized
+    assert not executor.platform.is_connected
+    assert executor.meta.start_time is None
 
-    assert executor.meta is not None
-    assert executor.meta.start is not None
+    executor._init(force=True)
+    assert executor._initialized
+    assert executor.platform.is_connected
+
+
+def test_init_connection_failure(executor: Executor, mocker):
+    connect = mocker.patch.object(
+        executor.platform, "connect", side_effect=RuntimeError("Connection failed")
+    )
+    executor_init = mocker.spy(Output, "dump")
+
+    with pytest.raises(RuntimeError, match="Connection failed"):
+        executor._init()
+
+    assert executor._initialized
+    assert executor.meta.start_time is not None
+    connect.side_effect = None
+    executor._init()
+    executor_init.assert_called_once()
+    assert connect.call_count == 2
 
 
 def test_close(executor: Executor):
-    executor.init()
+    executor._init()
     executor.close()
 
     assert executor.meta is not None
@@ -344,12 +386,30 @@ def test_close(executor: Executor):
     assert executor.meta.end is not None
 
 
-def test_context_manager(executor: Executor):
-    executor.init()
+def test_context_manager(executor: Executor, mocker):
+    init = mocker.spy(executor, "_init")
+    connect = mocker.spy(executor.platform, "connect")
+    disconnect = mocker.spy(executor.platform, "disconnect")
 
-    with executor:
+    with executor as entered:
+        assert entered is executor
         assert executor.meta is not None
-        assert executor.meta.start is not None
+        assert executor.meta.start_time is not None
+        assert executor.platform.is_connected
+        start_time = executor.meta.start_time
+        marker = executor.path / "keep"
+        marker.touch()
+
+    assert not executor.platform.is_connected
+    with executor:
+        assert executor.meta.start_time == start_time
+        assert executor.platform.is_connected
+        assert marker.exists()
+
+    assert not executor.platform.is_connected
+    assert init.call_count == 2
+    assert connect.call_count == 2
+    assert disconnect.call_count == 2
 
 
 def test_open(tmp_path: Path, platform: CalibrationPlatform):
