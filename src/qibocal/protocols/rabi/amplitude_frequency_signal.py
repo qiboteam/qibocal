@@ -42,10 +42,10 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Maximum amplitude."""
     step_amp: float
     """Step amplitude."""
-    min_freq: int
-    """Minimum frequency as an offset."""
-    max_freq: int
-    """Maximum frequency as an offset."""
+    left_freq_offset: int
+    """Left frequency offset: sweep starts at channel_freq + left_freq_offset."""
+    right_freq_offset: int
+    """Right frequency offset: sweep ends at channel_freq + right_freq_offset."""
     step_freq: int
     """Frequency to use as step for the scan."""
     rx90: bool = False
@@ -132,13 +132,17 @@ def _acquisition(
 ) -> RabiAmplitudeFreqSignalData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
+    assert params.left_freq_offset < params.right_freq_offset, (
+        "Left frequency offset must be smaller than right frequency offset."
+    )
+
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
         targets, params, platform, params.rx90
     )
 
     frequency_range = np.arange(
-        params.min_freq,
-        params.max_freq,
+        params.left_freq_offset,
+        params.right_freq_offset,
         params.step_freq,
     )
     freq_sweepers = {}

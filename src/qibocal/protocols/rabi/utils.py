@@ -77,15 +77,14 @@ def plot(data, qubit, fit, rx90):
     fitting_report = ""
 
     fig = make_subplots(
-        rows=3,
+        rows=2,
         cols=1,
         vertical_spacing=0.15,
         subplot_titles=(
             "IQ Plane",
             "Principal Axis",
-            "Second Axis",
         ),
-        row_heights=[0.5, 0.35, 0.15],
+        row_heights=[0.5, 0.5],
     )
 
     qubit_data = data[qubit]
@@ -124,22 +123,6 @@ def plot(data, qubit, fit, rx90):
         row=2,
         col=1,
     )
-    #################################################################
-    # in the third row we plot the signal projection along the remaining axis.
-    residual_signal = pca_signal[:, 1]
-    fig.add_trace(
-        go.Scatter(
-            x=rabi_parameters,
-            y=residual_signal,
-            opacity=1,
-            name="Residual Signal",
-            showlegend=True,
-            legendgroup="Residual Signal",
-            mode="markers",
-        ),
-        row=3,
-        col=1,
-    )
 
     if fit is not None:
         rabi_parameter_range = np.linspace(
@@ -175,8 +158,6 @@ def plot(data, qubit, fit, rx90):
             yaxis_title="Q [a.u.]",
             yaxis2_title="Principal Axis Signal [a.u.]",
             xaxis2_title=title,
-            yaxis3_title="Residual Signal [a.u.]",
-            xaxis3_title=title,
         )
 
     fig.update_layout(
