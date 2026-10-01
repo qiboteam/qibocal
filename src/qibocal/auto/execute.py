@@ -113,20 +113,142 @@ class Executor:
         Args:
             platform: The hardware platform to use for acquisition and updates.
             history: Calibration execution history.
-            targets: Default calibration targets.
+            targets: Optional default calibration targets. If omitted, targets
+                must be supplied for each protocol invocation.
             update: Whether to apply fitted results to the platform.
             path: Optional calibration output directory.
             meta: Calibration execution metadata.
         """
         self.platform = platform
         self.history = history if history is not None else History()
-        self.targets = TypeAdapter(Targets).validate_python(
-            targets if targets is not None else []
+        self.targets = (
+            TypeAdapter(Targets).validate_python(targets)
+            if targets is not None
+            else None
         )
         self._update_enabled = update
         self.path = Path(path) if path is not None else None
         self.meta = meta
-        check_overlap_in_input_qubits(self.targets)
+        if self.targets is not None:
+            check_overlap_in_input_qubits(self.targets)
+
+    @classmethod
+    def create(
+        cls,
+        path: os.PathLike,
+        targets: Targets | None = None,
+        platform: CalibrationPlatform | Platform | str | None = None,
+        **kwargs: Any,
+    ) -> Executor:
+        """Create protocols' executor.
+
+        This is a wrapper of the default constructor, which is only handling different
+        platforms specification.
+
+        For the full set of arguments, cf. :class:`Executor`.
+        """
+        platform = (
+            platform
+            if isinstance(platform, CalibrationPlatform)
+            else CalibrationPlatform.from_platform(platform)
+            if isinstance(platform, Platform)
+            else create_calibration_platform(
+                platform if isinstance(platform, str) else "mock"
+            )
+        )
+        path_ = Path(path)
+        backend = construct_backend(backend="qibolab", platform=platform)
+        return cls(
+            history=History(),
+            platform=platform,
+            path=path_,
+            targets=targets,
+            meta=Metadata.generate(backend),
+            **kwargs,
+        )
+
+    def init(self, force: bool = False):
+        """Initialize execution."""
+        if self.path is None or self.meta is None or self.platform is None:
+            raise ValueError(
+                "Calibration initialization requires an output path, metadata and platform"
+            )
+        # generate output folder
+        path = Output.mkdir(self.path, force)
+
+        # generate meta
+        output = Output(History(), self.meta, self.platform)
+        output.dump(path)
+
+        # start timer
+        self.meta.start()
+
+        # connect and initialize platform
+        self.platform.connect()
+
+    def close(self):
+        """Close execution."""
+        if self.path is None or self.meta is None or self.platform is None:
+            raise ValueError(
+                "Calibration finalization requires an output path, metadata and platform"
+            )
+
+        # stop and disconnect platform
+        self.platform.disconnect()
+
+        self.meta.end()
+
+        # dump history, metadata, and updated platform
+        output = Output(self.history, self.meta, self.platform)
+        output.dump(self.path)
+
+    @classmethod
+    @contextmanager
+    def open(
+        cls,
+        path: os.PathLike,
+        targets: Targets | None = None,
+        force: bool = False,
+        platform: CalibrationPlatform | str | None = None,
+        update: bool | None = None,
+        **kwargs: Any,
+    ):
+        """Enter the execution context.
+
+        For the full set of arguments, cf. :class:`Executor`.
+        """
+        if update is not None:
+            kwargs["update"] = update
+
+        ex = cls.create(path=path, platform=platform, targets=targets, **kwargs)
+        ex.init(force)
+
+        try:
+            yield ex
+        finally:
+            ex.close()
+
+    def __enter__(self):
+        """Reenter the execution context.
+
+        This method its here to reuse an already existing (and
+        initialized) executor, in a new context.
+
+        It should not be used with new executors. In which case, cf. :meth:`__open__`.
+        """
+        # connect and initialize platform
+        if self.platform is None:
+            raise ValueError("Executor does not have a platform configured")
+        self.platform.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit execution context.
+
+        This pairs with :meth:`__enter__`.
+        """
+        self.close()
+        return False
 
     def __call__(
         self,
@@ -180,12 +302,13 @@ class Executor:
         )
 
     def _context(self, kwargs: dict[str, Any]) -> dict[str, Any]:
-        if "platform" in kwargs:
-            raise TypeError("The executor platform cannot be overridden")
         targets = kwargs.pop("targets", None)
-        selected = TypeAdapter(Targets).validate_python(
-            self.targets if targets is None else targets
-        )
+        targets = self.targets if targets is None else targets
+        if targets is None:
+            raise ValueError(
+                "Targets must be supplied when the executor has no default targets"
+            )
+        selected = TypeAdapter(Targets).validate_python(targets)
         check_overlap_in_input_qubits(selected)
         return {
             "platform": self.platform,
@@ -337,121 +460,3 @@ class Executor:
                 )
         else:
             _invoke(bound.protocol.update, results, **context)
-
-    @classmethod
-    def create(
-        cls,
-        path: os.PathLike,
-        targets: Targets,
-        platform: CalibrationPlatform | Platform | str | None = None,
-        **kwargs: Any,
-    ) -> Executor:
-        """Create protocols' executor.
-
-        This is a wrapper of the default constructor, which is only handling different
-        platforms specification.
-
-        For the full set of arguments, cf. :class:`Executor`.
-        """
-        platform = (
-            platform
-            if isinstance(platform, CalibrationPlatform)
-            else CalibrationPlatform.from_platform(platform)
-            if isinstance(platform, Platform)
-            else create_calibration_platform(
-                platform if isinstance(platform, str) else "mock"
-            )
-        )
-        path_ = Path(path)
-        backend = construct_backend(backend="qibolab", platform=platform)
-        return cls(
-            history=History(),
-            platform=platform,
-            path=path_,
-            targets=targets,
-            meta=Metadata.generate(backend),
-            **kwargs,
-        )
-
-    def init(self, force: bool = False):
-        """Initialize execution."""
-        if self.path is None or self.meta is None or self.platform is None:
-            raise ValueError(
-                "Calibration initialization requires an output path, metadata and platform"
-            )
-        # generate output folder
-        path = Output.mkdir(self.path, force)
-
-        # generate meta
-        output = Output(History(), self.meta, self.platform)
-        output.dump(path)
-
-        # start timer
-        self.meta.start()
-
-        # connect and initialize platform
-        self.platform.connect()
-
-    def close(self):
-        """Close execution."""
-        if self.path is None or self.meta is None or self.platform is None:
-            raise ValueError(
-                "Calibration finalization requires an output path, metadata and platform"
-            )
-
-        # stop and disconnect platform
-        self.platform.disconnect()
-
-        self.meta.end()
-
-        # dump history, metadata, and updated platform
-        output = Output(self.history, self.meta, self.platform)
-        output.dump(self.path)
-
-    @classmethod
-    @contextmanager
-    def open(
-        cls,
-        path: os.PathLike,
-        targets: Targets,
-        force: bool = False,
-        platform: CalibrationPlatform | str | None = None,
-        update: bool | None = None,
-        **kwargs: Any,
-    ):
-        """Enter the execution context.
-
-        For the full set of arguments, cf. :class:`Executor`.
-        """
-        if update is not None:
-            kwargs["update"] = update
-
-        ex = cls.create(path=path, platform=platform, targets=targets, **kwargs)
-        ex.init(force)
-
-        try:
-            yield ex
-        finally:
-            ex.close()
-
-    def __enter__(self):
-        """Reenter the execution context.
-
-        This method its here to reuse an already existing (and
-        initialized) executor, in a new context.
-
-        It should not be used with new executors. In which case, cf. :meth:`__open__`.
-        """
-        # connect and initialize platform
-        if self.platform is None:
-            raise ValueError("Executor does not have a platform configured")
-        self.platform.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Exit execution context.
-
-        This pairs with :meth:`__enter__`.
-        """
-        self.close()
-        return False

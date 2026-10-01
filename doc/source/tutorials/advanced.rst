@@ -19,7 +19,7 @@ acquisition, fit and report parameters:
     )
     bound = protocol(pars=[1.0, 2.0, 3.0])
     executor = Executor(create_calibration_platform("mock"))
-    completed = executor(bound)
+    completed = executor(bound, targets=[])
     print(completed.results)  # 2.0
 
 Only acquisition is required. Optional fit, report and update functions are run
@@ -51,8 +51,11 @@ The executor supplies ``platform`` and ``targets`` to callbacks that declare
 those arguments. Every phase and ``executor(bound)`` accept ``targets=...`` in
 their keyword arguments, overriding executor defaults without changing them.
 Each executor is bound to one platform; method calls cannot override it.
-Targets default to an empty list, so select them explicitly for built-in
-experiments.
+``platform`` in method keyword arguments is treated like any other protocol
+binding argument, not as a platform override.
+Default targets are optional in ``Executor(...)``, ``Executor.create(...)`` and
+``Executor.open(...)``. When omitted, each invocation must supply ``targets=...``.
+An explicit empty list is valid for protocols that do not use targets.
 
 Fit parameters are passed only to callbacks declaring ``fitpars`` (or
 ``fit_params``); built-in ``fit(data)`` callbacks receive only data. Similarly,
