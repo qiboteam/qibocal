@@ -11,7 +11,6 @@ from qibocal.protocols.utils import (
     COLORBAND_LINE,
     guess_period,
     plot_iq_pca,
-    plot_pca_projections,
     table_dict,
     table_html,
 )
@@ -120,11 +119,10 @@ def plot(data, qubit, fit, rx90):
 
     fig = make_subplots(
         rows=2,
-        cols=2,
+        cols=1,
         vertical_spacing=0.1,
         horizontal_spacing=0.1,
-        specs=[[{"colspan": 2}, None], [{}, {}]],
-        subplot_titles=("IQ Plane", "Principal Axis", "Second Axis"),
+        subplot_titles=("IQ Plane", "Principal Axis"),
         row_heights=[0.5, 0.5],
     )
 
@@ -136,15 +134,19 @@ def plot(data, qubit, fit, rx90):
     )
 
     # row 2: PCA projections along the principal and second axis
-    first_axis_proj, second_axis_proj = plot_pca_projections(
-        pca_signal=pca_signal,
-        plot_param=rabi_parameters,
+    fig.add_trace(
+        go.Scatter(
+            x=rabi_parameters,
+            y=pca_signal[:, 0],
+            opacity=1,
+            name="Principal Axis Signal",
+            showlegend=True,
+            legendgroup="PCA",
+            mode="markers",
+        ),
+        row=2,
+        col=1,
     )
-    fig.add_trace(first_axis_proj, row=2, col=1)
-    fig.add_trace(second_axis_proj, row=2, col=2)
-
-    # keep the second axis on the same bounds as the first one
-    fig.update_yaxes(matches="y2", row=2, col=2)
 
     if fit is not None:
         rabi_parameter_range = np.linspace(

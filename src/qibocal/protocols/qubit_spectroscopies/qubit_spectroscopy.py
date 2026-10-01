@@ -31,7 +31,6 @@ from qibocal.protocols.utils import (
     RangeLike,
     lorentzian,
     plot_iq_pca,
-    plot_pca_projections,
     table_dict,
     table_html,
     to_range,
@@ -373,11 +372,10 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         cols=2,
         vertical_spacing=0.1,
         horizontal_spacing=0.1,
-        specs=[[{"colspan": 2}, None], [{}, {}], [{}, {}]],
+        specs=[[{"colspan": 2}, None], [{"colspan": 2}, None], [{}, {}]],
         subplot_titles=(
             "IQ Plane",
             "Principal Axis",
-            "Second Axis",
             "Signal",
             "Phase",
         ),
@@ -391,14 +389,19 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     )
 
     # row 2: PCA projections along the principal and second axis
-    first_axis_proj, second_axis_proj = plot_pca_projections(
-        pca_signal=pca_signal,
-        plot_param=frequencies,
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
+            y=pca_signal[:, 0],
+            opacity=1,
+            name="Principal Axis Signal",
+            showlegend=True,
+            legendgroup="PCA",
+            mode="markers",
+        ),
+        row=2,
+        col=1,
     )
-    fig.add_trace(first_axis_proj, row=2, col=1)
-    fig.add_trace(second_axis_proj, row=2, col=2)
-    # keep the second axis on the same bounds as the first one
-    fig.update_yaxes(matches="y2", row=2, col=2)
 
     # row 3: signal magnitude and phase
     fig.add_trace(
@@ -465,12 +468,10 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         yaxis_title="Q [a.u.]",
         yaxis2_title="Principal Axis Signal [a.u.]",
         xaxis2_title="Frequency [GHz]",
-        yaxis3_title="Residual Signal [a.u.]",
+        yaxis3_title="Signal [a.u.]",
         xaxis3_title="Frequency [GHz]",
-        yaxis4_title="Signal [a.u.]",
+        yaxis4_title="Phase [rad]",
         xaxis4_title="Frequency [GHz]",
-        yaxis5_title="Phase [rad]",
-        xaxis5_title="Frequency [GHz]",
     )
 
     return [fig], fitting_report
