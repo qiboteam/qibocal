@@ -30,10 +30,60 @@ Individual phases can also be invoked through ``acquire(bound)``,
 ``fit(data, bound)``, ``report(data, results, bound)`` and
 ``update(results, bound)``.
 
+Built-in protocols can be bound directly from keywords, including ``nshots`` and
+``relaxation_time``, or from an existing parameter object using ``pars=...``.
+Required sweep fields must be provided; optional protocol fields retain their
+defaults. Unspecified execution parameters use the selected platform's settings
+at acquisition time, without modifying the bound parameters.
+
+The executor supplies ``platform`` and ``targets`` to callbacks that declare
+those arguments. Every phase and ``executor(bound)`` accept keyword-only
+``platform=...`` and ``targets=...`` overrides, without changing executor
+defaults. Targets default to an empty list, so select them explicitly for
+built-in experiments.
+
+Fit parameters are passed only to callbacks declaring ``fitpars`` (or
+``fit_params``); built-in ``fit(data)`` callbacks receive only data. Similarly,
+report parameters are passed only when ``reportpars`` (or ``report_params``)
+is declared. Report results are passed as ``fit=results`` for built-in reports,
+or ``results=results`` for custom callbacks. Callbacks declaring a singular
+``target`` report once per selected target; ``executor.report(...)`` returns
+a mapping from each target to its callback output (typically figures and an
+HTML table). Other report callbacks return their output directly.
+``completed.reports`` preserves this output during a complete workflow.
+Update callbacks declaring ``target`` or ``qubit`` run once per selected target;
+callbacks declaring ``targets`` receive the full selection. Callback exceptions
+propagate, including failures for targets without fit results.
+
+Direct execution neither connects/disconnects the platform nor writes files.
+The caller owns the connection lifecycle, including exception-safe cleanup:
+
+.. code-block:: python
+
+    from qibocal import Executor, create_calibration_platform
+    from qibocal.protocols import rabi_amplitude
+
+    platform = create_calibration_platform("my_platform")
+    executor = Executor(platform, targets=[0, 1], update=False)
+    bound = rabi_amplitude(
+        min_amp=0, max_amp=1, step_amp=0.02,
+        nshots=4096, relaxation_time=0,
+    )
+    try:
+        platform.connect()
+        data = executor.acquire(bound)
+    finally:
+        platform.disconnect()
+
+    results = executor.fit(data, bound)
+    reports = executor.report(data, results, bound)
+    figures, table = reports[0]
+    executor.update(results, bound, targets=[0])  # explicit opt-in session update
+
 The same executor supports output directories, execution history and platform
 connection management through ``Executor.create`` and ``Executor.open``.
-Existing calibration protocols are adapted by the task execution layer, without
-requiring changes to their acquisition, fitting or update functions.
+Calibration tasks use the same signature-aware phase execution as direct calls,
+without requiring changes to existing protocol callbacks.
 
 In the following tutorial we show how to run a single protocol using Qibocal as a library.
 For this particular example we will focus on the `t1_signal protocol

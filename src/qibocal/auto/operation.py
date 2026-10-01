@@ -278,16 +278,16 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
         _ResultsT: Type of results returned by fit
     """
 
-    acquisition: Callable[[_ParametersT], _DataT]
-    """Acquire data from hardware. Takes parameters, returns data."""
+    acquisition: Callable[..., _DataT]
+    """Acquire data with parameters and optional platform/targets."""
 
-    fit: Callable[[_DataT, _FitParsT | None], _ResultsT] | None = None
+    fit: Callable[..., _ResultsT] | None = None
     """Process data and produce results. Takes data and optional fit params."""
 
-    report: Callable[[_DataT, _ResultsT, _ReportParsT | None], None] | None = None
-    """Generate reports/visualizations. Takes data, results, and optional report params."""
+    report: Callable[..., Any] | None = None
+    """Generate reports/visualizations and return their output."""
 
-    update: Callable[[_ResultsT, Platform], None] | None = None
+    update: Callable[..., None] | None = None
     """Update platform with results."""
 
     two_qubit_gates: bool | None = False
@@ -296,21 +296,21 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
     @property
     def parameters_type(self) -> type:
         """Extract the type of acquisition parameters."""
-        sig = inspect.signature(self.acquisition)
+        sig = inspect.signature(self.acquisition, eval_str=True)
         param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
     def data_type(self) -> type:
         """Extract the return type of acquisition."""
-        return inspect.signature(self.acquisition).return_annotation
+        return inspect.signature(self.acquisition, eval_str=True).return_annotation
 
     @property
     def results_type(self) -> type:
         """Extract the return type of fit."""
         if self.fit is None:
             return None
-        return inspect.signature(self.fit).return_annotation
+        return inspect.signature(self.fit, eval_str=True).return_annotation
 
     @property
     def platform_dependent(self) -> bool:
@@ -343,7 +343,13 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
             A BoundProtocol ready for execution.
         """
         if pars is None:
-            pars = self.parameters_type(**kwargs)
+            parameters_type = self.parameters_type
+            pars = (
+                parameters_type.load(kwargs)
+                if isinstance(parameters_type, type)
+                and issubclass(parameters_type, Parameters)
+                else parameters_type(**kwargs)
+            )
         return BoundProtocol(
             protocol=self, parameters=pars, fitpars=fit, reportpars=report
         )
@@ -391,6 +397,9 @@ class Completed:
 
     success: bool = True
     """Whether execution completed successfully."""
+
+    reports: Any = None
+    """Report output, keyed by target for per-target callbacks."""
 
 
 ProtocolsCollection = dict[str, Protocol]

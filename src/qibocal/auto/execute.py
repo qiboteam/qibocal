@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import operator
 import os
+from collections.abc import Callable
 from contextlib import contextmanager
-from copy import deepcopy
+from copy import copy, deepcopy
 from dataclasses import fields
 from functools import cached_property, reduce
+from inspect import Parameter, signature
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +24,13 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import BoundProtocol, Protocol, ProtocolsCollection
+from .operation import (
+    DEFAULT_PARENT_PARAMETERS,
+    BoundProtocol,
+    Parameters,
+    Protocol,
+    ProtocolsCollection,
+)
 from .operation import Completed as ProtocolCompleted
 from .output import PLATFORM, Metadata, Output
 from .task import Action, Completed, Targets, Task
@@ -36,12 +44,40 @@ def check_overlap_in_input_qubits(targets: np.typing.ArrayLike):
         raise ValueError("One or more target qubits were repeated.")
 
 
+def _invoke(callback: Callable, argument: object, **context: Any) -> Any:
+    """Pass only explicitly declared context, including positional-only parameters."""
+    parameters = list(signature(callback).parameters.values())[1:]
+    args = [argument]
+    kwargs = {}
+    for parameter in parameters:
+        if parameter.kind == Parameter.POSITIONAL_ONLY:
+            if parameter.name in context:
+                args.append(context[parameter.name])
+            elif parameter.default is not Parameter.empty:
+                args.append(parameter.default)
+            else:
+                raise TypeError(
+                    f"Missing required positional-only argument: {parameter.name}"
+                )
+        elif (
+            parameter.kind
+            in (
+                Parameter.POSITIONAL_OR_KEYWORD,
+                Parameter.KEYWORD_ONLY,
+            )
+            and parameter.name in context
+        ):
+            kwargs[parameter.name] = context[parameter.name]
+    return callback(*args, **kwargs)
+
+
 class Executor:
     """Protocol executor for direct execution of bound protocols.
 
     This executor executes BoundProtocol instances without requiring
-    protocol registration or convention-based behavior.
+    protocol registration. Context is passed to explicitly named callback parameters.
     Calibration output, history and lifecycle management are optional.
+    Direct acquisition requires caller-managed platform connections.
     """
 
     def __init__(
@@ -85,6 +121,9 @@ class Executor:
         self,
         bound: BoundProtocol,
         skip_fit: bool = False,
+        *,
+        platform: Platform | None = None,
+        targets: Targets | None = None,
     ) -> ProtocolCompleted:
         """Execute a complete protocol workflow.
 
@@ -93,22 +132,26 @@ class Executor:
         Args:
             bound: The bound protocol to execute.
             skip_fit: If True, skip the fit phase.
+            platform: Override the executor platform for all phases.
+            targets: Override the executor targets for all phases.
 
         Returns:
             A Completed object with results and metadata.
         """
         # Execute acquisition
-        data = self.acquire(bound)
+        context = self._context(platform, targets)
+        data = self.acquire(bound, **context)
 
         # Execute fit if not skipped and available
         if skip_fit or bound.protocol.fit is None:
             results = None
         else:
-            results = self.fit(data, bound)
+            results = self.fit(data, bound, **context)
 
         # Execute report if available
+        reports = None
         if results is not None and bound.protocol.report is not None:
-            self.report(data, results, bound)
+            reports = self.report(data, results, bound, **context)
 
         # Execute update if available
         if (
@@ -116,26 +159,68 @@ class Executor:
             and bound.protocol.update is not None
             and self._update_enabled
         ):
-            self.update(results, bound)
+            self.update(results, bound, **context)
 
         return ProtocolCompleted(
             data=data,
             results=results,
             success=True,
+            reports=reports,
         )
 
-    def acquire(self, bound: BoundProtocol) -> object:
+    def _context(
+        self, platform: Platform | None, targets: Targets | None
+    ) -> dict[str, Any]:
+        selected = TypeAdapter(Targets).validate_python(
+            self.targets if targets is None else targets
+        )
+        check_overlap_in_input_qubits(selected)
+        return {
+            "platform": self.platform if platform is None else platform,
+            "targets": selected,
+        }
+
+    def acquire(
+        self,
+        bound: BoundProtocol,
+        *,
+        platform: Platform | None = None,
+        targets: Targets | None = None,
+    ) -> object:
         """Execute only the acquisition phase.
 
         Args:
             bound: The bound protocol to acquire data from.
+            platform: Override the executor platform.
+            targets: Override the executor targets.
 
         Returns:
             The data object returned by the acquisition function.
         """
-        return bound.protocol.acquisition(bound.parameters)
+        context = self._context(platform, targets)
+        parameters = bound.parameters
+        if isinstance(parameters, Parameters) and isinstance(
+            context["platform"], Platform
+        ):
+            defaults = {
+                name: getattr(context["platform"].settings, name)
+                for name in DEFAULT_PARENT_PARAMETERS
+                if getattr(parameters, name, None) is None
+            }
+            if defaults:
+                parameters = copy(parameters)
+                for name, value in defaults.items():
+                    setattr(parameters, name, value)
+        return _invoke(bound.protocol.acquisition, parameters, **context)
 
-    def fit(self, data: object, bound: BoundProtocol) -> object:
+    def fit(
+        self,
+        data: object,
+        bound: BoundProtocol,
+        *,
+        platform: Platform | None = None,
+        targets: Targets | None = None,
+    ) -> object:
         """Execute the fit phase on existing data.
 
         This can be used to re-fit data that was previously acquired,
@@ -144,6 +229,8 @@ class Executor:
         Args:
             data: Data from acquisition (or loaded from disk).
             bound: The bound protocol with fit parameters.
+            platform: Override the executor platform.
+            targets: Override the executor targets.
 
         Returns:
             The results object returned by the fit function.
@@ -154,20 +241,34 @@ class Executor:
         if bound.protocol.fit is None:
             raise ValueError("Protocol does not support fitting")
 
-        return bound.protocol.fit(data, bound.fitpars)
+        return _invoke(
+            bound.protocol.fit,
+            data,
+            fitpars=bound.fitpars,
+            fit_params=bound.fitpars,
+            **self._context(platform, targets),
+        )
 
     def report(
         self,
         data: object,
         results: object,
         bound: BoundProtocol,
-    ) -> None:
+        *,
+        platform: Platform | None = None,
+        targets: Targets | None = None,
+    ) -> Any:
         """Execute the report phase.
 
         Args:
             data: Data from acquisition.
             results: Results from fitting.
             bound: The bound protocol with report parameters.
+            platform: Override the executor platform.
+            targets: Override the executor targets.
+
+        Returns:
+            Callback output, or a target-to-output mapping for per-target reports.
 
         Raises:
             ValueError: If the protocol does not have a report function.
@@ -175,14 +276,34 @@ class Executor:
         if bound.protocol.report is None:
             raise ValueError("Protocol does not support reporting")
 
-        bound.protocol.report(data, results, bound.reportpars)
+        context = self._context(platform, targets) | {
+            "fit": results,
+            "results": results,
+            "reportpars": bound.reportpars,
+            "report_params": bound.reportpars,
+        }
+        if "target" in signature(bound.protocol.report).parameters:
+            return {
+                target: _invoke(bound.protocol.report, data, target=target, **context)
+                for target in context["targets"]
+            }
+        return _invoke(bound.protocol.report, data, **context)
 
-    def update(self, results: object, bound: BoundProtocol) -> None:
+    def update(
+        self,
+        results: object,
+        bound: BoundProtocol,
+        *,
+        platform: Platform | None = None,
+        targets: Targets | None = None,
+    ) -> None:
         """Execute the update phase to apply results to platform.
 
         Args:
             results: Results from fitting.
             bound: The bound protocol defining the update function.
+            platform: Override the executor platform.
+            targets: Override the executor targets.
 
         Raises:
             ValueError: If the protocol has no update function or no platform
@@ -190,10 +311,22 @@ class Executor:
         """
         if bound.protocol.update is None:
             raise ValueError("Protocol does not support updating")
-        if self.platform is None:
+        context = self._context(platform, targets)
+        if context["platform"] is None:
             raise ValueError("Executor does not have a platform configured")
 
-        bound.protocol.update(results, self.platform)
+        parameters = signature(bound.protocol.update).parameters
+        if "target" in parameters or "qubit" in parameters:
+            for target in context["targets"]:
+                _invoke(
+                    bound.protocol.update,
+                    results,
+                    target=target,
+                    qubit=target,
+                    **context,
+                )
+        else:
+            _invoke(bound.protocol.update, results, **context)
 
     @cached_property
     def protocols(self) -> ProtocolsCollection:
