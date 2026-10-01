@@ -1,8 +1,8 @@
 """Minimal Qibocal script example.
 
-In this example, the default Qibocal executor is used. Additional
-configurations can still be passed through the `init()` call, but there
-is no explicit API to access the execution details.
+In this example, a protocol is passed directly to the Qibocal executor's
+acquisition, fit and update methods. Reports are not needed for calibration.
+Direct execution does not populate executor history or save data and results.
 
 If more fine grained control is needed, refer to the `rx_calibration.py` example.
 
@@ -15,7 +15,7 @@ If more fine grained control is needed, refer to the `rx_calibration.py` example
 """
 
 from qibocal import Executor
-from qibocal.cli.report import report
+from qibocal.protocols import single_shot_classification
 
 # ADD HERE PLATFORM AND PATH
 # platform = "mock"
@@ -26,10 +26,11 @@ with Executor.open(
     path=path,
     platform=platform,
     targets=targets,
-    update=True,
+    update=False,
     force=True,
 ) as e:
-    ssc = e.single_shot_classification(nshots=1000)
-    print("\nfidelities:\n", ssc.results.fidelity, "\n")
-
-report(path)
+    bound = single_shot_classification(nshots=1000)
+    data = e.acquire(bound)
+    results = e.fit(data, bound)
+    e.update(results, bound)
+    print("\nfidelities:\n", results.fidelity, "\n")
