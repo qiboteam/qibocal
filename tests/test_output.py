@@ -4,12 +4,10 @@ from pathlib import Path
 import pytest
 from qibo.backends import construct_backend
 
-from qibocal import Executor
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.output import History, Metadata, Output, TaskStats, _new_output
-from qibocal.auto.runcard import Action
+from qibocal.auto.runcard import Action, Runcard
 from qibocal.calibration.platform import CalibrationPlatform
-from qibocal.protocols import flipping
 
 PARAMETERS = {
     "id": "flipping",
@@ -34,17 +32,11 @@ def mock_output(tmp_path: Path, platform: CalibrationPlatform) -> tuple[Output, 
     output = Output(History(), meta, platform)
     platform.connect()
     meta.start()
-    executor = Executor(
-        history=History(),
-        targets=list(platform.qubits),
-        platform=platform,
-        path=tmp_path,
-        meta=meta,
-    )
-    executor.run_protocol(flipping, ACTION, mode=ExecutionMode.ACQUIRE)
+    output.history = Runcard(
+        actions=[deepcopy(ACTION)], targets=list(platform.qubits)
+    ).run(output=tmp_path, platform=platform, mode=ExecutionMode.ACQUIRE)
     meta.end()
     platform.disconnect()
-    output.history = executor.history
     output.dump(tmp_path)
 
     return output, tmp_path

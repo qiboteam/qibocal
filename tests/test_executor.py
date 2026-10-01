@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,13 +20,12 @@ from qibocal.auto.operation import (
     Results,
 )
 from qibocal.auto.output import PLATFORM, Output
-from qibocal.auto.runcard import Action
+from qibocal.auto.runcard import Action, Runcard
 from qibocal.auto.task import Task
 from qibocal.calibration.platform import (
     CalibrationPlatform,
     create_calibration_platform,
 )
-from qibocal.protocols import flipping
 
 PARAMETERS = {
     "id": "flipping",
@@ -161,28 +159,30 @@ def test_bound_protocol_propagates_errors(bound_protocol, platform, phase):
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-def test_executor(params: dict | Action, platform: Platform | str, tmp_path: Path):
-    """Executor without any name."""
+def test_runcard_acquisition(
+    params: dict | Action, platform: Platform | str, tmp_path: Path
+):
     platform = (
         platform
         if isinstance(platform, Platform)
         else create_calibration_platform(platform)
     )
-    executor = Executor.create(
-        platform=platform,
+    runcard = Runcard(
+        actions=[deepcopy(Action.cast(params, "flipping"))],
         targets=list(platform.qubits),
-        update=True,
-        path=tmp_path,
     )
-    executor.run_protocol(
-        flipping, Action.cast(params, "flipping"), mode=ExecutionMode.ACQUIRE
+    history = runcard.run(
+        platform=platform,
+        output=tmp_path,
+        mode=ExecutionMode.ACQUIRE,
     )
+    assert next(history.values()).data is not None
 
 
-def test_executor_fit_reconstructs_platform_from_datafolder(
+def test_runcard_fit_reconstructs_platform_from_datafolder(
     executor: Executor, monkeypatch
 ):
-    """Verifies that when the executor runs a FIT-only protocol, it reconstructs
+    """Verifies that when a runcard runs a FIT-only protocol, it reconstructs
     the platform from the serialized data folder (rather than reusing the live hardware
     platform) and passes that reconstructed platform to Task.run.
     """
@@ -195,14 +195,15 @@ def test_executor_fit_reconstructs_platform_from_datafolder(
     # Disable update so the ACQUIRE run doesn't mutate the platform's calibration,
     # keeping the saved snapshot identical to what FIT will reconstruct.
     action.update = False
-    executor.run_protocol(flipping, action, mode=ExecutionMode.ACQUIRE)
+    runcard = Runcard(actions=[action], targets=executor.targets)
+    history = runcard.run(
+        output=executor.path, platform=executor.platform, mode=ExecutionMode.ACQUIRE
+    )
 
-    acquired_folder = executor.history.task_path(
-        executor.history._executed_task_id(action.id), executor.path
+    acquired_folder = history.task_path(
+        history._executed_task_id(action.id), executor.path
     )
-    fit_folder = executor.history.task_path(
-        executor.history._pending_task_id(action.id), executor.path
-    )
+    fit_folder = history.task_path(history._pending_task_id(action.id), executor.path)
     fit_folder.mkdir(parents=True)
     # FIT creates the next task iteration, and Task.run loads data from that folder.
     # Copy the acquisition payload there so the FIT call can run without reacquiring.
@@ -210,7 +211,7 @@ def test_executor_fit_reconstructs_platform_from_datafolder(
         copy2(data_file, fit_folder)
 
     observed_platforms = []
-    # Save the original before patching: the wrapper records Executor's platform choice,
+    # Save the original before patching: the wrapper records the runcard's platform choice,
     # then delegates to Task.run so the normal data loading and fit still happen.
     task_run = Task.run
 
@@ -220,12 +221,14 @@ def test_executor_fit_reconstructs_platform_from_datafolder(
 
     monkeypatch.setattr(Task, "run", observe_platform)
 
-    executor.run_protocol(flipping, action, mode=ExecutionMode.FIT)
+    runcard.run(
+        output=executor.path, platform=executor.platform, mode=ExecutionMode.FIT
+    )
 
     assert len(observed_platforms) == 1
     fit_platform = observed_platforms[0]
     assert fit_platform is not None
-    # The executor must pass a *reconstructed* platform, not the live one.
+    # The runcard must pass a *reconstructed* platform, not the live one.
     assert fit_platform is not executor.platform
     # The reconstructed platform handed to Task.run must be a complete, usable
     # snapshot: same parameters and calibration, and no live hardware attached.
@@ -292,13 +295,19 @@ def test_calibration_task_uses_bound_executor(tmp_path, platform, mocker):
     assert completed.results_time >= 0
 
 
-def test_calibration_without_optional_phases(tmp_path, platform):
+def test_calibration_without_optional_phases(tmp_path, platform, monkeypatch):
     executor = Executor.create(tmp_path, targets=[0], platform=platform)
     executor.init(force=True)
     protocol = Protocol(_acquisition)
+    monkeypatch.setattr(qibocal.protocols, "fake", protocol, raising=False)
     action = Action("fake", "fake", parameters={"par": 7})
 
-    completed = executor.run_protocol(protocol, action)
+    executor.history = Runcard(actions=[action], targets=[0]).run(
+        output=tmp_path,
+        platform=executor.platform,
+        mode=ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+    )
+    completed = next(executor.history.values())
     assert completed.data.par == 7
     assert completed.results is None
 
@@ -306,21 +315,6 @@ def test_calibration_without_optional_phases(tmp_path, platform):
     output.process(tmp_path, mode=ExecutionMode.FIT)
     assert next(output.history.values()).results is None
     executor.close()
-
-
-@pytest.fixture
-def fake_protocols(request):
-    marker = request.node.get_closest_marker("protocols")
-    if marker is None:
-        return
-
-    protocols = {}
-    for name in marker.args:
-        routine = Protocol(_acquisition, _fit, _plot, _update)
-        setattr(qibocal.protocols, name, routine)
-        protocols[name] = routine
-
-    return protocols
 
 
 @pytest.fixture
@@ -362,11 +356,17 @@ def test_open(tmp_path: Path, platform: CalibrationPlatform):
     path = tmp_path / "my-open-folder"
 
     with Executor.open(path, targets=[0]) as e:
-        assert isinstance(e.t1, Callable)
+        for name in ("sources", "protocols", "_wrapped_protocol", "run_protocol", "t1"):
+            assert not hasattr(e, name)
         assert e.meta is not None
         assert e.meta.start is not None
 
     assert e.meta.end is not None
+
+
+def test_executor_rejects_sources(platform):
+    with pytest.raises(TypeError, match="sources"):
+        Executor(platform, sources=[])
 
 
 def test_single_shot(tmp_path: Path, platform: CalibrationPlatform):
