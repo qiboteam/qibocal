@@ -274,6 +274,48 @@ def period_correction_factor(phase: float):
     return np.round(1 + x) - x
 
 
+def rabi_parameter_error_prop(
+    popt: np.typing.ArrayLike, perr: np.typing.ArrayLike
+) -> float:
+    """Propagate fit-parameter uncertainties to the corrected Rabi parameter.
+
+    The Rabi parameter computed by :ref:`fit_rabi_amplitude` and
+    :ref:`fit_rabi_length` is
+
+    .. math::
+        p = \frac{popt[2]}{2} C(popt[3]),
+
+    where :math:`C` is :func:`period_correction_factor`. This function is
+    discontinuous where the nearest integer selected by ``round`` changes.
+    Away from these discontinuities, :math:`C` has a constant local derivative
+    with respect to phase, :math:`-1/\\pi`; at a discontinuity its derivative
+    is undefined. Consequently, first-order error propagation in phase is
+    applicable only when the fitted phase is not at a discontinuity.
+
+    Assuming independent fit parameters, the propagated variance is
+
+    .. math::
+        \\sigma_p^2 = \\left(\frac{C}{2}\right)^2 \\sigma_{popt[2]}^2
+        + \\left(\frac{popt[2]}{2\\pi}\right)^2 \\sigma_{popt[3]}^2.
+
+    Args:
+        popt: Fitted Rabi parameters.
+        perr: Standard errors of the fitted parameters in the same order.
+
+    Returns:
+        The propagated standard error of the Rabi parameter.
+    """
+
+    popt = np.asarray(popt)
+    perr = np.asarray(perr)
+
+    correction = period_correction_factor(popt[3])
+    dp_dpop2 = correction / 2
+    dp_dpop3 = -popt[2] / (2 * np.pi)
+    variance = (dp_dpop2 * perr[2]) ** 2 + (dp_dpop3 * perr[3]) ** 2
+    return np.sqrt(variance)
+
+
 def sequence_amplitude(
     targets: list[QubitId],
     params: Parameters,

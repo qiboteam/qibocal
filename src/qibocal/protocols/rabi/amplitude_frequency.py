@@ -29,6 +29,7 @@ from .utils import (
     plot_probabilities,
     rabi_amplitude_function,
     rabi_initial_guess,
+    rabi_parameter_error_prop,
     sequence_amplitude,
 )
 
@@ -177,7 +178,10 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
                 sigma=error,
             )
             fitted_frequencies[qubit] = frequency
-            fitted_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
+            fitted_amplitudes[qubit] = [
+                pi_pulse_parameter,
+                rabi_parameter_error_prop(popt, perr),
+            ]
             fitted_parameters[qubit] = popt if isinstance(popt, list) else popt.tolist()
             chi2[qubit] = (
                 chi2_reduced(
