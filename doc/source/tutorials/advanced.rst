@@ -97,9 +97,12 @@ The caller owns the connection lifecycle, including exception-safe cleanup:
 
 The same executor supports output directories and platform connection management
 through ``Executor.create`` and ``Executor.open``. ``create`` constructs the
-executor; ``init`` creates the output directory and connects the platform, while
-``close`` disconnects it and saves metadata, the supplied history and the updated
-platform. ``open`` wraps initialization and finalization in a context manager.
+executor. Entering its context creates the output directory, saves the initial
+platform snapshot and starts the timer only once, while connecting the platform
+on every entry. ``close`` disconnects it and saves metadata, the supplied history
+and the updated platform. ``open`` wraps initialization and finalization in a
+context manager and accepts ``force=True`` to overwrite an existing output
+directory on first initialization.
 Direct calls do not populate ``executor.history`` or persist acquired data and
 fit results. Runcards manage calibration task orchestration and persistence
 separately.
