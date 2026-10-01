@@ -99,7 +99,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
     pi_pulse_amplitudes = {}
     fitted_parameters = {}
-    durations = {}
+    durations = {key: [value, 0] for key, value in data.durations.items()}
     chi2 = {}
 
     for qubit in qubits:
@@ -116,9 +116,11 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 pguess,
                 sigma=qubit_data.error,
             )
-            pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
+            pi_pulse_amplitudes[qubit] = [
+                pi_pulse_parameter,
+                utils.rabi_parameter_error_prop(popt, perr),
+            ]
             fitted_parameters[qubit] = popt
-            durations = {key: [value, 0] for key, value in data.durations.items()}
             chi2[qubit] = [
                 chi2_reduced(
                     y,
