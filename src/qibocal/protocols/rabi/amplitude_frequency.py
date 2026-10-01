@@ -84,12 +84,16 @@ def _acquisition(
 ) -> RabiAmplitudeFreqData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
+    assert params.left_freq_offset < params.right_freq_offset, (
+        "Left frequency offset must be smaller than right frequency offset."
+    )
+
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
         targets, params, platform, params.rx90
     )
     frequency_range = np.arange(
-        params.min_freq,
-        params.max_freq,
+        params.left_freq_offset,
+        params.right_freq_offset,
         params.step_freq,
     )
     freq_sweepers = {}
