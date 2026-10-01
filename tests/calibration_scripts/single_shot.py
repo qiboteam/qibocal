@@ -31,6 +31,6 @@ with Executor.open(
 ) as e:
     bound = single_shot_classification(nshots=1000)
     data = e.acquire(bound)
-    results = e.fit(data, bound)
-    e.update(results, bound)
-    print("\nfidelities:\n", results.fidelity, "\n")
+    results = e.fit(data)
+    e.update(results)
+    print("\nfidelities:\n", results.results.fidelity, "\n")

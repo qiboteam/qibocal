@@ -48,7 +48,8 @@ def __():
     import numpy as np
 
     from qibocal.auto.execute import Executor
-    from qibocal.auto.operation import BoundProtocol, Completed, Protocol
+    from qibocal.auto.operation import BoundProtocol, Protocol
+    from qibocal.auto.task import Completed
 
     return Protocol, BoundProtocol, Completed, Executor, dataclass, Optional, np
 
@@ -289,20 +290,20 @@ def __(executor, bound, mo):
 
     return data, mo.md(f"""
     ✓ Acquired data independently:
-    - Signal shape: {data.signal.shape}
-    - Metadata: {data.metadata}
+    - Signal shape: {data.data.signal.shape}
+    - Metadata: {data.data.metadata}
     """)
 
 
 @app.cell
-def __(executor, data, bound, mo):
+def __(executor, data, mo):
     # Now fit the acquired data
-    results = executor.fit(data, bound)
+    results = executor.fit(data)
 
     return results, mo.md(f"""
     ✓ Fitted pre-acquired data:
-    - Resonance: {results.resonance_freq / 1e9:.4f} GHz
-    - Q-factor: {results.quality_factor:.1f}
+    - Resonance: {results.results.resonance_freq / 1e9:.4f} GHz
+    - Q-factor: {results.results.quality_factor:.1f}
     """)
 
 

@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 from qibocal import Executor, Protocol
-from qibocal.auto.execute import resolve
+from qibocal.auto.execute import _resolve
+from qibocal.auto.operation import Data
+from qibocal.auto.task import Completed
 from qibocal.protocols import rabi_amplitude
 from qibocal.protocols.rabi.amplitude import (
     RabiAmplitudeData,
@@ -44,62 +46,32 @@ def test_bind_plain_parameters():
 def test_resolve_protocol():
     protocol = Protocol(plain_acquisition)
     kwargs = {"samples": 3, "fit": {"method": "new"}, "report": {"html": True}}
-    bound = resolve(protocol, kwargs)
+    bound = protocol(**kwargs)
 
     assert bound.protocol is protocol
     assert bound.parameters == PlainParameters(3)
     assert bound.fitpars == {"method": "new"}
     assert bound.reportpars == {"html": True}
-    assert resolve(bound, {}) is bound
+    assert _resolve(bound, {}) is bound
     assert kwargs == {"samples": 3, "fit": {"method": "new"}, "report": {"html": True}}
 
 
-@pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
+@pytest.mark.parametrize("phase", ["__call__", "acquire"])
 @pytest.mark.parametrize("explicit_parameters", [False, True])
-def test_unbound_protocol_phases(mocker, phase, explicit_parameters):
-    fit = mocker.create_autospec(lambda data, fitpars: None, return_value=5)
-    report = mocker.create_autospec(
-        lambda data, results, reportpars: None, return_value="html"
-    )
-    update = mocker.create_autospec(lambda results, platform: None)
-    protocol = Protocol(plain_acquisition, fit, report, update)
-    platform = mocker.Mock()
-    executor = Executor(platform, targets=[])
+def test_unbound_protocol_phases(phase, explicit_parameters):
+    protocol = Protocol(plain_acquisition)
+    executor = Executor(None, targets=[])
     kwargs = {"pars": PlainParameters(3)} if explicit_parameters else {"samples": 3}
-    kwargs |= {"fit": {"method": "new"}, "report": {"html": True}}
-    binding = mocker.spy(Protocol, "__call__")
-    args = {
-        "__call__": (protocol,),
-        "acquire": (protocol,),
-        "fit": (4, protocol),
-        "report": (4, 5, protocol),
-        "update": (5, protocol),
-    }
-
-    output = getattr(executor, phase)(*args[phase], **kwargs)
-
-    binding.assert_called_once_with(protocol, **kwargs)
-    if phase in ("__call__", "acquire"):
-        assert (output.data if phase == "__call__" else output) == 4
-    if phase in ("__call__", "fit"):
-        fit.assert_called_once_with(4, fitpars={"method": "new"})
-        assert (output.results if phase == "__call__" else output) == 5
-    if phase in ("__call__", "report"):
-        report.assert_called_once_with(4, results=5, reportpars={"html": True})
-        assert (output.reports if phase == "__call__" else output) == "html"
-    if phase in ("__call__", "update"):
-        update.assert_called_once_with(5, platform=platform)
+    with pytest.raises(TypeError, match="requires a BoundProtocol"):
+        getattr(executor, phase)(protocol, **kwargs)
 
 
-@pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
+@pytest.mark.parametrize("phase", ["__call__", "acquire"])
 def test_bound_protocol_rejects_binding_arguments(phase):
     bound = Protocol(plain_acquisition)(samples=3)
     args = {
         "__call__": (bound,),
         "acquire": (bound,),
-        "fit": (4, bound),
-        "report": (4, 5, bound),
-        "update": (5, bound),
     }
 
     with pytest.raises(TypeError, match="binding arguments with a BoundProtocol"):
@@ -132,8 +104,7 @@ def test_bind_builtin_parameters(from_keywords):
     assert bound.reportpars is None
 
 
-@pytest.mark.parametrize("unbound", [False, True])
-def test_builtin_acquisition(platform, mocker, unbound):
+def test_builtin_acquisition(platform, mocker):
     kwargs = {
         "min_amp": 0,
         "max_amp": 1,
@@ -141,16 +112,19 @@ def test_builtin_acquisition(platform, mocker, unbound):
         "nshots": 4096,
         "relaxation_time": 0,
     }
-    protocol = rabi_amplitude if unbound else rabi_amplitude(**kwargs)
+    protocol = rabi_amplitude(**kwargs)
     execute = mocker.spy(platform, "execute")
     connect = mocker.spy(platform, "connect")
     disconnect = mocker.spy(platform, "disconnect")
     executor = Executor(platform, targets=[0, 1], update=False)
 
-    data = executor.acquire(protocol, targets=[1], **(kwargs if unbound else {}))
+    completed = executor.acquire(protocol, targets=[1])
+    data = completed.data
 
     assert data.qubits == [1]
     assert len(data[1]) == 20
+    assert completed.bound is protocol
+    assert completed.targets == [1]
     assert execute.call_args.kwargs["nshots"] == 4096
     assert execute.call_args.kwargs["relaxation_time"] == 0
     assert executor.targets == [0, 1]
@@ -196,19 +170,31 @@ def rabi_data():
 def test_builtin_independent_phases(platform, rabi_data):
     bound = rabi_amplitude(min_amp=0, max_amp=1, step_amp=0.01, fit={}, report={})
     executor = Executor(platform, targets=[0, 1], update=False)
-    results = executor.fit(rabi_data, bound)
+    acquired = Completed(bound=bound, _data=rabi_data)
+    fitted = executor.fit(acquired)
+    results = fitted.results
 
     assert isinstance(results, RabiAmplitudeResults)
     assert 0 in results and 1 in results
-    reports = executor.report(rabi_data, results, bound, targets=[1])
+    reported = executor.report(fitted, targets=[1])
+    reports = reported.reports
     assert list(reports) == [1]
     figures, table = reports[1]
     assert figures
     assert isinstance(table, str) and table
-    assert executor.report(rabi_data, None, bound, targets=[0])[0][0]
+    assert executor.report(acquired, targets=[0]).reports[0][0]
+    assert acquired.results is None
+    assert fitted is not acquired
+    assert reported is not fitted
+    assert fitted.reports is None
+    assert reported.bound is bound
+    assert reported.data is rabi_data
 
     amplitude_before = platform.natives.single_qubit[0].RX[0][1].amplitude
-    executor.update(results, bound, targets=[1])
+    updated = executor.update(reported, targets=[1])
+    assert updated is not reported
+    assert updated.results is results
+    assert updated.reports is reports
     assert platform.natives.single_qubit[0].RX[0][1].amplitude == amplitude_before
     assert platform.natives.single_qubit[1].RX[0][1].amplitude == pytest.approx(
         results.amplitude[1][0]
@@ -253,9 +239,8 @@ def test_builtin_complete_workflow(platform, rabi_data, mocker, update, from_key
         updater.assert_not_called()
 
 
-@pytest.mark.parametrize("unbound", [False, True])
 @pytest.mark.parametrize("default_targets", [None, [], [0]])
-def test_all_phase_targets_overrides(platform, mocker, unbound, default_targets):
+def test_all_phase_targets_overrides(platform, mocker, default_targets):
     def acquire(pars, *, platform, targets):
         return pars
 
@@ -276,10 +261,9 @@ def test_all_phase_targets_overrides(platform, mocker, unbound, default_targets)
     callbacks[2].return_value = (3, 4)
     protocol = Protocol(*callbacks)
     kwargs = {"pars": 3, "fit": {"method": "new"}, "report": {"html": True}}
-    bound = protocol if unbound else protocol(**kwargs)
-    binding = kwargs if unbound else {}
+    bound = protocol(**kwargs)
     executor = Executor(platform, targets=default_targets)
-    completed = executor(bound, targets=[1], **binding)
+    completed = executor(bound, targets=[1])
 
     assert completed.reports == (3, 4)
     for callback in callbacks:
@@ -291,41 +275,36 @@ def test_all_phase_targets_overrides(platform, mocker, unbound, default_targets)
     assert executor.platform is platform
     assert executor.targets == default_targets
 
-    executor.acquire(bound, targets=[1], **binding)
-    executor.fit(3, bound, targets=[1], **binding)
-    executor.report(3, 4, bound, targets=[1], **binding)
-    executor.update(4, bound, targets=[1], **binding)
+    executor.acquire(bound, targets=[1])
+    executor.fit(completed, targets=[1])
+    executor.report(completed, targets=[1])
+    executor.update(completed, targets=[1])
     for callback in callbacks:
         assert callback.call_count == 2
         assert callback.call_args.kwargs["platform"] is platform
         assert callback.call_args.kwargs["targets"] == [1]
 
 
-@pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
-@pytest.mark.parametrize("unbound", [False, True])
+@pytest.mark.parametrize("phase", ["__call__", "acquire"])
 @pytest.mark.parametrize("factory", ["constructor", "create"])
-def test_invocation_requires_targets(platform, tmp_path, phase, unbound, factory):
+def test_invocation_requires_targets(platform, tmp_path, phase, factory):
     executor = (
         Executor(platform)
         if factory == "constructor"
         else Executor.create(tmp_path, platform=platform)
     )
     protocol = Protocol(plain_acquisition)
-    bound = protocol if unbound else protocol(samples=3)
+    bound = protocol(samples=3)
     args = {
         "__call__": (bound,),
         "acquire": (bound,),
-        "fit": (4, bound),
-        "report": (4, 5, bound),
-        "update": (5, bound),
     }
-    kwargs = {"samples": 3} if unbound else {}
 
     assert executor.targets is None
     with pytest.raises(ValueError, match="Targets must be supplied"):
-        getattr(executor, phase)(*args[phase], **kwargs)
+        getattr(executor, phase)(*args[phase])
     with pytest.raises(ValueError, match="Targets must be supplied"):
-        getattr(executor, phase)(*args[phase], targets=None, **kwargs)
+        getattr(executor, phase)(*args[phase], targets=None)
     assert executor.targets is None
 
 
@@ -339,10 +318,10 @@ def test_invocation_targets_without_defaults(platform, tmp_path, factory, target
     )
     protocol = Protocol(plain_acquisition)
 
-    assert executor(protocol, samples=3, targets=targets).data == 4
+    assert executor(protocol(samples=3), targets=targets).data == 4
     assert executor.targets is None
     with pytest.raises(ValueError, match="Targets must be supplied"):
-        executor(protocol, samples=3)
+        executor(protocol(samples=3))
 
 
 def test_optional_parameter_aliases():
@@ -370,7 +349,9 @@ def test_per_target_update(platform, target, name):
     bound = Protocol(
         lambda pars: pars, update=update_target if name == "target" else update_qubit
     )(pars=3)
-    Executor(platform, targets=[target]).update(4, bound)
+    acquired = Executor(None, targets=[target]).acquire(bound)
+    acquired.results = 4
+    Executor(platform).update(acquired)
     assert calls == [(4, platform, target)]
 
 
@@ -397,9 +378,9 @@ def test_override_targets_validation(platform, phase):
     )(pars=3)
     args = {
         "acquire": (bound,),
-        "fit": (3, bound),
-        "report": (3, 3, bound),
-        "update": (3, bound),
+        "fit": (Completed(bound=bound, _data=3, _results=3, _targets=[]),),
+        "report": (Completed(bound=bound, _data=3, _results=3, _targets=[]),),
+        "update": (Completed(bound=bound, _data=3, _results=3, _targets=[]),),
     }
     with pytest.raises(ValueError, match="target qubits were repeated"):
         getattr(Executor(platform), phase)(*args[phase], targets=[1, 1])
@@ -419,28 +400,25 @@ def test_callback_type_error_is_not_retried():
 
 
 @pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
-@pytest.mark.parametrize("unbound", [False, True])
-def test_platform_keyword_is_binding_argument(platform, phase, unbound):
+def test_platform_keyword_is_binding_argument(platform, phase):
     protocol = Protocol(plain_acquisition)
-    bound = protocol if unbound else protocol(samples=3)
+    bound = protocol(samples=3)
+    completed = Completed(bound=bound, _data=4, _results=5, _targets=[])
     args = {
         "__call__": (bound,),
         "acquire": (bound,),
-        "fit": (4, bound),
-        "report": (4, 5, bound),
-        "update": (5, bound),
+        "fit": (completed,),
+        "report": (completed,),
+        "update": (completed,),
     }
-    kwargs = {"samples": 3} if unbound else {}
 
     message = (
-        "unexpected keyword argument 'platform'"
-        if unbound
-        else "binding arguments with a BoundProtocol"
+        "binding arguments with a BoundProtocol"
+        if phase in ("__call__", "acquire")
+        else "unexpected keyword argument 'platform'"
     )
     with pytest.raises(TypeError, match=message):
-        getattr(Executor(platform, targets=[]), phase)(
-            *args[phase], platform=platform, **kwargs
-        )
+        getattr(Executor(platform, targets=[]), phase)(*args[phase], platform=platform)
 
 
 @pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
@@ -461,15 +439,17 @@ def test_platform_keyword_can_bind_parameters(platform, phase, mocker):
     ]
     callbacks[1].return_value = "parameter"
     protocol = Protocol(*callbacks)
+    bound = protocol(platform="parameter")
+    completed = Completed(bound=bound, _data="data", _results="results", _targets=[])
     args = {
-        "__call__": (protocol,),
-        "acquire": (protocol,),
-        "fit": ("data", protocol),
-        "report": ("data", "results", protocol),
-        "update": ("results", protocol),
+        "__call__": (bound,),
+        "acquire": (bound,),
+        "fit": (completed,),
+        "report": (completed,),
+        "update": (completed,),
     }
     executor = Executor(platform, targets=[])
-    getattr(executor, phase)(*args[phase], platform="parameter")
+    getattr(executor, phase)(*args[phase])
 
     for name, callback in zip(["fit", "report", "update"], callbacks[1:]):
         if phase in ("__call__", name):
@@ -480,8 +460,7 @@ def test_platform_keyword_can_bind_parameters(platform, phase, mocker):
 
 
 @pytest.mark.parametrize("phase", ["__call__", "acquire"])
-@pytest.mark.parametrize("binding", ["bound", "pars", "keywords"])
-def test_execution_settings_precedence(platform, mocker, phase, binding):
+def test_execution_settings_precedence(platform, mocker, phase):
     parameters = RabiAmplitudeParameters.load(
         {
             "min_amp": 0,
@@ -497,19 +476,16 @@ def test_execution_settings_precedence(platform, mocker, phase, binding):
         "relaxation_time": 20,
         "targets": [1],
     }
-    protocol = bound if binding == "bound" else rabi_amplitude
-    if binding == "pars":
-        kwargs["pars"] = parameters
-    elif binding == "keywords":
-        kwargs |= {"min_amp": 0, "max_amp": 1, "step_amp": 0.05}
     if phase == "__call__":
         kwargs["skip_fit"] = True
     execute = mocker.spy(platform, "execute")
     executor = Executor(platform, targets=[0])
 
-    output = getattr(executor, phase)(protocol, **kwargs)
+    output = getattr(executor, phase)(bound, **kwargs)
 
-    assert (output.data if phase == "__call__" else output).qubits == [1]
+    assert output.data.qubits == [1]
+    assert output.bound.parameters.nshots == 128
+    assert output.bound.parameters.relaxation_time == 20
     assert execute.call_args.kwargs["nshots"] == 128
     assert execute.call_args.kwargs["relaxation_time"] == 20
     assert parameters.nshots == 64
@@ -526,8 +502,8 @@ def test_resolve_execution_settings_are_extensible(monkeypatch):
     parameters = DummyPars.load({"future_setting": 1})
     bound = protocol(pars=parameters)
 
-    overridden = resolve(bound, {"future_setting": 2})
-    rebound = resolve(protocol, {"pars": parameters, "future_setting": 3})
+    overridden = _resolve(bound, {"future_setting": 2})
+    rebound = _resolve(protocol(pars=parameters), {"future_setting": 3})
 
     assert overridden.parameters.future_setting == 2
     assert rebound.parameters.future_setting == 3
@@ -546,5 +522,81 @@ def test_execution_settings_plain_parameters():
 
     acquired = Executor(None, targets=[]).acquire(bound, nshots=128)
 
-    assert acquired.nshots == 128
+    assert acquired.data.nshots == 128
     assert parameters.nshots == 64
+
+
+@pytest.mark.parametrize(
+    "keys, two_qubit, expected",
+    [
+        ([1], False, [1]),
+        ([(1, 0), (1, 1)], False, [1]),
+        ([(0, 1), (0, 1, "extra")], True, [(0, 1)]),
+        ([], False, []),
+        ([], True, []),
+    ],
+)
+def test_downstream_targets_from_data(platform, mocker, keys, two_qubit, expected):
+    data = Data({key: np.array([1]) for key in keys})
+    fit = mocker.create_autospec(lambda data, targets: None, return_value=5)
+    report = mocker.create_autospec(
+        lambda data, targets, results: None, return_value="html"
+    )
+    update = mocker.create_autospec(lambda results, platform, targets: None)
+    bound = Protocol(lambda pars: data, fit, report, update, two_qubit_gates=two_qubit)(
+        pars=3
+    )
+    acquired = Executor(platform, targets=[2]).acquire(bound)
+    executor = Executor(platform, targets=[3])
+
+    fitted = executor.fit(acquired)
+    reported = executor.report(fitted)
+    updated = executor.update(reported)
+
+    fit.assert_called_once_with(data, targets=expected)
+    report.assert_called_once_with(data, targets=expected, results=5)
+    update.assert_called_once_with(5, platform=platform, targets=expected)
+    assert acquired.targets == expected
+    assert acquired.results is None
+    assert fitted.reports is None
+    assert updated.reports == "html"
+    assert len({id(node) for node in [acquired, fitted, reported, updated]}) == 4
+    assert all(
+        node.bound is bound and node.data is data
+        for node in [acquired, fitted, reported, updated]
+    )
+
+
+def test_refit_preserves_input_and_clears_reports():
+    bound = Protocol(
+        lambda pars: pars,
+        lambda data, fitpars: data + fitpars,
+        lambda data, results: str(results),
+    )(pars=3, fit=2)
+    executor = Executor(None, targets=[])
+    original = executor(bound)
+    refitted = Executor(None).fit(original)
+
+    assert refitted is not original
+    assert refitted.bound is bound
+    assert refitted.results == original.results == 5
+    assert original.reports == "5"
+    assert refitted.reports is None
+    assert refitted.data_time == original.data_time
+
+
+@pytest.mark.parametrize("phase", ["fit", "report", "update"])
+def test_downstream_requires_completed(phase):
+    executor = Executor(None)
+    with pytest.raises(TypeError, match="requires a Completed instance"):
+        getattr(executor, phase)(3)
+    with pytest.raises(ValueError, match="has no bound protocol"):
+        getattr(executor, phase)(Completed(_data=Data()))
+
+
+def test_completed_is_exported_from_task():
+    import qibocal
+    from qibocal.auto import operation
+
+    assert qibocal.Completed is Completed
+    assert not hasattr(operation, "Completed")

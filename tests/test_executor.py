@@ -12,7 +12,6 @@ from qibocal import Executor
 from qibocal.auto.execute import check_overlap_in_input_qubits
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.operation import (
-    Completed,
     Data,
     Parameters,
     Protocol,
@@ -21,7 +20,7 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.output import PLATFORM, Output
 from qibocal.auto.runcard import Action, Runcard
-from qibocal.auto.task import Task
+from qibocal.auto.task import Completed, Task
 from qibocal.calibration.platform import (
     CalibrationPlatform,
     create_calibration_platform,
@@ -112,16 +111,21 @@ def test_bound_protocol_update_disabled(bound_protocol, platform):
     completed = executor(bound_protocol)
 
     bound_protocol.protocol.update.assert_not_called()
-    executor.update(completed.results, bound_protocol)
+    executor.update(completed)
     bound_protocol.protocol.update.assert_called_once_with(11, platform=platform)
 
 
 def test_bound_protocol_individual_phases(bound_protocol, platform):
     executor = Executor(platform, targets=[])
     data = executor.acquire(bound_protocol)
-    results = executor.fit(data, bound_protocol)
-    assert executor.report(data, results, bound_protocol) == "report"
-    executor.update(results, bound_protocol)
+    results = executor.fit(data)
+    assert executor.report(results).reports == "report"
+    executor.update(results)
+
+    assert data is not results
+    assert data.results is None
+    assert results.data == data.data
+    assert results.bound is bound_protocol
 
     bound_protocol.protocol.acquisition.assert_called_once_with(3)
     bound_protocol.protocol.fit.assert_called_once_with(7, fitpars={"fit": True})
@@ -135,19 +139,17 @@ def test_bound_protocol_individual_phases(bound_protocol, platform):
 def test_bound_protocol_missing_phase(bound_protocol, platform, phase):
     setattr(bound_protocol.protocol, phase, None)
     executor = Executor(platform, targets=[])
-    args = {
-        "fit": (7, bound_protocol),
-        "report": (7, 11, bound_protocol),
-        "update": (11, bound_protocol),
-    }
+    completed = executor.acquire(bound_protocol)
 
     with pytest.raises(ValueError, match="Protocol does not support"):
-        getattr(executor, phase)(*args[phase])
+        getattr(executor, phase)(completed)
 
 
 def test_bound_protocol_update_requires_platform(bound_protocol):
     with pytest.raises(ValueError, match="does not have a platform"):
-        Executor(None, targets=[]).update(11, bound_protocol)
+        Executor(None).update(
+            Completed(bound=bound_protocol, _data=7, _results=11, _targets=[])
+        )
 
 
 @pytest.mark.parametrize("phase", ["acquisition", "fit", "report", "update"])
@@ -293,6 +295,34 @@ def test_calibration_task_uses_bound_executor(tmp_path, platform, mocker):
     assert completed.task.targets == [0]
     assert completed.data_time >= 0
     assert completed.results_time >= 0
+
+
+def test_completed_load_and_refit(tmp_path, platform, monkeypatch):
+    protocol = Protocol(_acquisition, _fit, _plot, _update)
+    monkeypatch.setattr(qibocal.protocols, "fake", protocol, raising=False)
+    task = Task(Action("fake", "fake", targets=[0], parameters={"par": 7}), protocol)
+    original = task.run(
+        mode=ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+        folder=tmp_path,
+        platform=platform,
+    )
+    loaded = Completed.load(tmp_path)
+
+    assert loaded.bound.protocol == protocol
+    assert loaded.bound.parameters.par == 7
+    assert loaded.data.par == original.data.par
+    assert loaded.results.par == original.results.par
+    assert loaded.targets == [0]
+
+    refitted = Executor(None).fit(loaded)
+    assert refitted is not loaded
+    assert refitted.bound is loaded.bound
+    assert refitted.task == loaded.task
+    assert refitted.task is not loaded.task
+    assert refitted.path == tmp_path
+    assert refitted.data is loaded.data
+    assert refitted.results is not loaded.results
+    assert refitted.results.par == loaded.results.par
 
 
 def test_calibration_without_optional_phases(tmp_path, platform, monkeypatch):
