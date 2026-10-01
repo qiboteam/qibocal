@@ -65,7 +65,7 @@ def bound_protocol(mocker):
 
 
 def test_bound_protocol_executor(bound_protocol, platform):
-    executor = Executor(platform)
+    executor = Executor(platform, targets=[])
     completed = executor(bound_protocol)
 
     assert isinstance(completed, Completed)
@@ -89,7 +89,7 @@ def test_bound_protocol_without_fit(bound_protocol, platform, skip_fit):
     fit = bound_protocol.protocol.fit
     if not skip_fit:
         bound_protocol.protocol.fit = None
-    completed = Executor(platform)(bound_protocol, skip_fit=skip_fit)
+    completed = Executor(platform, targets=[])(bound_protocol, skip_fit=skip_fit)
 
     assert completed.data == 7
     assert completed.results is None
@@ -102,13 +102,13 @@ def test_bound_protocol_without_fit(bound_protocol, platform, skip_fit):
 def test_bound_protocol_optional_report_and_update(bound_protocol, platform):
     bound_protocol.protocol.report = None
     bound_protocol.protocol.update = None
-    completed = Executor(platform)(bound_protocol)
+    completed = Executor(platform, targets=[])(bound_protocol)
 
     assert completed.results == 11
 
 
 def test_bound_protocol_update_disabled(bound_protocol, platform):
-    executor = Executor(platform, update=False)
+    executor = Executor(platform, targets=[], update=False)
     completed = executor(bound_protocol)
 
     bound_protocol.protocol.update.assert_not_called()
@@ -117,7 +117,7 @@ def test_bound_protocol_update_disabled(bound_protocol, platform):
 
 
 def test_bound_protocol_individual_phases(bound_protocol, platform):
-    executor = Executor(platform)
+    executor = Executor(platform, targets=[])
     data = executor.acquire(bound_protocol)
     results = executor.fit(data, bound_protocol)
     assert executor.report(data, results, bound_protocol) == "report"
@@ -134,7 +134,7 @@ def test_bound_protocol_individual_phases(bound_protocol, platform):
 @pytest.mark.parametrize("phase", ["fit", "report", "update"])
 def test_bound_protocol_missing_phase(bound_protocol, platform, phase):
     setattr(bound_protocol.protocol, phase, None)
-    executor = Executor(platform)
+    executor = Executor(platform, targets=[])
     args = {
         "fit": (7, bound_protocol),
         "report": (7, 11, bound_protocol),
@@ -147,7 +147,7 @@ def test_bound_protocol_missing_phase(bound_protocol, platform, phase):
 
 def test_bound_protocol_update_requires_platform(bound_protocol):
     with pytest.raises(ValueError, match="does not have a platform"):
-        Executor(None).update(11, bound_protocol)
+        Executor(None, targets=[]).update(11, bound_protocol)
 
 
 @pytest.mark.parametrize("phase", ["acquisition", "fit", "report", "update"])
@@ -155,7 +155,7 @@ def test_bound_protocol_propagates_errors(bound_protocol, platform, phase):
     getattr(bound_protocol.protocol, phase).side_effect = RuntimeError(phase)
 
     with pytest.raises(RuntimeError, match=phase):
-        Executor(platform)(bound_protocol)
+        Executor(platform, targets=[])(bound_protocol)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
@@ -362,6 +362,14 @@ def test_open(tmp_path: Path, platform: CalibrationPlatform):
         assert e.meta.start is not None
 
     assert e.meta.end is not None
+
+
+def test_open_without_default_targets(tmp_path, platform, bound_protocol):
+    with Executor.open(tmp_path / "out", platform=platform) as executor:
+        assert executor.targets is None
+        assert executor(bound_protocol, targets=[]).data == 7
+        with pytest.raises(ValueError, match="Targets must be supplied"):
+            executor(bound_protocol)
 
 
 def test_executor_rejects_sources(platform):

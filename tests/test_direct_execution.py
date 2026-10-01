@@ -23,6 +23,11 @@ class PlainParameters:
     offset: int = 1
 
 
+@dataclass
+class PlatformParameters:
+    platform: str
+
+
 def plain_acquisition(parameters: PlainParameters) -> int:
     return parameters.samples + parameters.offset
 
@@ -33,7 +38,7 @@ def test_bind_plain_parameters():
 
     assert bound.protocol is protocol
     assert bound.parameters == PlainParameters(3)
-    assert Executor(None)(bound).data == 4
+    assert Executor(None, targets=[])(bound).data == 4
 
 
 def test_resolve_protocol():
@@ -59,7 +64,7 @@ def test_unbound_protocol_phases(mocker, phase, explicit_parameters):
     update = mocker.create_autospec(lambda results, platform: None)
     protocol = Protocol(plain_acquisition, fit, report, update)
     platform = mocker.Mock()
-    executor = Executor(platform)
+    executor = Executor(platform, targets=[])
     kwargs = {"pars": PlainParameters(3)} if explicit_parameters else {"samples": 3}
     kwargs |= {"fit": {"method": "new"}, "report": {"html": True}}
     binding = mocker.spy(Protocol, "__call__")
@@ -98,7 +103,7 @@ def test_bound_protocol_rejects_binding_arguments(phase):
     }
 
     with pytest.raises(TypeError, match="binding arguments with a BoundProtocol"):
-        getattr(Executor(None), phase)(*args[phase], samples=5)
+        getattr(Executor(None, targets=[]), phase)(*args[phase], samples=5)
 
 
 @pytest.mark.parametrize("from_keywords", [True, False])
@@ -249,7 +254,8 @@ def test_builtin_complete_workflow(platform, rabi_data, mocker, update, from_key
 
 
 @pytest.mark.parametrize("unbound", [False, True])
-def test_all_phase_targets_overrides(platform, mocker, unbound):
+@pytest.mark.parametrize("default_targets", [None, [], [0]])
+def test_all_phase_targets_overrides(platform, mocker, unbound, default_targets):
     def acquire(pars, *, platform, targets):
         return pars
 
@@ -272,7 +278,7 @@ def test_all_phase_targets_overrides(platform, mocker, unbound):
     kwargs = {"pars": 3, "fit": {"method": "new"}, "report": {"html": True}}
     bound = protocol if unbound else protocol(**kwargs)
     binding = kwargs if unbound else {}
-    executor = Executor(platform, targets=[0])
+    executor = Executor(platform, targets=default_targets)
     completed = executor(bound, targets=[1], **binding)
 
     assert completed.reports == (3, 4)
@@ -283,7 +289,7 @@ def test_all_phase_targets_overrides(platform, mocker, unbound):
     assert callbacks[2].call_args.kwargs["fit"] == 4
     assert callbacks[2].call_args.kwargs["reportpars"] == {"html": True}
     assert executor.platform is platform
-    assert executor.targets == [0]
+    assert executor.targets == default_targets
 
     executor.acquire(bound, targets=[1], **binding)
     executor.fit(3, bound, targets=[1], **binding)
@@ -295,13 +301,57 @@ def test_all_phase_targets_overrides(platform, mocker, unbound):
         assert callback.call_args.kwargs["targets"] == [1]
 
 
+@pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
+@pytest.mark.parametrize("unbound", [False, True])
+@pytest.mark.parametrize("factory", ["constructor", "create"])
+def test_invocation_requires_targets(platform, tmp_path, phase, unbound, factory):
+    executor = (
+        Executor(platform)
+        if factory == "constructor"
+        else Executor.create(tmp_path, platform=platform)
+    )
+    protocol = Protocol(plain_acquisition)
+    bound = protocol if unbound else protocol(samples=3)
+    args = {
+        "__call__": (bound,),
+        "acquire": (bound,),
+        "fit": (4, bound),
+        "report": (4, 5, bound),
+        "update": (5, bound),
+    }
+    kwargs = {"samples": 3} if unbound else {}
+
+    assert executor.targets is None
+    with pytest.raises(ValueError, match="Targets must be supplied"):
+        getattr(executor, phase)(*args[phase], **kwargs)
+    with pytest.raises(ValueError, match="Targets must be supplied"):
+        getattr(executor, phase)(*args[phase], targets=None, **kwargs)
+    assert executor.targets is None
+
+
+@pytest.mark.parametrize("factory", ["constructor", "create"])
+@pytest.mark.parametrize("targets", [[], [0]])
+def test_invocation_targets_without_defaults(platform, tmp_path, factory, targets):
+    executor = (
+        Executor(platform)
+        if factory == "constructor"
+        else Executor.create(tmp_path, platform=platform)
+    )
+    protocol = Protocol(plain_acquisition)
+
+    assert executor(protocol, samples=3, targets=targets).data == 4
+    assert executor.targets is None
+    with pytest.raises(ValueError, match="Targets must be supplied"):
+        executor(protocol, samples=3)
+
+
 def test_optional_parameter_aliases():
     protocol = Protocol(
         acquisition=lambda pars: pars,
         fit=lambda data, fit_params: data + fit_params,
         report=lambda data, results, report_params: (results, report_params),
     )
-    completed = Executor(None)(protocol(pars=3, fit=2, report="html"))
+    completed = Executor(None, targets=[])(protocol(pars=3, fit=2, report="html"))
     assert completed.results == 5
     assert completed.reports == (5, "html")
 
@@ -364,13 +414,13 @@ def test_callback_type_error_is_not_retried():
 
     bound = Protocol(lambda pars: pars, fit)(pars=3, fit={})
     with pytest.raises(TypeError, match="inside fitting"):
-        Executor(None)(bound)
+        Executor(None, targets=[])(bound)
     assert calls == [3]
 
 
 @pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
 @pytest.mark.parametrize("unbound", [False, True])
-def test_platform_override_rejected(platform, phase, unbound):
+def test_platform_keyword_is_binding_argument(platform, phase, unbound):
     protocol = Protocol(plain_acquisition)
     bound = protocol if unbound else protocol(samples=3)
     args = {
@@ -382,8 +432,51 @@ def test_platform_override_rejected(platform, phase, unbound):
     }
     kwargs = {"samples": 3} if unbound else {}
 
-    with pytest.raises(TypeError, match="platform cannot be overridden"):
-        getattr(Executor(platform), phase)(*args[phase], platform=platform, **kwargs)
+    message = (
+        "unexpected keyword argument 'platform'"
+        if unbound
+        else "binding arguments with a BoundProtocol"
+    )
+    with pytest.raises(TypeError, match=message):
+        getattr(Executor(platform, targets=[]), phase)(
+            *args[phase], platform=platform, **kwargs
+        )
+
+
+@pytest.mark.parametrize("phase", ["__call__", "acquire", "fit", "report", "update"])
+def test_platform_keyword_can_bind_parameters(platform, phase, mocker):
+    acquisitions = []
+
+    def acquire(parameters: PlatformParameters, platform):
+        acquisitions.append((parameters, platform))
+        return parameters.platform
+
+    callbacks = [acquire] + [
+        mocker.create_autospec(callback)
+        for callback in (
+            lambda data, platform: data,
+            lambda data, results, platform: results,
+            lambda results, platform: None,
+        )
+    ]
+    callbacks[1].return_value = "parameter"
+    protocol = Protocol(*callbacks)
+    args = {
+        "__call__": (protocol,),
+        "acquire": (protocol,),
+        "fit": ("data", protocol),
+        "report": ("data", "results", protocol),
+        "update": ("results", protocol),
+    }
+    executor = Executor(platform, targets=[])
+    getattr(executor, phase)(*args[phase], platform="parameter")
+
+    for name, callback in zip(["fit", "report", "update"], callbacks[1:]):
+        if phase in ("__call__", name):
+            assert callback.call_args.kwargs["platform"] is platform
+    if phase in ("__call__", "acquire"):
+        assert acquisitions == [(PlatformParameters("parameter"), platform)]
+    assert executor.platform is platform
 
 
 @pytest.mark.parametrize("phase", ["__call__", "acquire"])
@@ -451,7 +544,7 @@ def test_execution_settings_plain_parameters():
     parameters = ExecutionParameters(64)
     bound = protocol(pars=parameters)
 
-    acquired = Executor(None).acquire(bound, nshots=128)
+    acquired = Executor(None, targets=[]).acquire(bound, nshots=128)
 
     assert acquired.nshots == 128
     assert parameters.nshots == 64

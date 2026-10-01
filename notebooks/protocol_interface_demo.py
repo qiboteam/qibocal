@@ -257,7 +257,7 @@ def __(Executor):
         def update(self, results):
             pass
 
-    executor = Executor(MockPlatform())
+    executor = Executor(MockPlatform(), targets=[])
     return executor, MockPlatform
 
 
