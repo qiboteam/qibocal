@@ -59,17 +59,11 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool, axis: int = -1):
     q20 = np.quantile(y, 0.2, axis=axis)
     amplitude_guess = np.abs(q80 - q20) / QUANTILE_CONSTANT_RABI
 
-    phase_guess = np.pi if not signal else np.pi / 2
-    zeros = 0
-
-    if period.ndim > 0:
-        zeros = np.zeros_like(period)
-        phase_guess = np.full(period.shape, phase_guess)
-
+    phase_guess = np.full(period.shape, np.pi if not signal else np.pi / 2)
+    guess = [median_sig, amplitude_guess, period, phase_guess]
     if experiment == "length":
-        return [median_sig, amplitude_guess, period, phase_guess, zeros]
-    else:
-        return [median_sig, amplitude_guess, period, phase_guess]
+        guess.append(np.zeros_like(period))
+    return guess
 
 
 def plot(data, qubit, fit, rx90):
@@ -225,7 +219,6 @@ def plot_probabilities(data, qubit, fit, rx90):
                     "chi2 reduced",
                 ],
                 [fit.amplitude[qubit], fit.length[qubit], fit.chi2[qubit]],
-                display_error=True,
             )
         )
 
@@ -272,48 +265,6 @@ def period_correction_factor(phase: float):
 
     x = phase / np.pi
     return np.round(1 + x) - x
-
-
-def rabi_parameter_error_prop(
-    popt: np.typing.ArrayLike, perr: np.typing.ArrayLike
-) -> float:
-    """Propagate fit-parameter uncertainties to the corrected Rabi parameter.
-
-    The Rabi parameter computed by :ref:`fit_rabi_amplitude` and
-    :ref:`fit_rabi_length` is
-
-    .. math::
-        p = \frac{popt[2]}{2} C(popt[3]),
-
-    where :math:`C` is :func:`period_correction_factor`. This function is
-    discontinuous where the nearest integer selected by ``round`` changes.
-    Away from these discontinuities, :math:`C` has a constant local derivative
-    with respect to phase, :math:`-1/\\pi`; at a discontinuity its derivative
-    is undefined. Consequently, first-order error propagation in phase is
-    applicable only when the fitted phase is not at a discontinuity.
-
-    Assuming independent fit parameters, the propagated variance is
-
-    .. math::
-        \\sigma_p^2 = \\left(\frac{C}{2}\right)^2 \\sigma_{popt[2]}^2
-        + \\left(\frac{popt[2]}{2\\pi}\right)^2 \\sigma_{popt[3]}^2.
-
-    Args:
-        popt: Fitted Rabi parameters.
-        perr: Standard errors of the fitted parameters in the same order.
-
-    Returns:
-        The propagated standard error of the Rabi parameter.
-    """
-
-    popt = np.asarray(popt)
-    perr = np.asarray(perr)
-
-    correction = period_correction_factor(popt[3])
-    dp_dpop2 = correction / 2
-    dp_dpop3 = -popt[2] / (2 * np.pi)
-    variance = (dp_dpop2 * perr[2]) ** 2 + (dp_dpop3 * perr[3]) ** 2
-    return np.sqrt(variance)
 
 
 def sequence_amplitude(
@@ -396,8 +347,8 @@ def fit_length_function(
     y,
     guess,
     sigma=None,
-) -> tuple[list[float], list[float], float]:
-    popt, perr = curve_fit(
+) -> tuple[list[float], float]:
+    popt, _ = curve_fit(
         rabi_length_function,
         x,
         y,
@@ -408,13 +359,13 @@ def fit_length_function(
             [np.inf, np.inf, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
+        x_scale="jac",
     )
 
     popt = np.asarray(popt).tolist()
-    perr = np.sqrt(np.diag(perr)).tolist()
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr, pi_pulse_parameter
+    return popt, pi_pulse_parameter
 
 
 def fit_amplitude_function(
@@ -422,8 +373,8 @@ def fit_amplitude_function(
     y,
     guess,
     sigma=None,
-) -> tuple[list[float], list[float], float]:
-    popt, perr = curve_fit(
+) -> tuple[list[float], float]:
+    popt, _ = curve_fit(
         rabi_amplitude_function,
         x,
         y,
@@ -434,11 +385,11 @@ def fit_amplitude_function(
             [np.inf, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
+        x_scale="jac",
     )
 
     popt = np.asarray(popt).tolist()
-    perr = np.sqrt(np.diag(perr)).tolist()
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
 
-    return popt, perr, pi_pulse_parameter
+    return popt, pi_pulse_parameter

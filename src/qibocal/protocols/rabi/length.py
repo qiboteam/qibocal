@@ -118,7 +118,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     qubits = data.qubits
     fitted_parameters = {}
     durations = {}
-    amplitudes = {key: [value, 0] for key, value in data.amplitudes.items()}
+    amplitudes = {key: value for key, value in data.amplitudes.items()}
     chi2 = {}
 
     for qubit in qubits:
@@ -129,16 +129,13 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         pguess = utils.rabi_initial_guess(x, y, "length", signal=False)
 
         try:
-            popt, perr, pi_pulse_parameter = utils.fit_length_function(
+            popt, pi_pulse_parameter = utils.fit_length_function(
                 x,
                 y,
                 pguess,
                 sigma=qubit_data.error,
             )
-            durations[qubit] = [
-                pi_pulse_parameter,
-                utils.rabi_parameter_error_prop(popt, perr),
-            ]
+            durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
             chi2[qubit] = [
                 chi2_reduced(
