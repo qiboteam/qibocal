@@ -7,7 +7,6 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.constants
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
-from sklearn.decomposition import PCA
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId
@@ -18,10 +17,15 @@ from qibocal.protocols.utils import (
     table_dict,
     table_html,
 )
-from qibocal.result import collect
 
 from .amplitude_signal import RabiAmplitudeSignalData, RabiAmplitudeSignalResults
-from .utils import fit_amplitude_function, plot, rabi_initial_guess, sequence_amplitude
+from .utils import (
+    fit_amplitude_function,
+    pca_matrix,
+    plot,
+    rabi_initial_guess,
+    sequence_amplitude,
+)
 
 __all__ = [
     "RabiAmplitudeFreqSignalData",
@@ -114,7 +118,7 @@ class RabiAmplitudeFreqSignalData(Data):
         """Unique qubit frequency."""
         return np.unique(self[qubit].freq)
 
-    def return_row_data(self, freq: float, qubit: QubitId):
+    def data_at_frequency(self, freq: float, qubit: QubitId):
         """Return the data subset for a selected drive frequency.
 
         Args:
@@ -122,7 +126,7 @@ class RabiAmplitudeFreqSignalData(Data):
             qubit: Identifier of the qubit whose data should be returned.
 
         Returns:
-            The row data restricted to the requested frequency.
+            The data restricted to the requested frequency.
         """
 
         selected_freq_data = self.data[qubit][self.data[qubit].freq == freq]
@@ -190,7 +194,9 @@ def _acquisition(
 
 def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResults:
     """Do not perform any fitting procedure."""
-    fitted_frequencies: dict[QubitId, float] = {}
+
+    # selected_frequencies maps each qubit the optimal frequency for the pi-pulse.
+    selected_frequencies: dict[QubitId, float] = {}
     fitted_amplitudes: dict[QubitId, float] = {}
     fitted_parameters: dict[QubitId, list[float]] = {}
 
@@ -198,14 +204,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         amps = data.amplitudes(qubit)
         freqs = data.frequencies(qubit)
 
-        quadratures = collect(data[qubit].i, data[qubit].q)
-        quadratures_matrix = quadratures.reshape(len(amps), len(freqs), -1)
-        quadratures_matrix = np.moveaxis(quadratures_matrix, 0, 1)
-
-        # computing PCA for each frequency value and only take the most relevant component
-        pc_matrix = np.asarray(
-            [PCA().fit_transform(x)[:, 0] for x in quadratures_matrix]
-        )
+        pc_matrix = pca_matrix(data[qubit], "amp", "freq")
         # guess optimal frequency maximizing oscillation amplitude
         # here pc_matrix has dimensions (n_freqs, n_amps), so we need to compute
         # initial guesses over axis==1
@@ -230,7 +229,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
                 y,
                 pguess,
             )
-            fitted_frequencies[qubit] = frequency
+            selected_frequencies[qubit] = frequency
             fitted_amplitudes[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
 
@@ -241,7 +240,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         amplitude=fitted_amplitudes,
         length=data.durations,
         fitted_parameters=fitted_parameters,
-        frequency=fitted_frequencies,
+        frequency=selected_frequencies,
         rx90=data.rx90,
     )
 
@@ -259,16 +258,7 @@ def _plot(
     frequencies = data.frequencies(target)
     amplitudes = data.amplitudes(target)
 
-    quadratures_matrix = collect(qubit_data.i, qubit_data.q).reshape(
-        len(amplitudes), len(frequencies), -1
-    )
-
-    # note quadratures_matrix has shape (n_freqs, n_amps, n_shots) after reshaping
-    quadratures_matrix = np.moveaxis(quadratures_matrix, 0, 1)
-
-    # computing PCA for each frequency value and only take the most relevant component
-    # pc_matrix has shape (n_freqs, n_amps)
-    pc_matrix = np.asarray([PCA().fit_transform(x)[:, 0] for x in quadratures_matrix])
+    pc_matrix = pca_matrix(qubit_data, "amp", "freq")
 
     fig.add_trace(
         go.Heatmap(
@@ -311,7 +301,7 @@ def _plot(
             )
         )
 
-        fitted_data = data.return_row_data(selected_frequency, target)
+        fitted_data = data.data_at_frequency(selected_frequency, target)
         rabi1d_figure, rabi1d_report = plot(fitted_data, target, fit, data.rx90)
         fitting_report += rabi1d_report
         figures.extend(rabi1d_figure)

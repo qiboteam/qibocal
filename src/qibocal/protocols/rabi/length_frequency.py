@@ -142,10 +142,12 @@ def _acquisition(
 
 def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
     """Do not perform any fitting procedure."""
-    fitted_frequencies = {}
-    fitted_durations = {}
-    fitted_parameters = {}
-    chi2 = {}
+
+    # selected_frequencies maps each qubit the optimal frequency for the pi-pulse.
+    selected_frequencies: dict[QubitId, float] = {}
+    fitted_durations: dict[QubitId, float] = {}
+    fitted_parameters: dict[QubitId, list[float]] = {}
+    chi2: dict[QubitId, list[float]] = {}
 
     for qubit in data.data:
         durations = data.durations(qubit)
@@ -182,7 +184,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
                 pguess,
                 sigma=error,
             )
-            fitted_frequencies[qubit] = frequency
+            selected_frequencies[qubit] = frequency
             fitted_durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
             chi2[qubit] = [
@@ -201,7 +203,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         length=fitted_durations,
         amplitude={key: value for key, value in data.amplitudes.items()},
         fitted_parameters=fitted_parameters,
-        frequency=fitted_frequencies,
+        frequency=selected_frequencies,
         chi2=chi2,
         rx90=data.rx90,
     )
@@ -262,7 +264,7 @@ def _plot(
             )
         )
 
-        fitted_data = data.return_row_data(selected_frequency, target)
+        fitted_data = data.data_at_frequency(selected_frequency, target)
         rabi1d_figure, rabi1d_report = plot_probabilities(
             fitted_data, target, fit, data.rx90
         )
