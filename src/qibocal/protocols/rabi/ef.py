@@ -11,12 +11,11 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.update import replace
+from qibocal.protocols.utils import readout_frequency
 
-from ...result import magnitude, phase
-from ..utils import readout_frequency
 from . import utils
 from .amplitude_signal import (
     RabiAmplitudeSignalData,
@@ -67,11 +66,12 @@ def _acquisition(
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
+
         qd12_channel = platform.qubits[q].drive_extra[1, 2]
         if natives.RX12 is not None:
             [(_, qd12_pulse)] = natives.RX12()
             if params.pulse_length is not None:
-                qd12_pulse = replace(qd12_pulse, duration=params.pulse_length)
+                qd12_pulse = update.replace(qd12_pulse, duration=params.pulse_length)
         else:
             assert params.pulse_length is not None
             qd12_pulse = Pulse(
@@ -127,15 +127,17 @@ def _acquisition(
             (qubit),
             {
                 "amp": sweeper.values,
-                "signal": magnitude(result),
-                "phase": phase(result),
+                "i": result[..., 0],
+                "q": result[..., 1],
             },
         )
     return data
 
 
 def _plot(
-    data: RabiAmplitudeEFData, target: QubitId, fit: RabiAmplitudeEFResults = None
+    data: RabiAmplitudeEFData,
+    target: QubitId,
+    fit: RabiAmplitudeEFResults | None = None,
 ):
     """Plotting function for RabiAmplitude."""
     figures, report = utils.plot(data, target, fit, data.rx90)
@@ -156,7 +158,7 @@ def _update(
         rx12_seq = [
             (
                 rx12[0][0],
-                replace(
+                update.replace(
                     rx12[0][1],
                     amplitude=results.amplitude[target],
                     duration=results.length[target],

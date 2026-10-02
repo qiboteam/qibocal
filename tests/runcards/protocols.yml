@@ -144,8 +144,8 @@ actions:
       min_amp: 0.0
       max_amp: 1.0
       step_amp: 0.1
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_length: 30
       nshots: 1024
@@ -156,8 +156,8 @@ actions:
       min_amp: 0.0
       max_amp: 1.0
       step_amp: 0.1
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_length: 30
       nshots: 1024
@@ -169,8 +169,8 @@ actions:
       min_amp: 0.0
       max_amp: 1.0
       step_amp: 0.1
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_length: 30
       nshots: 1024
@@ -181,8 +181,8 @@ actions:
       min_amp: 0.0
       max_amp: 1.0
       step_amp: 0.1
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_length: 30
       nshots: 1024
@@ -261,8 +261,8 @@ actions:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024
@@ -274,8 +274,8 @@ actions:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024
@@ -286,8 +286,8 @@ actions:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024
@@ -299,8 +299,8 @@ actions:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024
@@ -311,8 +311,8 @@ actions:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024
@@ -324,8 +324,8 @@ actions:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
-      min_freq: -100_000
-      max_freq: 100_000
+      left_freq_offset: -100_000
+      right_freq_offset: 100_000
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024

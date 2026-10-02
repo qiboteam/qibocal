@@ -5,16 +5,15 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import scipy.constants
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import chi2_reduced, table_dict, table_html
+from qibocal.result import probability
 
-from ...result import probability
-from ..utils import HZ_TO_GHZ, chi2_reduced
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
     RabiLengthFrequencySignalParameters,
@@ -23,6 +22,7 @@ from .length_frequency_signal import (
 )
 from .utils import (
     fit_length_function,
+    plot_probabilities,
     rabi_initial_guess,
     rabi_length_function,
     sequence_length,
@@ -45,7 +45,7 @@ class RabiLengthFrequencyResults(RabiLengthFrequencySignalResults):
 
 RabiLenFreqType = np.dtype(
     [
-        ("len", np.float64),
+        ("length", np.float64),
         ("freq", np.float64),
         ("prob", np.float64),
         ("error", np.float64),
@@ -67,7 +67,7 @@ class RabiLengthFreqData(RabiLengthFreqSignalData):
         frequency, length = np.meshgrid(freq, lens)
         data = np.empty(size, dtype=RabiLenFreqType)
         data["freq"] = frequency.ravel()
-        data["len"] = length.ravel()
+        data["length"] = length.ravel()
         data["prob"] = np.array(prob).ravel()
         data["error"] = np.array(error).ravel()
         self.data[qubit] = np.rec.array(data)
@@ -103,8 +103,8 @@ def _acquisition(
         )
 
     frequency_range = np.arange(
-        params.min_freq,
-        params.max_freq,
+        params.left_freq_offset,
+        params.right_freq_offset,
         params.step_freq,
     )
     freq_sweepers = {}
@@ -142,10 +142,12 @@ def _acquisition(
 
 def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
     """Do not perform any fitting procedure."""
-    fitted_frequencies = {}
-    fitted_durations = {}
-    fitted_parameters = {}
-    chi2 = {}
+
+    # selected_frequencies maps each qubit the optimal frequency for the pi-pulse.
+    selected_frequencies: dict[QubitId, float] = {}
+    fitted_durations: dict[QubitId, float] = {}
+    fitted_parameters: dict[QubitId, list[float]] = {}
+    chi2: dict[QubitId, list[float]] = {}
 
     for qubit in data.data:
         durations = data.durations(qubit)
@@ -153,42 +155,42 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         probability = data[qubit].prob
         probability_matrix = probability.reshape(len(durations), len(freqs)).T
 
-        # guess optimal frequency maximizing oscillatio amplitude
-        index = np.argmax([max(x) - min(x) for x in probability_matrix])
-        frequency = freqs[index]
+        # guess optimal frequency maximizing oscillation amplitude
+        # here prob_matrix has dimensions (n_freqs, n_amps), so we
+        # need to compute initial guesses over axis==1
+        full_pguesses = rabi_initial_guess(
+            durations, probability_matrix, "length", signal=False, axis=1
+        )
 
+        # guess has the following elements:
+        # 0. median guess
+        # 1. amplitude guess
+        # 2. period guess
+        # 3. phase guess
+        # 4. decaying constant guess
+        # we estimate the best frequency by maximizing the amplitude estimation
+        index = np.argmax(full_pguesses[1])
+
+        frequency = freqs[index]
         y = probability_matrix[index, :].ravel()
         error = data[qubit].error[data[qubit].freq == frequency]
 
-        y_min = np.min(y)
-        y_max = np.max(y)
-        x_min = np.min(durations)
-        x_max = np.max(durations)
-        x = (durations - x_min) / (x_max - x_min)
-        y = (y - y_min) / (y_max - y_min)
-
-        pguess = rabi_initial_guess(x, y, "length", signal=False)
-
+        # initial guesses for the best frequency row
+        pguess = [p[index] for p in full_pguesses]
         try:
-            popt, perr, pi_pulse_parameter = fit_length_function(
-                x,
+            popt, pi_pulse_parameter = fit_length_function(
+                durations,
                 y,
                 pguess,
                 sigma=error,
-                signal=False,
-                x_limits=(x_min, x_max),
-                y_limits=(y_min, y_max),
             )
-            fitted_frequencies[qubit] = frequency
-            fitted_durations[qubit] = [
-                pi_pulse_parameter,
-                perr[2] * (x_max - x_min) / 2,
-            ]
+            selected_frequencies[qubit] = frequency
+            fitted_durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
             chi2[qubit] = [
                 chi2_reduced(
                     y,
-                    rabi_length_function(x, *popt),
+                    rabi_length_function(durations, *popt),
                     error,
                 ),
                 np.sqrt(2 / len(y)),
@@ -199,9 +201,9 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
 
     return RabiLengthFrequencyResults(
         length=fitted_durations,
-        amplitude=data.amplitudes,
+        amplitude={key: value for key, value in data.amplitudes.items()},
         fitted_parameters=fitted_parameters,
-        frequency=fitted_frequencies,
+        frequency=selected_frequencies,
         chi2=chi2,
         rx90=data.rx90,
     )
@@ -210,47 +212,44 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
 def _plot(
     data: RabiLengthFreqData,
     target: QubitId,
-    fit: RabiLengthFrequencyResults = None,
+    fit: RabiLengthFrequencyResults | None = None,
 ):
     """Plotting function for RabiLengthFrequency."""
     figures = []
     fitting_report = ""
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.2,
-        subplot_titles=("Probability",),
-    )
+    fig = go.Figure()
+    frequencies = data.frequencies(target)
+    durations = data.durations(target)
     qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    durations = qubit_data.len
 
     fig.add_trace(
         go.Heatmap(
             x=durations,
-            y=frequencies,
-            z=qubit_data.prob,
+            y=frequencies * scipy.constants.nano,
+            z=qubit_data.prob.reshape(len(durations), len(frequencies)).T,
+            colorbar_x=1.0,
         ),
-        row=1,
-        col=1,
+    )
+    fig.update_layout(
+        title="Probability",
+        xaxis_title="Time [ns]",
+        yaxis_title="Frequency [GHz]",
+        margin={"r": 50},
+        legend={"orientation": "h", "yanchor": "top", "y": -0.1, "xanchor": "left"},
     )
 
-    fig.update_xaxes(title_text="Durations [ns]", row=1, col=1)
-    fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
-
-    figures.append(fig)
-
     if fit is not None:
+        selected_frequency = fit.frequency[target]
+
         fig.add_trace(
             go.Scatter(
                 x=[min(durations), max(durations)],
-                y=[fit.frequency[target] * HZ_TO_GHZ] * 2,
+                y=[selected_frequency * scipy.constants.nano] * 2,
                 mode="lines",
-                line={"color": "white", "width": 4, "dash": "dash"},
+                line={"color": "black", "width": 4, "dash": "dash"},
+                name="Fit frequency",
+                showlegend=True,
             ),
-            row=1,
-            col=1,
         )
         pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
 
@@ -260,15 +259,20 @@ def _plot(
                 ["Optimal rabi frequency", f"{pulse_name} duration"],
                 [
                     fit.frequency[target],
-                    f"{fit.length[target][0]:.2f} +- {fit.length[target][1]:.2f} ns",
+                    f"{fit.length[target]:.2f} ns",
                 ],
             )
         )
 
-    fig.update_layout(
-        showlegend=False,
-        legend={"orientation": "h"},
-    )
+        fitted_data = data.data_at_frequency(selected_frequency, target)
+        rabi1d_figure, rabi1d_report = plot_probabilities(
+            fitted_data, target, fit, data.rx90
+        )
+        fitting_report += rabi1d_report
+        figures.extend(rabi1d_figure)
+
+    figures.insert(0, fig)
+
     return figures, fitting_report
 
 
