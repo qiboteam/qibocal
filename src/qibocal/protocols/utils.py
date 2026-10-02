@@ -1263,10 +1263,18 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
 def plot_iq_pca(
     iq: np.ndarray, pca_centroids: np.ndarray, pca_axis: np.ndarray
 ) -> list[go.Scatter]:
-    """Plot IQ plane data with PCA principal axes overlaid.
+    """Create a list of Plotly traces for an IQ-plane PCA visualization.
 
-    Performs Principal Component Analysis on quadrature data and creates
-    scatter plots showing the data points, centroid, and principal axes.
+    The returned traces include the raw quadrature data, the PCA centroid,
+    and the two principal axes drawn as dashed lines.
+
+    Args:
+        iq: Array of shape (N, 2) with I and Q quadrature values.
+        pca_centroids: Centroid coordinates (x, y) in the IQ plane.
+        pca_axis: Two principal axis vectors, each of shape (2,).
+
+    Returns:
+        A list of ``go.Scatter`` traces ready to be added to a Plotly figure.
     """
 
     scatters = []
@@ -1278,9 +1286,6 @@ def plot_iq_pca(
     i = iq[:, 0]
     q = iq[:, 1]
 
-    #################################################################
-    # in the first row we plot the IQ plane with the quadrature data
-    # and the principal axes.
     scatters.append(
         go.Scatter(
             x=i,
@@ -1313,6 +1318,7 @@ def plot_iq_pca(
                 y=centroid_y + a[1] * axis_plot,
                 opacity=1,
                 name="Principal Axes",
+                # showlegend=True only for the first axis to avoid duplicate legends
                 showlegend=idx == 0,
                 legendgroup="Principal Axes",
                 mode="lines",

@@ -150,7 +150,7 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         )
 
         try:
-            popt, _, pi_pulse_parameter = utils.fit_length_function(
+            popt, pi_pulse_parameter = utils.fit_length_function(
                 rabi_parameter,
                 principal_axis_signal,
                 pguess,
