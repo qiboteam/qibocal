@@ -7,10 +7,9 @@ from numbers import Number
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel, ConfigDict
-from qibo import gates
-from qibo.models import Circuit
 from qibolab import AveragingMode
 
+from qibocal._qibo import Circuit, gates
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
     build_native_gate_compiler,
