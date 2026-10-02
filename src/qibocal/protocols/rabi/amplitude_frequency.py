@@ -151,7 +151,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
             amps, probability_matrix, "amp", signal=False, axis=1
         )
 
-        # guess has the following elements:
+        # guess has the following elements, each of shape (n_freqs,):
         # 0. median guess
         # 1. amplitude guess
         # 2. period guess
