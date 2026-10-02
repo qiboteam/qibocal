@@ -149,7 +149,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         probability_matrix = probability.reshape(len(amps), len(freqs)).T
 
         # guess optimal frequency maximizing oscillation amplitude
-        # here prob_matrix has dimensions (n_freqs, n_amps), so we
+        # here probability_matrix has dimensions (n_freqs, n_amps), so we
         # need to compute initial guesses over axis==1
         full_pguesses = rabi_initial_guess(
             amps, probability_matrix, "amp", signal=False, axis=1
