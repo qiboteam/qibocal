@@ -53,6 +53,13 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     pulse_length: float | None = None
     """RX pulse duration [ns]."""
 
+    def __post_init__(self):
+        """Validate parameters constraints after initialization."""
+        if self.step_freq <= 0:
+            raise ValueError("step_freq must be positive.")
+        if self.left_freq_offset >= self.right_freq_offset:
+            raise ValueError("left_freq_offset must be less than right_freq_offset.")
+
 
 @dataclass
 class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
@@ -131,10 +138,6 @@ def _acquisition(
     targets: list[QubitId],
 ) -> RabiAmplitudeFreqSignalData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
-
-    assert params.left_freq_offset < params.right_freq_offset, (
-        "Left frequency offset must be smaller than right frequency offset."
-    )
 
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
         targets, params, platform, params.rx90
