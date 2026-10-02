@@ -46,4 +46,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     chsh
     twpa_calibration/twpa
     cross_resonance/cross_resonance
+    standard_error_amplification
     references
