@@ -144,7 +144,7 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
             rabi_parameter, principal_axis_signal, "amp", signal=True
         )
         try:
-            popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
+            popt, pi_pulse_parameter = utils.fit_amplitude_function(
                 rabi_parameter,
                 principal_axis_signal,
                 pguess,
