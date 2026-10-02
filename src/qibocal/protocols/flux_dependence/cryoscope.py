@@ -395,6 +395,41 @@ def exponential_params(
     return popt
 
 
+def _fit_unit_sum_fir(
+    response: npt.ArrayLike,
+    target: npt.ArrayLike,
+    n_taps: int,
+) -> npt.NDArray[np.float64]:
+    """Fit FIR taps while enforcing unit DC gain."""
+    response = np.asarray(response, dtype=float)
+    target = np.asarray(target, dtype=float)
+    # The Toeplitz matrix is lower triangular, with zeros in the upper triangle. Its
+    # diagonals contain successive shifts of `response`, so multiplying by the
+    # matrix implements the discrete convolution with the FIR taps.
+    convolution_matrix = scipy.linalg.toeplitz(response, np.zeros(n_taps))
+    # The FIR coefficients must sum to one to preserve the DC gain.
+    constraint = np.ones(n_taps)
+
+    # Form the Karush-Kuhn-Tucker (KKT) system for least squares with the unit-sum
+    # equality constraint. Its final row and column enforce that constraint through a
+    # Lagrange multiplier.
+    normal_matrix = convolution_matrix.T @ convolution_matrix
+    normal_target = convolution_matrix.T @ target
+    kkt_matrix = np.block(
+        [
+            [normal_matrix, constraint[:, None]],
+            [constraint[None, :], np.zeros((1, 1))],
+        ]
+    )
+    kkt_target = np.concatenate([normal_target, [1.0]])
+
+    # The last value is the Lagrange multiplier; the preceding values are FIR
+    # coefficients.
+    # solve: kkt_matrix @ solution == kkt_target
+    solution, _, _, _ = np.linalg.lstsq(kkt_matrix, kkt_target, rcond=None)
+    return solution[:-1]
+
+
 # TODO: refactor into sub-functions with smaller scopes
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
@@ -451,10 +486,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size = max(3, DERIVATIVE_WINDOW_SIZE)
         derivative_window_size += (derivative_window_size + 1) % 2
 
-        # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * durations * np.abs(demod_freq)) * (
-            norm_data
-        )
+        # find demodulation frequency
+        demod_data = np.exp(-2 * np.pi * 1j * durations * demod_freq) * norm_data
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
@@ -469,13 +502,19 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             )
             * sampling_rate
         )
-        detuning[qubit] = (
-            raw_detuning + demod_freq + sampling_rate * nyquist_order
-        ).tolist()
 
         # invert frequency amplitude formula
         p = np.poly1d(data.flux_coefficients[qubit])
-        amplitude[qubit] = [max((p - freq).roots).real for freq in detuning[qubit]]
+
+        detuning_wrt_zero_flux = (
+            raw_detuning + demod_freq + sampling_rate * nyquist_order
+        )
+        detuning_wrt_drive_freq = detuning_wrt_zero_flux + p(0.0)
+
+        detuning[qubit] = detuning_wrt_drive_freq.tolist()
+        amplitude[qubit] = [
+            max((p - frequency).roots).real for frequency in detuning_wrt_drive_freq
+        ]
 
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
@@ -491,7 +530,11 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
                 feedback_taps[qubit] = iir_filter.feedback
                 feedforward_taps_iir[qubit] = iir_filter.feedforward
             else:
-                exp_params = [0.0, 0.0, 1.0]
+                exp_params = [
+                    0.0,
+                    0.0,
+                    float(np.mean(step_response[qubit][-DERIVATIVE_WINDOW_SIZE:])),
+                ]
                 feedback_taps[qubit] = [1.0]
                 feedforward_taps_iir[qubit] = [1.0]
 
@@ -504,14 +547,14 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             taps = data.fir
             baseline = g[qubit]
 
-            # The Toeplitz matrix is lower triangular, with zeros in the upper triangle.
-            # Its diagonals contain successive shifts of iir_correction, so multiplying
-            # by the matrix implements the discrete convolution with the FIR taps.
-            toeplitz_matrix = scipy.linalg.toeplitz(iir_correction, np.zeros(taps))
-            # solve: toeplitz_matrix @ fir == baseline
-            fir, _, _, _ = np.linalg.lstsq(
-                toeplitz_matrix, np.full(len(iir_correction), baseline)
-            )
+            target = np.full(len(iir_correction), baseline)
+            if taps == 0:
+                fir = np.array([1.0])
+            else:
+                # `taps` is the number of fitted FIR taps. Include one additional tap so
+                # that the total FIR gain can be constrained to one.
+                fir = _fit_unit_sum_fir(iir_correction, target, taps + 1)
+
             fir_taps[qubit] = fir.tolist()
             feedforward_taps[qubit] = np.convolve(
                 feedforward_taps_iir[qubit], fir
@@ -658,7 +701,7 @@ def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
             {
                 "kind": "exp",
                 "amplitude": results.exp_amplitude[target],
-                "tau": results.tau[target] * platform.sampling_rate,
+                "tau": round(results.tau[target] * platform.sampling_rate),
             }
         )
     platform.update({f"configs.{platform.qubits[target].flux}.filters": filters})
