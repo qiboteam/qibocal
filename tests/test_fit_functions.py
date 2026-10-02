@@ -1,113 +1,113 @@
-import json
-import math
+from conftest import TEST_FILE_DIR, approx_for_regression
 
-import numpy as np
-from conftest import TEST_FILE_DIR
+from qibocal.protocols.rabi.amplitude import (
+    RabiAmplitudeData,
+    RabiAmplitudeResults,
+)
+from qibocal.protocols.rabi.amplitude import (
+    _fit as rabi_amplitude_classification_fitting,
+)
+from qibocal.protocols.rabi.amplitude_signal import (
+    RabiAmplitudeSignalData,
+    RabiAmplitudeSignalResults,
+)
+from qibocal.protocols.rabi.amplitude_signal import (
+    _fit as rabi_amplitude_signal_fitting,
+)
+from qibocal.protocols.rabi.length import (
+    RabiLengthData,
+    RabiLengthResults,
+)
+from qibocal.protocols.rabi.length import (
+    _fit as rabi_length_classification_fitting,
+)
+from qibocal.protocols.rabi.length_signal import (
+    RabiLengthSignalData,
+    RabiLengthSignalResults,
+)
+from qibocal.protocols.rabi.length_signal import (
+    _fit as rabi_length_signal_fitting,
+)
+from qibocal.protocols.ramsey.acquisition import RamseyResults
+from qibocal.protocols.ramsey.classification import (
+    RamseyData,
+)
+from qibocal.protocols.ramsey.classification import (
+    _fit as ramsey_classification_fitting,
+)
+from qibocal.protocols.ramsey.signal import (
+    RamseySignalData,
+)
+from qibocal.protocols.ramsey.signal import (
+    _fit as ramsey_signal_fitting,
+)
 
-from qibocal.protocols.rabi.utils import (
-    fit_amplitude_function as rabi_fit_amplitude_function,
-)
-from qibocal.protocols.rabi.utils import fit_length_function as rabi_fit_length_function
-from qibocal.protocols.rabi.utils import (
-    rabi_initial_guess,
-)
-from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
-from qibocal.protocols.ramsey.processing import process_fit as ramsey_process_fit
+RABI_TEST_DIR = TEST_FILE_DIR / "rabi_fit_data"
+RAMSEY_TEST_DIR = TEST_FILE_DIR / "ramsey_fit_data"
 
 
 def test_ramsey_fit():
-    test_folder = TEST_FILE_DIR / "ramsey_fit_data"
+    results_folders = [p for p in RAMSEY_TEST_DIR.iterdir() if p.is_dir()]
 
-    subfolders = [p for p in test_folder.iterdir() if p.is_dir()]
-    for sub in subfolders:
-        data_file = sub / "data.npz"
-        results_file = str(sub / "results.json")
-        json_file = str(sub / "data.json")
+    for ramsey_res in results_folders:
+        if "signal" in ramsey_res.name:
+            ramsey_fitting = ramsey_signal_fitting
+            data = RamseySignalData.load(ramsey_res)
+        else:
+            ramsey_fitting = ramsey_classification_fitting
+            data = RamseyData.load(ramsey_res)
+        expected = RamseyResults.load(ramsey_res)
 
-        numpy_data = np.load(data_file)
-        for f in numpy_data.files:
-            dataset = numpy_data[f]
-            times, signal = zip(*dataset)
+        assert data is not None and expected is not None
 
-            with open(results_file) as file1:
-                results = json.load(file1)
-            with open(json_file) as file2:
-                data = json.load(file2)
+        fitted = ramsey_fitting(data)
 
-            fit_params, fit_err = ramsey_fitting(times, signal)
-            new_freq, t2, delta_signal, delta_fit, _ = ramsey_process_fit(
-                fit_params, fit_err, data['"qubit_freqs"'][f], data['"detuning"']
+        for qubit in data.qubits:
+            assert fitted.frequency[qubit][0] == approx_for_regression(
+                expected.frequency[qubit][0]
             )
-
-            assert math.isclose(
-                results['"frequency"'][f][0], new_freq[0], rel_tol=2.5e-2
+            assert fitted.t2[qubit][0] == approx_for_regression(expected.t2[qubit][0])
+            assert fitted.delta_phys[qubit][0] == approx_for_regression(
+                expected.delta_phys[qubit][0]
             )
-            assert math.isclose(results['"t2"'][f][0], t2[0], rel_tol=2.5e-2)
-            assert math.isclose(
-                results['"delta_phys"'][f][0], delta_signal[0], rel_tol=2.5e-2
-            )
-            assert math.isclose(
-                results['"delta_fitting"'][f][0], delta_fit[0], rel_tol=2.5e-2
+            assert fitted.delta_fitting[qubit][0] == approx_for_regression(
+                expected.delta_fitting[qubit][0]
             )
 
 
 def test_rabi_fit():
-    test_folder = TEST_FILE_DIR / "rabi_fit_data"
+    results_folders = [p for p in RABI_TEST_DIR.iterdir() if p.is_dir()]
 
-    subfolders = [p for p in test_folder.iterdir() if p.is_dir()]
-    for sub in subfolders:
-        data_file = sub / "data.npz"
-        results_file = str(sub / "results.json")
+    for rabi_res in results_folders:
+        if all(x in rabi_res.name for x in ["signal", "amplitude"]):
+            rabi_fitting = rabi_amplitude_signal_fitting
+            data = RabiAmplitudeSignalData.load(rabi_res)
+            expected = RabiAmplitudeSignalResults.load(rabi_res)
+            parameter = "amplitude"
+        elif "signal" not in rabi_res.name and "amplitude" in rabi_res.name:
+            parameter = "amplitude"
+            rabi_fitting = rabi_amplitude_classification_fitting
+            data = RabiAmplitudeData.load(rabi_res)
+            expected = RabiAmplitudeResults.load(rabi_res)
+        elif all(x in rabi_res.name for x in ["signal", "length"]):
+            parameter = "length"
+            rabi_fitting = rabi_length_signal_fitting
+            data = RabiLengthSignalData.load(rabi_res)
+            expected = RabiLengthSignalResults.load(rabi_res)
+        else:  # "signal" not in rabi_res.name and "length" in rabi_res.name
+            parameter = "length"
+            rabi_fitting = rabi_length_classification_fitting
+            data = RabiLengthData.load(rabi_res)
+            expected = RabiLengthResults.load(rabi_res)
 
-        str_sub = str(sub)
+        assert data is not None and expected is not None
 
-        numpy_data = np.load(data_file)
-        for f in numpy_data.files:
-            dataset = numpy_data[f]
-            if len(dataset[0]) == 3:
-                raw_x, raw_signal, errors = zip(*dataset)
-            else:
-                raw_x, raw_signal = zip(*dataset)
-                errors = None
+        fitted = rabi_fitting(data)
 
-            with open(results_file) as file1:
-                results = json.load(file1)
-
-            signal_flag = "signal" in str_sub
-
-            if "freq" in str_sub:
-                sig_min = np.min(raw_signal)
-                sig_max = np.max(raw_signal)
-                x_min = np.min(raw_x)
-                x_max = np.max(raw_x)
-                x = (raw_x - x_min) / (x_max - x_min)
-                signal = (raw_signal - sig_min) / (sig_max - sig_min)
-            else:
-                signal = raw_signal
-                x = raw_x
-
-            rabi_flag = "amp" if "amp" in str_sub else "length"
-            fit_param = '"amplitude"' if "amp" in str_sub else '"length"'
-            fit_func = (
-                rabi_fit_amplitude_function
-                if rabi_flag == "amp"
-                else rabi_fit_length_function
+        for qubit in data.qubits:
+            assert getattr(fitted, parameter)[qubit] == approx_for_regression(
+                getattr(expected, parameter)[qubit]
             )
 
-            pguess = rabi_initial_guess(x, signal, rabi_flag, signal_flag)
-
-            _fit_params, _, pi_pulse_parameter = fit_func(
-                x,
-                signal,
-                pguess,
-                sigma=errors,
-            )
-
-            if isinstance(pi_pulse_parameter, list):
-                new_param = pi_pulse_parameter[0]
-                true_param = results[fit_param][f][0]
-            else:
-                new_param = pi_pulse_parameter
-                true_param = results[fit_param][f]
-
-            assert math.isclose(new_param, true_param, rel_tol=2.5e-2)
+            if "signal" not in rabi_res.name:
+                assert fitted.chi2[qubit] == approx_for_regression(expected.chi2[qubit])
