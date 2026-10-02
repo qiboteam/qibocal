@@ -52,6 +52,15 @@ class RabiLengthFrequencySignalParameters(Parameters):
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
 
+    def __post_init__(self):
+        """Validate parameters consistency after initialization."""
+        if self.left_freq_offset >= self.right_freq_offset:
+            raise ValueError(
+                "Left frequency offset must be smaller than right frequency offset."
+            )
+        if self.step_freq <= 0:
+            raise ValueError("Frequency step must be positive.")
+
 
 @dataclass
 class RabiLengthFrequencySignalResults(RabiLengthSignalResults):
@@ -130,10 +139,6 @@ def _acquisition(
     targets: list[QubitId],
 ) -> RabiLengthFreqSignalData:
     """Data acquisition for Rabi experiment sweeping length."""
-
-    assert params.left_freq_offset < params.right_freq_offset, (
-        "Left frequency offset must be smaller than right frequency offset."
-    )
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
         targets, params, platform, params.rx90
