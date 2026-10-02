@@ -1263,7 +1263,7 @@ def to_range(spec: RangeLike, center: float | None = None) -> Range:
 def plot_iq_pca(
     iq: np.ndarray, pca_centroids: np.ndarray, pca_axis: np.ndarray
 ) -> list[go.Scatter]:
-    """Plot IQ plane data with PCA analysis.
+    """Plot IQ plane data with PCA principal axes overlaid.
 
     Performs Principal Component Analysis on quadrature data and creates
     scatter plots showing the data points, centroid, and principal axes.
