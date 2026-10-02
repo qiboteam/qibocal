@@ -132,10 +132,12 @@ def _acquisition(
 
 def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
     """Do not perform any fitting procedure."""
-    fitted_frequencies = {}
-    fitted_amplitudes = {}
-    fitted_parameters = {}
-    chi2 = {}
+
+    # selected_frequencies maps each qubit the optimal frequency for the pi-pulse.
+    selected_frequencies: dict[QubitId, float] = {}
+    fitted_amplitudes: dict[QubitId, float] = {}
+    fitted_parameters: dict[QubitId, list[float]] = {}
+    chi2: dict[QubitId, list[float]] = {}
 
     for qubit in data.data:
         amps = data.amplitudes(qubit)
@@ -172,17 +174,17 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
                 pguess,
                 sigma=error,
             )
-            fitted_frequencies[qubit] = frequency
+            selected_frequencies[qubit] = frequency
             fitted_amplitudes[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt if isinstance(popt, list) else popt.tolist()
-            chi2[qubit] = (
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     rabi_amplitude_function(amps, *popt),
                     error,
                 ),
                 np.sqrt(2 / len(y)),
-            )
+            ]
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
@@ -190,7 +192,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         amplitude=fitted_amplitudes,
         length={key: value for key, value in data.durations.items()},
         fitted_parameters=fitted_parameters,
-        frequency=fitted_frequencies,
+        frequency=selected_frequencies,
         chi2=chi2,
         rx90=data.rx90,
     )
@@ -251,7 +253,7 @@ def _plot(
             )
         )
 
-        fitted_data = data.return_row_data(selected_frequency, target)
+        fitted_data = data.data_at_frequency(selected_frequency, target)
         rabi1d_figure, rabi1d_report = plot_probabilities(
             fitted_data, target, fit, data.rx90
         )

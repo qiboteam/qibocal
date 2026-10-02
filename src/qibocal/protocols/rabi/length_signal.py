@@ -39,9 +39,9 @@ class RabiLengthSignalParameters(Parameters):
 class RabiLengthSignalResults(Results):
     """RabiLengthSignal outputs."""
 
-    length: dict[QubitId, float] | dict[QubitId, list[float]]
+    length: dict[QubitId, float]
     """Pulse duration for each qubit."""
-    amplitude: dict[QubitId, float] | dict[QubitId, list[float]]
+    amplitude: dict[QubitId, float]
     """Pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
@@ -52,7 +52,7 @@ class RabiLengthSignalResults(Results):
 RabiLenSignalType = np.dtype(
     [("length", np.float64), ("i", np.float64), ("q", np.float64)]
 )
-"""Custom dtype for rabi amplitude."""
+"""Custom dtype for rabi length."""
 
 
 @dataclass
