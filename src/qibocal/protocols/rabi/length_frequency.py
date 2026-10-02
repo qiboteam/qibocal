@@ -25,7 +25,6 @@ from .utils import (
     plot_probabilities,
     rabi_initial_guess,
     rabi_length_function,
-    rabi_parameter_error_prop,
     sequence_length,
 )
 
@@ -177,17 +176,14 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         # initial guesses for the best frequency row
         pguess = [p[index] for p in full_pguesses]
         try:
-            popt, perr, pi_pulse_parameter = fit_length_function(
+            popt, pi_pulse_parameter = fit_length_function(
                 durations,
                 y,
                 pguess,
                 sigma=error,
             )
             fitted_frequencies[qubit] = frequency
-            fitted_durations[qubit] = [
-                pi_pulse_parameter,
-                rabi_parameter_error_prop(popt, perr),
-            ]
+            fitted_durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
             chi2[qubit] = [
                 chi2_reduced(
@@ -203,7 +199,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
 
     return RabiLengthFrequencyResults(
         length=fitted_durations,
-        amplitude={key: [value, 0] for key, value in data.amplitudes.items()},
+        amplitude={key: value for key, value in data.amplitudes.items()},
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
@@ -261,7 +257,7 @@ def _plot(
                 ["Optimal rabi frequency", f"{pulse_name} duration"],
                 [
                     fit.frequency[target],
-                    f"{fit.length[target][0]:.2f} +- {fit.length[target][1]:.2f} ns",
+                    f"{fit.length[target]:.2f} ns",
                 ],
             )
         )

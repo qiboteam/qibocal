@@ -29,7 +29,6 @@ from .utils import (
     plot_probabilities,
     rabi_amplitude_function,
     rabi_initial_guess,
-    rabi_parameter_error_prop,
     sequence_amplitude,
 )
 
@@ -167,17 +166,14 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         # initial guesses for the best frequency row
         pguess = [p[index] for p in full_pguesses]
         try:
-            popt, perr, pi_pulse_parameter = fit_amplitude_function(
+            popt, pi_pulse_parameter = fit_amplitude_function(
                 amps,
                 y,
                 pguess,
                 sigma=error,
             )
             fitted_frequencies[qubit] = frequency
-            fitted_amplitudes[qubit] = [
-                pi_pulse_parameter,
-                rabi_parameter_error_prop(popt, perr),
-            ]
+            fitted_amplitudes[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt if isinstance(popt, list) else popt.tolist()
             chi2[qubit] = (
                 chi2_reduced(
@@ -192,7 +188,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
 
     return RabiAmplitudeFrequencyResults(
         amplitude=fitted_amplitudes,
-        length={key: [value, 0] for key, value in data.durations.items()},
+        length={key: value for key, value in data.durations.items()},
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
@@ -250,7 +246,7 @@ def _plot(
                 ["Optimal rabi frequency", f"{pulse_name} amplitude"],
                 [
                     fit.frequency[target],
-                    f"{fit.amplitude[target][0]:.6f} +- {fit.amplitude[target][1]:.6f} [a.u.]",
+                    f"{fit.amplitude[target]:.6f} [a.u.]",
                 ],
             )
         )

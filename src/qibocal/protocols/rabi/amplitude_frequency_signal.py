@@ -225,7 +225,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         # initial guesses for the best frequency row
         pguess = [p[index] for p in full_pguesses]
         try:
-            popt, _, pi_pulse_parameter = fit_amplitude_function(
+            popt, pi_pulse_parameter = fit_amplitude_function(
                 amps,
                 y,
                 pguess,

@@ -242,7 +242,7 @@ def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
         # initial guesses for the best frequency row
         pguess = [p[index] for p in full_pguesses]
         try:
-            popt, _, pi_pulse_parameter = fit_length_function(durations, y, pguess)
+            popt, pi_pulse_parameter = fit_length_function(durations, y, pguess)
             fitted_frequencies[qubit] = frequency
             fitted_durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = popt
