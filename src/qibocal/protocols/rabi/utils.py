@@ -83,17 +83,14 @@ def pca_matrix(data, sweep_field: str, freq_field: str):
         Array of shape (n_freqs, n_sweep) with the first PCA component
         for each frequency slice.
     """
-    sweep_values = np.unique(data[sweep_field])
-    freq_values = np.unique(data[freq_field])
+    sweep_values, sweep_inv_map = np.unique(data[sweep_field], return_inverse=True)
+    freq_values, freq_inv_map = np.unique(data[freq_field], return_inverse=True)
     quadratures = collect(data["i"], data["q"])
-
-    sweep_idx = np.searchsorted(sweep_values, data[sweep_field])
-    freq_idx = np.searchsorted(freq_values, data[freq_field])
 
     quadratures_matrix = np.empty(
         (len(freq_values), len(sweep_values), quadratures.shape[-1])
     )
-    quadratures_matrix[freq_idx, sweep_idx] = quadratures
+    quadratures_matrix[freq_inv_map, sweep_inv_map] = quadratures
     return np.asarray([PCA().fit_transform(x)[:, 0] for x in quadratures_matrix])
 
 

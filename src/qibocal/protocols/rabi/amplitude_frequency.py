@@ -157,7 +157,6 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         # 1. amplitude guess
         # 2. period guess
         # 3. phase guess
-        # 4. decaying constant guess
         # we estimate the best frequency by maximizing the amplitude estimation
         index = np.argmax(full_pguesses[1])
 
