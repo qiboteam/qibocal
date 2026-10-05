@@ -15,7 +15,6 @@ from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
-from ...result import magnitude, phase
 from ..utils import readout_frequency
 from . import utils
 from .length_signal import (
@@ -144,14 +143,16 @@ def _acquisition(
             (q),
             {
                 "length": sweeper.values,
-                "signal": magnitude(result),
-                "phase": phase(result),
+                "i": result[..., 0],
+                "q": result[..., 1],
             },
         )
     return data
 
 
-def _plot(data: RabiLengthEFData, target: QubitId, fit: RabiLengthEFResults = None):
+def _plot(
+    data: RabiLengthEFData, target: QubitId, fit: RabiLengthEFResults | None = None
+):
     """Plotting function for RabiLengthEF."""
     figures, report = utils.plot(data, target, fit, data.rx90)
     if report is not None:
