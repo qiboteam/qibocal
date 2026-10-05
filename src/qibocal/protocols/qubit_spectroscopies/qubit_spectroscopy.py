@@ -357,7 +357,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     """Plot QubitSpectroscopy.
 
     A single figure is built with three rows: the IQ plane (full width), the
-    PCA projections (principal and second axis), and the signal magnitude and
+    PCA projection along the principal axis, and the signal magnitude and
     phase.
     """
     fitting_report = ""
@@ -388,7 +388,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         cols=1,
     )
 
-    # row 2: PCA projections along the principal and second axis
+    # row 2: PCA projection along the principal axis
     fig.add_trace(
         go.Scatter(
             x=frequencies * scipy.constants.nano,  # plotting in GHz

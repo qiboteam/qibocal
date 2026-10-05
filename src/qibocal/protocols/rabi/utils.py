@@ -98,10 +98,9 @@ def plot(data, qubit, fit, rx90):
     """
     Generate a visualization of Rabi experiment results.
 
-    Creates a three-subplot figure displaying:
+    Creates a two-subplot figure displaying:
     Panel 1: IQ plane with quadrature data and PCA components
     Panel 2: Principal axis projection with optional fit curve
-    Panel 3: Secondary axis projection
     """
 
     quantity, title, fitting = extract_rabi(data)
@@ -133,7 +132,7 @@ def plot(data, qubit, fit, rx90):
         cols=1,
     )
 
-    # row 2: PCA projections along the principal and second axis
+    # row 2: PCA projection along the principal axis
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
