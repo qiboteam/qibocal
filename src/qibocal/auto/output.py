@@ -278,7 +278,13 @@ class Output:
                 mode=mode,
                 folder=self.history.task_path(task_id, output),
             )
-            if update and completed.task.update:
+            if (
+                ExecutionMode.FIT in mode
+                and update
+                and completed.task.update
+                and completed.task.operation.update is not None
+                and completed.results is not None
+            ):
                 completed.update_platform(platform=self.platform)
 
         # dump protocols order
