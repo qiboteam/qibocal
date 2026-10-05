@@ -1,7 +1,7 @@
 import getpass
 import json
 import shutil
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -49,7 +49,7 @@ class Metadata:
     stats: dict[str, TaskStats]
     versions: Versions
     author: str | None = None
-    tag: str | None = None
+    tag: list[str] | None = field(default_factory=list)
     targets: Targets | None = None
 
     @classmethod
@@ -67,6 +67,8 @@ class Metadata:
             end_time=None,
             stats={},
             versions=versions,
+            # default to the username of the user running qibocal
+            author=getpass.getuser(),
         )
 
     def start(self):
@@ -231,12 +233,36 @@ class Output:
         update: bool = True,
         force: bool = False,
     ):
-        """Process existing output."""
-        backend = construct_backend(
-            backend=self.meta.backend, platform=self.meta.platform
-        )
-        assert backend.platform is not None
-        self.platform = CalibrationPlatform.from_platform(backend.platform)
+        """Process an existing output directory.
+
+        Reconstruct the calibration platform from the live backend during
+        acquisition or from the saved datafolder during fitting, then rerun each
+        completed task using the requested execution mode and output folder.
+        If ``update`` is enabled and the task supports platform updates, the
+        platform is refreshed accordingly. When ``force`` is ``False``, tasks
+        that already contain fitting results raise an error to avoid
+        overwriting them.
+        """
+        # NOTE: this function in principle takes also ``ExecutionMode.ACQUIRE`` as ``mode``
+        # value, but if we want this function to be used only for offline post-processing
+        # this input is completely unnecessary (we cannot acquire offline), so we might
+        # think of removing it.
+
+        # during acquisition we need the information of the hardware
+        if ExecutionMode.ACQUIRE in mode:
+            backend = construct_backend(
+                backend=self.meta.backend, platform=self.meta.platform
+            )
+            assert backend.platform is not None
+            self.platform = CalibrationPlatform.from_platform(backend.platform)
+        else:
+            # while performing a fitting task we do not need hardware information
+            # Use parameters saved in the data folder because those in the live
+            # platform folder might have changed.
+            self.platform = CalibrationPlatform.from_datafolder(
+                folder_path=output / PLATFORM,
+                platform_name=self.meta.platform,
+            )
 
         for task_id, completed in self.history.items():
             # TODO: should we drop this check as well, and just allow overwriting?

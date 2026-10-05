@@ -131,10 +131,10 @@ class Task:
 
     def run(
         self,
+        mode: ExecutionMode,
+        folder: Path,
         platform: Platform | None = None,
         targets: Targets | None = None,
-        mode: ExecutionMode | None = None,
-        folder: Path | None = None,
     ) -> "Completed":
         if self.targets is None:
             self.action.targets = targets
@@ -158,7 +158,6 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
-
         completed.dump_parameters()
 
         if ExecutionMode.ACQUIRE in mode:
@@ -191,7 +190,7 @@ class Completed:
         once tasks will be immutable, a separate `iteration` attribute should
         be added
     """
-    path: Path | None = None
+    path: Path
     """Folder contaning data and results files for task."""
     _data: Data | None = None
     """Protocol data."""
@@ -206,11 +205,12 @@ class Completed:
         self.task = copy.deepcopy(self.task)
 
     @property
-    def data(self):
+    def data(self) -> Data:
         """Access task's data."""
         if self._data is None:
             Data = self.task.operation.data_type
             self._data = Data.load(self.path)
+            assert self._data is not None
         return self._data
 
     @data.setter
@@ -231,17 +231,16 @@ class Completed:
 
     def dump_parameters(self):
         """Dump parameters."""
-        if self.path is not None:
-            self.task.dump(self.path)
+        self.task.dump(self.path)
 
     def dump_data(self):
         """Dumping data."""
-        if self.path is not None:
+        if self._data is not None:
             self._data.save(self.path)
 
     def dump_results(self):
         """Dumping results."""
-        if self.path is not None:
+        if self._results is not None:
             self._results.save(self.path)
 
     @classmethod

@@ -164,6 +164,42 @@ class Calibration(Model):
     flux_crosstalk_matrix: NdArray | None = None
     """Crosstalk flux matrix."""
 
+    def __eq__(self, other):
+        if not isinstance(other, Calibration):
+            return NotImplemented
+
+        if (
+            self.readout_mitigation_matrix is None
+            and other.readout_mitigation_matrix is None
+        ):
+            rm_equal = True
+        elif (
+            self.readout_mitigation_matrix is None
+            or other.readout_mitigation_matrix is None
+        ):
+            rm_equal = False
+        else:
+            rm_equal = np.array_equal(
+                self.readout_mitigation_matrix.toarray(),
+                other.readout_mitigation_matrix.toarray(),
+            )
+
+        if self.flux_crosstalk_matrix is None and other.flux_crosstalk_matrix is None:
+            fc_equal = True
+        elif self.flux_crosstalk_matrix is None or other.flux_crosstalk_matrix is None:
+            fc_equal = False
+        else:
+            fc_equal = np.array_equal(
+                self.flux_crosstalk_matrix, other.flux_crosstalk_matrix
+            )
+
+        return (
+            self.single_qubits == other.single_qubits
+            and self.two_qubits == other.two_qubits
+            and rm_equal
+            and fc_equal
+        )
+
     def dump(self, path: Path):
         """Dump calibration model."""
         (path / CALIBRATION).write_text(

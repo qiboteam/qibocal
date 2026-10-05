@@ -79,7 +79,7 @@ def fitting(
     if y_err is not None:
         y_err = y_err / delta_y
 
-    omega = quinn_fernandes_algorithm(y, x, speedup_flag=True)
+    omega = quinn_fernandes_algorithm(y, x, speedup_flag=True).tolist()
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
