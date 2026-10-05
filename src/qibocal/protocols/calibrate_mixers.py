@@ -495,6 +495,8 @@ def _update(
             assert channel.mixer is not None
 
             port = address.ports[0] - 1
+            # Multiple channels may share the same mixer. The offset values are
+            # identical for all of them, so the overwrite is harmless.
             updates |= {
                 f"configs.{channel_id}.scale_q": calibration.gain_ratio[port][seq_id],
                 f"configs.{channel_id}.phase_q": calibration.phase_offset[port][seq_id],
