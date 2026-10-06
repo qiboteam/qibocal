@@ -1,11 +1,22 @@
 """This function performs mixer calibration for Qblox RF modules by running the built-in
 LO and sideband calibration routines. To be moved to the qblox-driver.
+
+The calibration produces two kinds of values, stored at different levels of the
+hardware:
+
+- the mixer DC offsets (``offset_i``, ``offset_q``), which suppress LO leakage and are
+  shared by all channels on a single RF port, stored in the ``MixerOffsetConfig`` of the
+  channel's mixer;
+- the sideband corrections (``scale_q``, ``phase_q``), which compensate the
+  frequency-dependent IQ amplitude and phase imbalance, specific to each sequencer,
+  stored in the ``IqConfig`` of the channel driving it.
 """
 
+import math
 from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
-from qibolab._core.components.channels import AcquisitionChannel, IqChannel
+from qibolab._core.components.channels import IqChannel
 from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
 from qibolab._core.instruments.qblox.identifiers import SequencerMap
@@ -23,17 +34,17 @@ class ModuleCalibrationData:
     module_name: str
     """Module identifier."""
     offset_i: dict[int, float] = field(default_factory=dict)
-    """I offset values for each output."""
+    """I offset values [mV] for each output."""
     offset_q: dict[int, float] = field(default_factory=dict)
-    """Q offset values for each output."""
+    """Q offset values [mV] for each output."""
     lo_freq: dict[int, float] = field(default_factory=dict)
-    """LO frequencies per output."""
+    """LO frequencies [Hz] per output."""
     gain_ratio: dict[int, dict[int, float]] = field(default_factory=dict)
-    """Gain ratio corrections per sequencer."""
+    """Dimensionless gain ratio corrections per output and sequencer."""
     phase_offset: dict[int, dict[int, float]] = field(default_factory=dict)
-    """Phase offset corrections per sequencer."""
+    """Phase offset corrections [radians] per output and sequencer."""
     nco_freq: dict[int, dict[int, float]] = field(default_factory=dict)
-    """NCO frequencies per sequencer."""
+    """NCO frequencies [Hz] per output and sequencer."""
 
     @classmethod
     def from_dict(cls, data: "dict | ModuleCalibrationData") -> "ModuleCalibrationData":
@@ -165,7 +176,10 @@ def _get_hardware_calibration(
             # Use the sequencer ID from seq_map
             seq = getattr(module, f"sequencer{seq_id}")
             mod_data.gain_ratio[output][seq_id] = seq.mixer_corr_gain_ratio()
-            mod_data.phase_offset[output][seq_id] = seq.mixer_corr_phase_offset_degree()
+            # the instrument reports phases in degrees, they are stored in radians
+            mod_data.phase_offset[output][seq_id] = math.radians(
+                seq.mixer_corr_phase_offset_degree()
+            )
             mod_data.nco_freq[output][seq_id] = seq.nco_freq()
 
         data[mod_name] = mod_data
@@ -358,10 +372,9 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
                         final.gain_ratio[port][seq_idx]
                         - initial.gain_ratio[port][seq_idx]
                     )
-                    phase_change = (
-                        final.phase_offset[port][seq_idx]
-                        - initial.phase_offset[port][seq_idx]
-                    )
+                    phase_initial = initial.phase_offset[port][seq_idx]
+                    phase_final = final.phase_offset[port][seq_idx]
+                    phase_change = phase_final - phase_initial
                     nco_change = (
                         final.nco_freq[port][seq_idx] - initial.nco_freq[port][seq_idx]
                     )
@@ -376,9 +389,9 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
                     )
                     table_rows.append(
                         [
-                            f"  Seq{seq_idx} Phase Offset (°)",
-                            f"{initial.phase_offset[port][seq_idx]:.4f}",
-                            f"{final.phase_offset[port][seq_idx]:.4f}",
+                            f"  Seq{seq_idx} Phase Offset (rad)",
+                            f"{phase_initial:.4f}",
+                            f"{phase_final:.4f}",
                             f"{phase_change:.4f}",
                         ]
                     )
@@ -456,37 +469,41 @@ def _update(
 
     channels_by_module: dict = (
         cluster._channels_by_module
-    )  # _channels_by_module is not intended as public
+    )  # NOTE: _channels_by_module is not intended as public
+    updates: dict[str, float] = {}
     for slot, channels in channels_by_module.items():
+        # NOTE: _modules require a connection with the cluster. Also it is not
+        # intended as public, but that's mainly because it's Qblox-specific, but
+        # so is this whole routine for the time being.
+        mod_name = cluster._modules[slot].short_name
+        if mod_name not in final_cal:
+            continue  # Skip if no calibration data for this module
+
+        calibration = final_cal[mod_name]
         for ch_id, address in channels:
-            # NOTE: _modules require a connection with the cluster. Also it is not
-            # intended as public, but that's mainly because it's Qblox-specific, but
-            # so is this whole routine for the time being.
-            mod_name = cluster._modules[slot].short_name
-            if mod_name not in final_cal:
-                continue  # Skip if no calibration data for this module
-
-            ch = cluster.channels[ch_id]
-            if isinstance(ch, AcquisitionChannel):
-                # The mixer relevant for an acquisition channel is the one associated to
-                # the corresponding probe channel
-                probe_channel_id = ch.probe
-                assert probe_channel_id is not None
-                ch = cluster.channels[probe_channel_id]
-            cal = final_cal[mod_name]
-
-            # Update platform parameters with new calibration values
-            port = address.ports[0] - 1
             seq_id = results.sequencer_map[slot][ch_id]
-            assert isinstance(ch, IqChannel)
-            platform.update(
-                {
-                    f"configs.{ch.mixer}.offset_i": cal.offset_i[port],
-                    f"configs.{ch.mixer}.offset_q": cal.offset_q[port],
-                    f"configs.{ch.mixer}.scale_q": cal.gain_ratio[port][seq_id],
-                    f"configs.{ch.mixer}.phase_q": cal.phase_offset[port][seq_id],
-                }
-            )
+
+            # For an acquisition channel the relevant IQ channel is the corresponding
+            # probe channel, which owns the shared sequencer.
+            channel_id = cluster.channels[ch_id].iqout(ch_id)
+            if channel_id is None:
+                # channels that are not IQ modulated have neither a mixer nor sidebands
+                # to correct
+                continue
+            channel = cluster.channels[channel_id]
+            assert isinstance(channel, IqChannel)
+            assert channel.mixer is not None
+
+            port = address.ports[0] - 1
+            # Multiple channels may share the same mixer. The offset values are
+            # identical for all of them, so the overwrite is harmless.
+            updates |= {
+                f"configs.{channel_id}.scale_q": calibration.gain_ratio[port][seq_id],
+                f"configs.{channel_id}.phase_q": calibration.phase_offset[port][seq_id],
+                f"configs.{channel.mixer}.offset_i": calibration.offset_i[port],
+                f"configs.{channel.mixer}.offset_q": calibration.offset_q[port],
+            }
+    platform.update(updates)
 
 
 calibrate_mixers = Protocol(_acquisition, _fit, _plot, _update)
