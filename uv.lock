@@ -1800,7 +1800,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0,<7.0.0" },
     { name = "qibo", specifier = ">=0.3.1,<0.4.0" },
-    { name = "qibolab", git = "https://github.com/qiboteam/qibolab.git?rev=fix_iqconfig" },
+    { name = "qibolab", specifier = ">=0.2.17,<0.3.0" },
     { name = "scikit-learn", specifier = ">=1.3.0,<2.0.0" },
     { name = "scipy", specifier = ">=1.10.1,<2.0.0" },
     { name = "skops", specifier = ">=0.14.0,<0.15.0" },
@@ -1829,7 +1829,7 @@ tests = [
 [[package]]
 name = "qibolab"
 version = "0.2.17"
-source = { git = "https://github.com/qiboteam/qibolab.git?rev=fix_iqconfig#326d84433c24f5561aacd6d1af6c8c30bd016f09" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -1838,6 +1838,10 @@ dependencies = [
     { name = "requests" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f5/43/e8b3dace94136583cec303fa1c6f22a827195d669d2a0ed7bb14b1d3ec21/qibolab-0.2.17.tar.gz", hash = "sha256:3a92ba15b6c9f4e9e0857d7e53c50344b5ce962cedd1028951cef75ecaf2c874", size = 139390, upload-time = "2026-10-06T13:16:58.183Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/d6/b97499fa40577f8caac4fe79653f25273543315ef2ff7cdecdc331bea94e/qibolab-0.2.17-py3-none-any.whl", hash = "sha256:cc5a6acdb7ab9b2e93a1dfff448df5a9ca4844468c9c53c1529bac9c88fb2a26", size = 190884, upload-time = "2026-10-06T13:16:56.734Z" },
 ]
 
 [[package]]
