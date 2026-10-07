@@ -101,7 +101,8 @@ class CryoscopeParameters(Parameters):
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
     fir: int
-    """Number of feedforward taps to be optimized after IIR."""
+    """Total number of feedforward taps, including the one used to enforce that the
+    DC gain is 1.0."""
     iir: bool
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
@@ -243,7 +244,8 @@ class CryoscopeData(Data):
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
     fir: int
-    """Number of feedforward taps to be optimized after IIR."""
+    """Total number of feedforward taps, including the one used to enforce that the
+    DC gain is 1.0."""
     sampling_rate: float
     """Sampling rate of the instrument [GSps]."""
     flux_pulse_durations: list[float]
@@ -309,11 +311,12 @@ def _acquisition(
     )
 
     iir_free_parameters = params.iir * 2
-    if params.fir + iir_free_parameters > len(durations):
+    fir_free_parameters = max(0, params.fir - 1)
+    if fir_free_parameters + iir_free_parameters > len(durations):
         raise ValueError(
-            f"Cannot fit {params.fir} FIR taps and {iir_free_parameters} exponential "
-            f"parameters with only {len(durations)} duration points: the fit would be "
-            "underdetermined."
+            f"Cannot fit {fir_free_parameters} free FIR parameters and "
+            f"{iir_free_parameters} exponential parameters with only "
+            f"{len(durations)} duration points: the fit would be underdetermined."
         )
 
     data = CryoscopeData(
@@ -551,9 +554,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             if taps == 0:
                 fir = np.array([1.0])
             else:
-                # `taps` is the number of fitted FIR taps. Include one additional tap so
-                # that the total FIR gain can be constrained to one.
-                fir = _fit_unit_sum_fir(iir_correction, target, taps + 1)
+                fir = _fit_unit_sum_fir(iir_correction, target, taps)
 
             fir_taps[qubit] = fir.tolist()
             feedforward_taps[qubit] = np.convolve(
