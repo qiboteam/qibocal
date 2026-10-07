@@ -592,7 +592,6 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             x=duration,
             y=2 * data[(target, "MX")] - 1,
             name="X",
-            legendgroup="1",
             mode="markers",
         ),
         row=1,
@@ -603,7 +602,6 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             x=duration,
             y=1 - 2 * data[(target, "MY")],
             name="Y",
-            legendgroup="1",
             mode="markers",
         ),
         row=1,
@@ -677,7 +675,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
         fig.update_layout(
             showlegend=True,
-            legend_tracegroupgap=120,
+            legend_tracegroupgap=10,
             xaxis2_title="Duration [ns]",
             yaxis1_title="Expectation value",
             yaxis2_title="Waveform",
