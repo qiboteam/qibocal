@@ -253,7 +253,7 @@ def _fit(
                 temp_leakages = []
                 for j in range(len(data.amplitudes)):
                     new_fitted_parameter, new_phases, new_angle, new_leak = (
-                        fit_virtualz(data.parse(i, j), _pair, data.thetas, 1)
+                        fit_virtualz(data.parse(i, j), _pair, data.thetas)
                     )
                     temp_angles.append(new_angle[_pair])
                     temp_leakages.append(new_leak[_pair])

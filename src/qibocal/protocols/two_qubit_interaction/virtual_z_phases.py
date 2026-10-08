@@ -56,8 +56,6 @@ class VirtualZPhasesParameters(Parameters):
     """
     dt: float | None = 16
     """Time delay between flux pulses and readout."""
-    gate_repetition: int = 1
-    """Number of CZ repetition"""
     sweep: bool = True
     """Toggle sweeping vs unrolling.
 
@@ -85,7 +83,6 @@ class VirtualZPhasesResults(Results):
     """Fitted parameters"""
     native: str
     """Native two qubit gate."""
-    gate_repetition: int
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
     angle: dict[QubitPairId, float] | None = None
@@ -105,7 +102,6 @@ class VirtualZPhasesResults(Results):
 class VirtualZPhasesData(Data):
     """VirtualZPhases data."""
 
-    gate_repetition: int
     data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]]
     thetas: list[float]
     native: str = "CZ"
@@ -135,9 +131,10 @@ def create_sequence(
     ordered_pair: tuple[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    vzphase: float = 0.0,
     flux_pulse_max_duration: float | None = None,
     flux_pulse: Pulse | None = None,
+    *,
+    vzphase: float = 0.0,
 ) -> tuple[PulseSequence, Pulse, VirtualZ]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
@@ -241,9 +238,9 @@ def _acquisition(
     ] = defaultdict(list)
 
     range_ = (
-        -params.gate_repetition * params.theta_start,
-        -params.gate_repetition * params.theta_end,
-        -params.gate_repetition * params.theta_step,
+        -params.theta_start,
+        -params.theta_end,
+        -params.theta_step,
     )
     phases = [0.0] if params.sweep else np.arange(*range_).tolist()
 
@@ -307,7 +304,6 @@ def _acquisition(
 
     return VirtualZPhasesData(
         data=data,
-        gate_repetition=params.gate_repetition,
         thetas=np.arange(
             params.theta_start, params.theta_end, params.theta_step
         ).tolist(),
@@ -333,7 +329,7 @@ def _fit(
     leakage = {}
     for pair in pairs:
         new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
-            data[pair], tuple(pair), data.thetas, data.gate_repetition
+            data[pair], tuple(pair), data.thetas
         )
         fitted_parameters |= new_fitted_parameter
         virtual_phase |= new_phases
@@ -341,7 +337,6 @@ def _fit(
         leakage |= new_leak
     return VirtualZPhasesResults(
         native=data.native,
-        gate_repetition=data.gate_repetition,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -407,7 +402,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     x=angle_range,
                     y=sinusoid(
                         angle_range,
-                        data.gate_repetition,
                         *fitted_parameters,
                     ),
                     name="Fit",
@@ -460,10 +454,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 def _update(
     results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if results.gate_repetition == 1:
-        # FIXME: quick fix for qubit order
-        target = tuple(sorted(target))
-        update.virtual_phases(results.virtual_phase, results.native, platform, target)
+    # FIXME: quick fix for qubit order
+    target = tuple(sorted(target))
+    update.virtual_phases(results.virtual_phase, results.native, platform, target)
 
 
 correct_virtual_z_phases = Protocol(
