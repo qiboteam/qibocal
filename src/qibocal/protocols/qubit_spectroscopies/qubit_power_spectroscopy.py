@@ -197,7 +197,7 @@ def _heatmap_figure(
 
 
 def _signal_phase_figure(
-    frequencies: np.ndarray,  # must be expressed in Hz
+    frequencies: np.ndarray, 
     amplitudes: list,
     raw: np.ndarray,
 ) -> go.Figure:
