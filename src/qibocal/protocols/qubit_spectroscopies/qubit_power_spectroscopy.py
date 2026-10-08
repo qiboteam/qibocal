@@ -178,24 +178,6 @@ def _fit(data: QubitPowerSpectroscopyData) -> Results:
     return Results()
 
 
-def _heatmap_figure(
-    frequencies: np.ndarray,  # must be expressed in Hz
-    amplitudes: list,
-    matrix: np.ndarray,
-    colorbar_title: str,
-) -> go.Heatmap:
-    """Build a 2D heatmap of ``matrix`` (shape ``(n_amplitudes, n_frequencies)``)."""
-    heatmap = go.Heatmap(
-        x=frequencies * scipy.constants.nano,  # plotting in GHz
-        y=amplitudes,
-        z=matrix,
-        colorbar={"title": colorbar_title},
-        colorscale="Viridis",
-    )
-
-    return heatmap
-
-
 def _signal_phase_figure(
     frequencies: np.ndarray,
     amplitudes: list,
@@ -265,13 +247,15 @@ def _plot(
 
     if first_component_variance > PCA_VARIANCE_THRESHOLD:
         # first principal component of the IQ signal
-        pc_matrix = pca.transform(iq)[:, 0]
+        flattened_pc_matrix = pca.transform(iq)[:, 0]
 
         # PCA eigenvectors are only defined up to a global sign: enforce a consistent
-        # orientation so that the heatmap is stable across runs and does not flip
-        # upside-down because the principal component is equivalent to its negative.
-        absmax_sign = np.sign(pc_matrix[np.argmax(np.abs(pc_matrix))])
-        pc_matrix = (pc_matrix * absmax_sign).reshape(*raw.shape[:2])
+        # orientation so that the heatmap is stable across runs.
+        pc_matrix = flattened_pc_matrix.reshape(*raw.shape[:2])
+        pc_per_frequency_mean = np.mean(pc_matrix, axis=1)
+        max_mean_idx = np.argmax(np.abs(pc_per_frequency_mean))
+        absmax_sign = np.sign(pc_per_frequency_mean[max_mean_idx])
+        pc_matrix *= absmax_sign
 
         figure = make_subplots(
             rows=2,
@@ -291,9 +275,14 @@ def _plot(
             cols=1,
         )
 
+        # row 2: Build a 2D heatmap of shape ``(n_amplitudes, n_frequencies)``
         figure.add_trace(
-            _heatmap_figure(
-                frequencies, amplitudes, pc_matrix, "Principal component signal [a.u.]"
+            go.Heatmap(
+                x=frequencies * scipy.constants.nano,  # plotting in GHz
+                y=amplitudes,
+                z=pc_matrix,
+                colorbar={"title": "Principal component signal [a.u.]"},
+                colorscale="Viridis",
             ),
             row=2,
             col=1,
