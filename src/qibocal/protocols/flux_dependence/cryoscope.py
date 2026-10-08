@@ -465,7 +465,7 @@ def _fit_unit_sum_fir(
     system_matrix = np.block(
         [
             [normal_matrix, ones[:, np.newaxis]],  # [A^T A  | ones]
-            [ones[np.newaxis, :], [[0.0]]],  # [ones^T |  0  ]
+            [ones[np.newaxis, :], np.array([[0.0]])],  # [ones^T |  0  ]
         ]
     )
     system_target = np.concatenate([normal_target, [1.0]])  # [A^T b, 1]
