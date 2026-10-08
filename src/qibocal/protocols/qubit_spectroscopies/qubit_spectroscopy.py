@@ -367,6 +367,9 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     pca = PCA().fit(quadratures)
     pca_signal = pca.transform(quadratures)
 
+    # select only principal axis
+    principal_axis = pca_signal[:, 0]
+
     fig = make_subplots(
         rows=3,
         cols=2,
@@ -381,6 +384,10 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         ),
     )
 
+    # PCA eigenvectors are only defined up to a global sign: enforce a consistent
+    # orientation so that the signal is stable across runs.
+    principal_axis *= np.sign(np.mean(principal_axis))
+
     # row 1: IQ plane with quadrature data and principal axes
     fig.add_traces(
         plot_iq_pca(quadratures, pca.mean_, pca.components_),
@@ -392,7 +399,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     fig.add_trace(
         go.Scatter(
             x=frequencies * scipy.constants.nano,  # plotting in GHz
-            y=pca_signal[:, 0],
+            y=principal_axis,
             opacity=1,
             name="Principal Axis Signal",
             showlegend=True,
