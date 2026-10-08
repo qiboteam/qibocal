@@ -553,7 +553,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         phase = np.unwrap(np.angle(demod_data))
         phase -= phase[0]
         # compute detuning in GHz
-        raw_detuning = (
+        detuning_wrt_demod_freq = (
             scipy.signal.savgol_filter(
                 phase / (2 * np.pi),
                 window_length=derivative_window_size,
@@ -564,16 +564,15 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         )
 
         # invert frequency amplitude formula
-        p = np.poly1d(data.flux_coefficients[qubit])
+        detuning_poly = np.poly1d(data.flux_coefficients[qubit])
 
-        detuning_wrt_zero_flux = (
-            raw_detuning + demod_freq + sampling_rate * nyquist_order
+        detuning_wrt_drive_freq = (
+            detuning_wrt_demod_freq + demod_freq + sampling_rate * nyquist_order
         )
-        detuning_wrt_drive_freq = detuning_wrt_zero_flux + p(0.0)
 
         detuning[qubit] = detuning_wrt_drive_freq.tolist()
         amplitude[qubit] = [
-            max((p - frequency).roots).real for frequency in detuning_wrt_drive_freq
+            max((detuning_poly - freq).roots).real for freq in detuning_wrt_drive_freq
         ]
 
         step_response[qubit] = (
