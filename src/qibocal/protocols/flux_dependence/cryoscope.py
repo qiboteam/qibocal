@@ -265,8 +265,8 @@ class CryoscopeData(Data):
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
     platform_filters_applied: dict[QubitId, bool] = field(default_factory=dict)
-    """Whether the filters stored in the platform were applied to the flux pulse during
-    the acquisition. If they were not, new filters are determined by the fit."""
+    """Whether the acquisition was run with the filters stored in the platform (possibly
+    none). If it was not, new filters are determined by the fit."""
     data: dict[tuple[QubitId, str], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
@@ -362,12 +362,12 @@ def _acquisition(
 
         if params.use_existing_filter:
             # acquire with the current filters to assess their effect
-            data.platform_filters_applied[qubit] = bool(filters)
+            data.platform_filters_applied[qubit] = True
             if not filters:
                 log.warning(
                     f"No filters stored in the platform for qubit {qubit}, the flux "
-                    "pulse will be acquired without predistortion and new filters will "
-                    "be determined."
+                    "pulse will be acquired without predistortion and no new filters "
+                    "will be determined."
                 )
         else:
             # acquire without predistortion in order to determine new filters
