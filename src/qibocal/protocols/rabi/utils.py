@@ -138,7 +138,7 @@ def plot(data, qubit, fit, rx90):
             x=rabi_parameters,
             y=pca_signal[:, 0],
             opacity=1,
-            name="Principal Axis Signal",
+            name="First Principal Component",
             showlegend=True,
             legendgroup="PCA",
             mode="markers",
