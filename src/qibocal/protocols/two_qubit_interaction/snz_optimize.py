@@ -244,7 +244,6 @@ def _fit(
                     data.parse(i, j),
                     _pair,
                     thetas=data.thetas,
-                    gate_repetition=1,
                 )
                 angles[_pair].append(new_angle[_pair])
                 leakages[_pair].append(new_leak[_pair])

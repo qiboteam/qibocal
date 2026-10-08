@@ -17,9 +17,9 @@ def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]
     return (q1, q0) if drive0.frequency > drive1.frequency else (q0, q1)
 
 
-def sinusoid(x, gate_repetition, amplitude, offset, phase):
+def sinusoid(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    return np.cos(gate_repetition * (x + phase)) * amplitude + offset
+    return np.cos(x + phase) * amplitude + offset
 
 
 def fit_flux_amplitude(matrix, amps, times):
@@ -62,7 +62,7 @@ def phase_diff(phase_1, phase_2):
     return np.mod(phase_2 - phase_1, 2 * np.pi)
 
 
-def fit_sinusoid(thetas, data, gate_repetition):
+def fit_sinusoid(thetas, data):
     """Fit sinusoid to the given data."""
     pguess = [
         np.max(data) - np.min(data),
@@ -71,9 +71,7 @@ def fit_sinusoid(thetas, data, gate_repetition):
     ]
 
     popt, _ = curve_fit(
-        lambda x, amplitude, offset, phase: sinusoid(
-            x, gate_repetition, amplitude, offset, phase
-        ),
+        sinusoid,
         thetas,
         data,
         p0=pguess,
@@ -89,7 +87,6 @@ def fit_virtualz(
     data: dict,
     pair: list,
     thetas: list,
-    gate_repetition: int,
     key=None,
 ):
     fitted_parameters = {}
@@ -104,7 +101,7 @@ def fit_virtualz(
     for setup in ["I", "X"]:
         target_data = data[target, control, setup][0]
         try:
-            params = fit_sinusoid(np.array(thetas), target_data, gate_repetition)
+            params = fit_sinusoid(np.array(thetas), target_data)
             fitted_param[target, control, setup] = params
         except Exception as e:
             log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")

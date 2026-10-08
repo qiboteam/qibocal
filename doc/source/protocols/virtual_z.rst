@@ -1,6 +1,10 @@
 Virtual Z
 =========
 
+The protocol applies the CZ gate once and measures conditional oscillations while
+varying the virtual Z phase. Phases can be swept or unrolled by setting ``sweep``
+to ``True`` or ``False``, respectively.
+
 Parameters
 ^^^^^^^^^^
 
