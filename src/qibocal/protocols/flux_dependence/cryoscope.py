@@ -340,6 +340,9 @@ def _acquisition(
         flux_pulse_durations=durations.tolist(),
     )
 
+    # Save original filters before any modifications to ensure they are restored
+    original_filters: dict[str, list] = {}
+
     for qubit in targets:
         if platform.calibration.single_qubits[qubit].qubit.flux_coefficients is None:
             raise ValueError(
@@ -351,7 +354,12 @@ def _acquisition(
             qubit
         ].qubit.flux_coefficients
         flux_channel = platform.qubits[qubit].flux
+        assert flux_channel is not None
         filters = platform.config(flux_channel).filters
+
+        # Save original filters for restoration
+        original_filters[flux_channel] = filters
+
         if params.use_existing_filter:
             # acquire with the current filters to assess their effect
             data.platform_filters_applied[qubit] = bool(filters)
@@ -393,21 +401,26 @@ def _acquisition(
         "averaging_mode": AveragingMode.CYCLIC,
     }
 
-    results = platform.execute(
-        [
-            sum(
-                (qs.sequences[meas] for qs in qubit_to_xy_sequences.values()),
-                PulseSequence(),
-            )
-            for meas in ["MX", "MY"]
-        ],
-        [[sweeper]],
-        **options,
-    )
+    try:
+        results = platform.execute(
+            [
+                sum(
+                    (qs.sequences[meas] for qs in qubit_to_xy_sequences.values()),
+                    PulseSequence(),
+                )
+                for meas in ["MX", "MY"]
+            ],
+            [[sweeper]],
+            **options,
+        )
 
-    for qubit, qs in qubit_to_xy_sequences.items():
-        for measure, readout_id in qs.readout_ids.items():
-            data.data[qubit, measure] = results[readout_id]
+        for qubit, qs in qubit_to_xy_sequences.items():
+            for measure, readout_id in qs.readout_ids.items():
+                data.data[qubit, measure] = results[readout_id]
+    finally:
+        # Restore original filters to ensure platform is not permanently modified
+        for flux_channel, filters in original_filters.items():
+            platform.update({f"configs.{flux_channel}.filters": filters})
 
     return data
 
