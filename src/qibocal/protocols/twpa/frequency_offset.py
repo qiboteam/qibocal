@@ -91,10 +91,13 @@ class TwpaFrequencyOffsetData(Data):
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
     def averaged_gain(self, qubit: QubitId) -> npt.NDArray:
-        return 20 * np.log10(
-            np.mean(magnitude(self[qubit]), axis=2)
-            / np.mean(magnitude(self.reference_value_array(qubit)), axis=0)
-        )
+        reference = np.mean(magnitude(self.reference_value_array(qubit)), axis=0)
+        if not np.isfinite(reference) or np.isclose(reference, 0):
+            raise ValueError(
+                f"TWPA-off reference magnitude for qubit {qubit} must be finite "
+                "and nonzero."
+            )
+        return 20 * np.log10(np.mean(magnitude(self[qubit]), axis=2) / reference)
 
 
 def _acquisition(
@@ -203,7 +206,7 @@ def _acquisition(
         for ch in unique_twpa_channels
     ]
     offset_values = offset_sweeps[0].values
-    if np.any(np.abs(offset_values) >= 1.0):
+    if np.any(np.abs(offset_values) > 1.0):
         raise ValueError("TWPA amplitude values must be between -1 and 1.")
 
     # Reference value acquisition (TWPA off)
@@ -260,13 +263,11 @@ def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
     After computing the averaged gain across evaluated probes, select the
     corresponding TWPA frequency and offset that maximizes the gain for each qubit.
     """
-    gains = {}
     frequency = {}
     offset = {}
     gain = {}
     for qubit in data.qubits:
         averaged_gain = data.averaged_gain(qubit)
-        gains[qubit] = averaged_gain
         flat_index = np.argmax(averaged_gain)
         i, j = np.unravel_index(flat_index, averaged_gain.shape)
         frequency[qubit] = data.frequency[qubit][j]

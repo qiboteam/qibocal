@@ -53,11 +53,11 @@ def test_parameters_validation():
     assert params_loaded.nshots == 100
 
 
-def test_acquisition_invalid_amplitude(platform):
-    # Invalid amplitude (offset) >= 1
+@pytest.mark.parametrize("amplitude", [[0.0, 2.0, 0.5], [-1.5, 0.0, 0.5]])
+def test_acquisition_invalid_amplitude(platform, amplitude):
     params_invalid_offset = TwpaFrequencyOffsetParameters.load(
         {
-            "amplitude": [0.0, 1.5, 0.5],
+            "amplitude": amplitude,
             "frequency": ["center", 20_000_000, 2_000_000],
             "probes": [7_000_000_000],
         }
@@ -66,6 +66,43 @@ def test_acquisition_invalid_amplitude(platform):
         ValueError, match="TWPA amplitude values must be between -1 and 1"
     ):
         _acquisition(params_invalid_offset, platform, [0])
+
+
+def test_acquisition_amplitude_boundaries(platform):
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [-1.0, 1.5, 1.0],
+            "frequency": ["center", 10_000_000, 5_000_000],
+            "nshots": 50,
+        }
+    )
+    data = _acquisition(params, platform, [0])
+    assert data.offset[0] == [-1.0, 0.0, 1.0]
+
+
+@pytest.mark.parametrize("reference", [0.0, 1e-12, np.nan, np.inf])
+def test_invalid_reference(reference):
+    data = TwpaFrequencyOffsetData(
+        data={0: np.ones((1, 1, 1, 2))},
+        reference_value={0: [[reference, 0.0]]},
+        frequency={0: [6_000_000_000]},
+        offset={0: [0.5]},
+    )
+    with np.errstate(divide="raise", invalid="raise"):
+        for operation in (lambda: _fit(data), lambda: _plot(data, None, 0)):
+            with pytest.raises(
+                ValueError, match="TWPA-off reference magnitude for qubit 0"
+            ):
+                operation()
+
+
+@pytest.mark.parametrize("reference", [1.0, 1e-6])
+def test_averaged_gain(reference):
+    data = TwpaFrequencyOffsetData(
+        data={0: reference * np.array([[[[3.0, 4.0], [0.0, 3.0]]]])},
+        reference_value={0: [[reference, 0.0], [0.0, 3 * reference]]},
+    )
+    np.testing.assert_allclose(data.averaged_gain(0), [[20 * np.log10(2)]])
 
 
 def test_acquisition_and_fit(platform, tmp_path):
