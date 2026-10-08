@@ -170,7 +170,7 @@ def _acquisition(
                 (
                     sequence,
                     flux_pulse,
-                    vz_pulses,
+                    vz_pulse,
                 ) = create_sequence(
                     platform,
                     setup,
@@ -185,7 +185,7 @@ def _acquisition(
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,
                     values=-params.theta_range,
-                    pulses=vz_pulses,
+                    pulses=[vz_pulse],
                 )
 
                 sweeper_amplitude = Sweeper(

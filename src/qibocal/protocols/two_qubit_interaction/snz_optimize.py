@@ -181,7 +181,7 @@ def _aquisition(
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,
                     range=(-params.theta_start, -params.theta_end, -params.theta_step),
-                    pulses=theta_pulse,
+                    pulses=[theta_pulse],
                 )
 
                 sweeper_amplitude = Sweeper(
