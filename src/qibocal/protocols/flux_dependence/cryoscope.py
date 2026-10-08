@@ -107,6 +107,18 @@ class CryoscopeParameters(Parameters):
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
     """
+    use_existing_filter: bool = False
+    """Whether the existing filters stored in the platform should be applied to the flux
+    pulse during the acquisition.
+
+    If False (default) the filters stored in the platform (parameters.json) are removed
+    for the duration of the acquisition, so that the flux pulse is acquired without
+    predistortion and new filters are determined and stored by this protocol.
+
+    If True the filters are applied to the flux pulse, as in any other experiment, and
+    their effect is assessed from the reconstructed waveform. New filters are therefore
+    not determined and the platform is not updated.
+    """
     padding_duration: float = 0
     """Duration in ns of the leading zeros in the flux pulse.
 
@@ -252,8 +264,9 @@ class CryoscopeData(Data):
     """Durations of the flux pulses [ns]. Same for all qubits."""
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
-    has_filters: dict[QubitId, bool] = field(default_factory=dict)
-    """Check if there are filters already."""
+    platform_filters_applied: dict[QubitId, bool] = field(default_factory=dict)
+    """Whether the filters stored in the platform were applied to the flux pulse during
+    the acquisition. If they were not, new filters are determined by the fit."""
     data: dict[tuple[QubitId, str], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
@@ -337,9 +350,26 @@ def _acquisition(
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
-        data.has_filters[qubit] = bool(
-            platform.config(platform.qubits[qubit].flux).filters
-        )
+        flux_channel = platform.qubits[qubit].flux
+        filters = platform.config(flux_channel).filters
+        if params.use_existing_filter:
+            # acquire with the current filters to assess their effect
+            data.platform_filters_applied[qubit] = bool(filters)
+            if not filters:
+                log.warning(
+                    f"No filters stored in the platform for qubit {qubit}, the flux "
+                    "pulse will be acquired without predistortion and new filters will "
+                    "be determined."
+                )
+        else:
+            # acquire without predistortion in order to determine new filters
+            data.platform_filters_applied[qubit] = False
+            if filters:
+                log.info(
+                    f"Removing the filters of the flux channel of qubit {qubit} to "
+                    f"acquire the flux pulse without predistortion."
+                )
+                platform.update({f"configs.{flux_channel}.filters": []})
         _check_phase_can_be_unwrapped(
             data.flux_coefficients[qubit],
             data.flux_pulse_amplitude,
@@ -522,7 +552,10 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
-        if not data.has_filters[qubit]:
+        # if the filters stored in the platform were applied during the acquisition, the
+        # measured step response already includes their effect, so there is nothing to
+        # determine and the filters are instead assessed in _plot
+        if not data.platform_filters_applied[qubit]:
             # Derive IIR
             if data.iir:
                 exp_params = exponential_params(step_response[qubit], durations)
@@ -614,7 +647,11 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             go.Scatter(
                 x=duration,
                 y=fit.step_response[target],
-                name="Uncorrected waveform",
+                name=(
+                    "Waveform with filters applied"
+                    if data.platform_filters_applied[target]
+                    else "Uncorrected waveform"
+                ),
                 legendgroup="2",
                 mode="lines",
             ),
@@ -622,7 +659,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             col=1,
         )
 
-        if not data.has_filters[target]:
+        if not data.platform_filters_applied[target]:
             all_corrections = scipy.signal.lfilter(
                 fit.feedforward_taps[target],
                 fit.feedback_taps[target],
@@ -685,11 +722,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    if platform.config(platform.qubits[target].flux).filters:
-        log.info(
-            f"Qubit {target} already has filters on its flux channel, "
-            "skipping the filters update."
-        )
+    if not results.fir_taps.get(target):
+        log.info(f"No filters determined for qubit {target}, skipping the update.")
         return
 
     filters = [{"kind": "fir", "coefficients": results.fir_taps[target]}]
