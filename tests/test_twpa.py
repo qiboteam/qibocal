@@ -26,9 +26,13 @@ from qibocal.protocols.twpa.frequency_offset import (
 )
 from qibocal.protocols.twpa.twpa import (
     TwpaCalibrationParameters,
-    _fit as calibration_fit,
-    _plot as calibration_plot,
     _twpa_scan,
+)
+from qibocal.protocols.twpa.twpa import (
+    _fit as calibration_fit,
+)
+from qibocal.protocols.twpa.twpa import (
+    _plot as calibration_plot,
 )
 from qibocal.protocols.utils import readout_frequency, to_range
 
