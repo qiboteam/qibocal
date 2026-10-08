@@ -186,18 +186,18 @@ def _twpa_scan(
     twpa_configs = {
         pump: cast(OscillatorConfig, platform.config(pump)) for pump in pumps
     }
-    power_ranges: dict[QubitId, list[float]] = {
-        q: np.arange(*params.power_range(twpa.power)).tolist()
-        for q, twpa in zip(qubits, twpa_configs.values())
+    power_ranges = {
+        pump: np.arange(*params.power_range(twpa.power)).tolist()
+        for pump, twpa in twpa_configs.items()
     }
-    frequency_ranges: dict[QubitId, list[float]] = {
-        q: np.arange(*params.frequency_range(twpa.frequency)).tolist()
-        for q, twpa in zip(qubits, twpa_configs.values())
+    frequency_ranges = {
+        pump: np.arange(*params.frequency_range(twpa.frequency)).tolist()
+        for pump, twpa in twpa_configs.items()
     }
 
     data = TwpaCalibrationData(
-        twpa_power=power_ranges,
-        twpa_frequency=frequency_ranges,
+        twpa_power={q: power_ranges[pump] for q, pump in zip(qubits, pumps)},
+        twpa_frequency={q: frequency_ranges[pump] for q, pump in zip(qubits, pumps)},
     )
 
     data_: dict[QubitId, list[npt.NDArray[np.float64]]] = defaultdict(list)
@@ -221,12 +221,12 @@ def _twpa_scan(
 
     data.data = {
         qubit: np.stack(data_[qubit], axis=0).reshape(
-            len(np.arange(*params.power_range())),
-            len(np.arange(*params.frequency_range())),
-            len(np.arange(*params.probe_frequency_range())),
+            len(data.twpa_power[qubit]),
+            len(data.twpa_frequency[qubit]),
+            len(sweeper.values),
             2,
         )
-        for qubit in qubits
+        for qubit, sweeper in zip(qubits, sweepers)
     }
 
     return data
