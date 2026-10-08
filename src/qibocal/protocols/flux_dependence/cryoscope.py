@@ -433,34 +433,48 @@ def _fit_unit_sum_fir(
     target: npt.ArrayLike,
     n_taps: int,
 ) -> npt.NDArray[np.float64]:
-    """Fit FIR taps while enforcing unit DC gain."""
+    """Fit FIR taps while enforcing unit DC gain.
+
+    Solves the constrained least squares problem:
+        minimize: ||A x - b||²
+        subject to: sum(x) = 1
+
+    Where x are the FIR coefficients, A is the convolution matrix, and b is the target.
+    """
     response = np.asarray(response, dtype=float)
     target = np.asarray(target, dtype=float)
-    # The Toeplitz matrix is lower triangular, with zeros in the upper triangle. Its
-    # diagonals contain successive shifts of `response`, so multiplying by the
-    # matrix implements the discrete convolution with the FIR taps.
-    convolution_matrix = scipy.linalg.toeplitz(response, np.zeros(n_taps))
-    # The FIR coefficients must sum to one to preserve the DC gain.
-    constraint = np.ones(n_taps)
 
-    # Form the Karush-Kuhn-Tucker (KKT) system for least squares with the unit-sum
-    # equality constraint. Its final row and column enforce that constraint through a
-    # Lagrange multiplier.
-    normal_matrix = convolution_matrix.T @ convolution_matrix
-    normal_target = convolution_matrix.T @ target
-    kkt_matrix = np.block(
+    # Use Lagrange multipliers to enforce the unit-sum constraint. Define:
+    #   L(x, λ) = ||A x - b||² + λ(sum(x) - 1)
+    #
+    # At the optimum, the derivative of the loss vanishes, which gives:
+    #   ∂L/∂x: 2(A^T A) x - 2(A^T b) + λ ones = 0  =>  (A^T A) x + λ ones = A^T b
+    #   ∂L/∂λ: sum(x) - 1 = 0                      =>  ones^T x = 1
+    #
+    # This becomes the linear system: | A^T A    ones | | x |   | A^T b |
+    #                                 | ones^T    0   | | λ | = |   1   |
+
+    # Construct convolution matrix A as a Toeplitz matrix. Its diagonals contain
+    # successive shifts of `response`, so A @ x implements discrete convolution with
+    # the FIR taps x.
+    convolution_matrix = scipy.linalg.toeplitz(response, np.zeros(n_taps))
+    normal_matrix = convolution_matrix.T @ convolution_matrix  # A^T A
+    normal_target = convolution_matrix.T @ target  # A^T b
+
+    ones = np.ones(n_taps)
+    system_matrix = np.block(
         [
-            [normal_matrix, constraint[:, None]],
-            [constraint[None, :], np.zeros((1, 1))],
+            [normal_matrix, ones[:, np.newaxis]],  # [A^T A  | ones]
+            [ones[np.newaxis, :], [[0.0]]],  # [ones^T |  0  ]
         ]
     )
-    kkt_target = np.concatenate([normal_target, [1.0]])
+    system_target = np.concatenate([normal_target, [1.0]])  # [A^T b, 1]
 
-    # The last value is the Lagrange multiplier; the preceding values are FIR
-    # coefficients.
-    # solve: kkt_matrix @ solution == kkt_target
-    solution, _, _, _ = np.linalg.lstsq(kkt_matrix, kkt_target, rcond=None)
-    return solution[:-1]
+    # Solve the linear system. solution[-1] is the Lagrange multiplier λ, solution[:-1]
+    # are the FIR coefficients x.
+    solution, _, _, _ = np.linalg.lstsq(system_matrix, system_target, rcond=None)
+    fir_coefficients = solution[:-1]
+    return fir_coefficients
 
 
 # TODO: refactor into sub-functions with smaller scopes
