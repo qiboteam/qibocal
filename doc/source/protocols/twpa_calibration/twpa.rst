@@ -62,6 +62,7 @@ For instruments supporting hardware sweepers, the ``twpa_frequency_offset`` prot
 (aliased as ``twpa_sweep``) sweeps the TWPA pump frequency and amplitude (offset)
 concurrently using an on-board 2D hardware sweep. Because hardware sweepers enforce
 linear steps, the amplitude/power sweep is replaced by a linear offset sweep.
+Offset values must lie in the inclusive interval [-1, 1].
 
 By default, when the ``probes`` parameter is omitted, the protocol performs only a
 **single acquisition run** (a single execution for the reference scan, and a further
@@ -74,6 +75,8 @@ When a discrete list of probe frequencies is provided in ``probes``, the protoco
 instead evaluates each probe frequency in a loop, applying each frequency across all
 target probe lines and averaging the resulting gain over the evaluated probes to find
 the pump parameters that maximize average gain.
+Gain computation raises an error if a target's mean TWPA-off reference magnitude
+is non-finite or close to zero, since it cannot provide a reliable normalization.
 
 .. note::
 
