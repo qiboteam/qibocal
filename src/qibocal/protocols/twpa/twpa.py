@@ -65,7 +65,10 @@ class TwpaCalibrationParameters(Parameters):
 
     def probe_frequency_range(self, center: float = 0.0) -> Range:
         def legacy_range() -> Range:
-            assert self.freq_width is not None and self.freq_step is not None
+            if self.freq_width is None or self.freq_step is None:
+                raise ValueError(
+                    "Provide 'probe_frequency' or both 'freq_width' and 'freq_step'."
+                )
             return (
                 center - self.freq_width / 2,
                 center + self.freq_width / 2,
