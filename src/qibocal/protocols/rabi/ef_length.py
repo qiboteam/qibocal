@@ -11,48 +11,48 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal import update
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import readout_frequency
+from qibocal.update import replace
 
+from ..utils import readout_frequency
 from . import utils
-from .amplitude_signal import (
-    RabiAmplitudeSignalData,
-    RabiAmplitudeSignalParameters,
-    RabiAmplitudeSignalResults,
-    RabiAmpSignalType,
+from .length_signal import (
+    RabiLengthSignalData,
+    RabiLengthSignalParameters,
+    RabiLengthSignalResults,
+    RabiLenSignalType,
     _fit,
 )
 
-__all__ = ["rabi_amplitude_ef"]
+__all__ = ["rabi_length_ef"]
 
 
 @dataclass
-class RabiAmplitudeEFParameters(RabiAmplitudeSignalParameters):
-    """RabiAmplitudeEF runcard inputs."""
+class RabiLengthEFParameters(RabiLengthSignalParameters):
+    """RabiLengthEF runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeEFResults(RabiAmplitudeSignalResults):
-    """RabiAmplitudeEF outputs."""
+class RabiLengthEFResults(RabiLengthSignalResults):
+    """RabiLengthEF outputs."""
 
 
 @dataclass
-class RabiAmplitudeEFData(RabiAmplitudeSignalData):
-    """RabiAmplitudeEF data acquisition."""
+class RabiLengthEFData(RabiLengthSignalData):
+    """RabiLengthEF data acquisition."""
 
 
 def _acquisition(
-    params: RabiAmplitudeEFParameters,
+    params: RabiLengthEFParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> RabiAmplitudeEFData:
+) -> RabiLengthEFData:
     r"""
-    Data acquisition for Rabi EF experiment sweeping amplitude.
+    Data acquisition for Rabi EF experiment sweeping duration.
 
     The rabi protocol is performed after exciting the qubit to state 1.
-    This protocol allows to compute the amplitude of the RX12 pulse to excite
+    This protocol allows to compute the duration of the RX12 pulse to excite
     the qubit to state 2 starting from state 1.
 
     """
@@ -60,48 +60,64 @@ def _acquisition(
     # create a sequence of pulses for the experiment
     sequence = PulseSequence()
     qd_pulses = {}
+    delays = {}
     ro_pulses = {}
-    durations = {}
+    amplitudes = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
-
         qd12_channel = platform.qubits[q].drive_extra[1, 2]
         if natives.RX12 is not None:
             [(_, qd12_pulse)] = natives.RX12()
-            if params.pulse_length is not None:
-                qd12_pulse = update.replace(qd12_pulse, duration=params.pulse_length)
+            if params.pulse_amplitude is not None:
+                qd12_pulse = replace(qd12_pulse, amplitude=params.pulse_amplitude)
         else:
-            assert params.pulse_length is not None
+            assert params.pulse_amplitude is not None
             qd12_pulse = Pulse(
-                amplitude=1.0, duration=params.pulse_length, envelope=Rectangular()
+                amplitude=params.pulse_amplitude,
+                duration=params.pulse_duration_start,
+                envelope=Rectangular(),
             )
 
-        durations[q] = qd12_pulse.duration
+        amplitudes[q] = qd12_pulse.amplitude
         qd_pulses[q] = qd12_pulse
         ro_pulses[q] = ro_pulse
 
         sequence.append((qd_channel, qd_pulse))
         sequence.append((qd12_channel, Delay(duration=qd_pulse.duration)))
         sequence.append((qd12_channel, qd12_pulse))
-        sequence.append(
-            (qd_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
-        )
-        sequence.append(
-            (ro_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
-        )
+        if params.interpolated_sweeper:
+            sequence.align([qd_channel, qd12_channel, ro_channel])
+        else:
+            # the readout has to wait for the (fixed) RX pulse and for the
+            # RX12 pulse, whose duration is swept together with this delay
+            delays[q] = Delay(duration=16)
+            sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+            sequence.append((ro_channel, delays[q]))
         sequence.append((ro_channel, ro_pulse))
 
-    sweeper = Sweeper(
-        parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
-        pulses=[qd_pulses[qubit] for qubit in targets],
+    sweep_range = (
+        params.pulse_duration_start,
+        params.pulse_duration_end,
+        params.pulse_duration_step,
     )
+    if params.interpolated_sweeper:
+        sweeper = Sweeper(
+            parameter=Parameter.duration_interpolated,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets],
+        )
+    else:
+        sweeper = Sweeper(
+            parameter=Parameter.duration,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
+        )
 
     assert not params.rx90, "Rabi ef available only for RX pulses."
 
-    data = RabiAmplitudeEFData(durations=durations, rx90=False)
+    data = RabiLengthEFData(amplitudes=amplitudes, rx90=False)
 
     # sweep the parameter
     results = platform.execute(
@@ -120,13 +136,13 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for qubit in targets:
-        result = results[ro_pulses[qubit].id]
+    for q in targets:
+        result = results[ro_pulses[q].id]
         data.register_qubit(
-            RabiAmpSignalType,
-            (qubit),
+            RabiLenSignalType,
+            (q),
             {
-                "amp": sweeper.values,
+                "length": sweeper.values,
                 "i": result[..., 0],
                 "q": result[..., 1],
             },
@@ -135,11 +151,9 @@ def _acquisition(
 
 
 def _plot(
-    data: RabiAmplitudeEFData,
-    target: QubitId,
-    fit: RabiAmplitudeEFResults | None = None,
+    data: RabiLengthEFData, target: QubitId, fit: RabiLengthEFResults | None = None
 ):
-    """Plotting function for RabiAmplitude."""
+    """Plotting function for RabiLengthEF."""
     figures, report = utils.plot(data, target, fit, data.rx90)
     if report is not None:
         report = report.replace("Pi pulse", "Pi pulse 12")
@@ -147,10 +161,10 @@ def _plot(
 
 
 def _update(
-    results: RabiAmplitudeEFResults, platform: CalibrationPlatform, target: QubitId
+    results: RabiLengthEFResults, platform: CalibrationPlatform, target: QubitId
 ):
-    """Update RX2 amplitude_signal"""
-    if results.amplitude[target] is None:
+    """Update RX12 duration"""
+    if results.length[target] is None:
         return
 
     rx12 = platform.natives.single_qubit[target].RX12
@@ -158,7 +172,7 @@ def _update(
         rx12_seq = [
             (
                 rx12[0][0],
-                update.replace(
+                replace(
                     rx12[0][1],
                     amplitude=results.amplitude[target],
                     duration=results.length[target],
@@ -183,5 +197,5 @@ def _update(
     platform.update({f"native_gates.single_qubit.{target}.RX12": rx12_seq})
 
 
-rabi_amplitude_ef = Protocol(_acquisition, _fit, _plot, _update)
-"""RabiAmplitudeEF Protocol object."""
+rabi_length_ef = Protocol(_acquisition, _fit, _plot, _update)
+"""RabiLengthEF Protocol object."""
