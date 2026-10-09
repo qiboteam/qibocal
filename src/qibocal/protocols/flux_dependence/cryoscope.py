@@ -340,9 +340,6 @@ def _acquisition(
         flux_pulse_durations=durations.tolist(),
     )
 
-    # Save original filters before any modifications to ensure they are restored
-    original_filters: dict[str, list] = {}
-
     for qubit in targets:
         if platform.calibration.single_qubits[qubit].qubit.flux_coefficients is None:
             raise ValueError(
@@ -355,29 +352,9 @@ def _acquisition(
         ].qubit.flux_coefficients
         flux_channel = platform.qubits[qubit].flux
         assert flux_channel is not None
-        filters = platform.config(flux_channel).filters
 
-        # Save original filters for restoration
-        original_filters[flux_channel] = filters
+        data.platform_filters_applied[qubit] = bool(params.use_existing_filter)
 
-        if params.use_existing_filter:
-            # acquire with the current filters to assess their effect
-            data.platform_filters_applied[qubit] = True
-            if not filters:
-                log.warning(
-                    f"No filters stored in the platform for qubit {qubit}, the flux "
-                    "pulse will be acquired without predistortion and no new filters "
-                    "will be determined."
-                )
-        else:
-            # acquire without predistortion in order to determine new filters
-            data.platform_filters_applied[qubit] = False
-            if filters:
-                log.info(
-                    f"Removing the filters of the flux channel of qubit {qubit} to "
-                    f"acquire the flux pulse without predistortion."
-                )
-                platform.update({f"configs.{flux_channel}.filters": []})
         _check_phase_can_be_unwrapped(
             data.flux_coefficients[qubit],
             data.flux_pulse_amplitude,
@@ -401,26 +378,29 @@ def _acquisition(
         "averaging_mode": AveragingMode.CYCLIC,
     }
 
-    try:
-        results = platform.execute(
-            [
-                sum(
-                    (qs.sequences[meas] for qs in qubit_to_xy_sequences.values()),
-                    PulseSequence(),
-                )
-                for meas in ["MX", "MY"]
-            ],
-            [[sweeper]],
-            **options,
-        )
+    if not params.use_existing_filter:
+        # Bypass the platform filters so the raw flux pulse is acquired without
+        # predistortion.
+        options["updates"] = [
+            {flux_channel: {"filters": []}}
+            for flux_channel in {platform.qubits[qubit].flux for qubit in targets}
+        ]
 
-        for qubit, qs in qubit_to_xy_sequences.items():
-            for measure, readout_id in qs.readout_ids.items():
-                data.data[qubit, measure] = results[readout_id]
-    finally:
-        # Restore original filters to ensure platform is not permanently modified
-        for flux_channel, filters in original_filters.items():
-            platform.update({f"configs.{flux_channel}.filters": filters})
+    results = platform.execute(
+        [
+            sum(
+                (qs.sequences[meas] for qs in qubit_to_xy_sequences.values()),
+                PulseSequence(),
+            )
+            for meas in ["MX", "MY"]
+        ],
+        [[sweeper]],
+        **options,
+    )
+
+    for qubit, qs in qubit_to_xy_sequences.items():
+        for measure, readout_id in qs.readout_ids.items():
+            data.data[qubit, measure] = results[readout_id]
 
     return data
 
@@ -547,6 +527,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulation frequency
+        assert demod_freq <= 0
         demod_data = np.exp(-2 * np.pi * 1j * durations * demod_freq) * norm_data
 
         # compute phase
