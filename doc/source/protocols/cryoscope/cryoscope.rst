@@ -70,10 +70,10 @@ The expected output is the following:
   prepend leading zeros to the flux pulse, so that also flux pulses below that limit can
   be executed.
 
-  If no filters are configured, the protocol computes the FIR and IIR filters and
-  updates the platform. If filters are already present, they are left untouched and only
-  the reconstructed waveform is shown. This makes it possible to run the protocol a
-  second time to validate the previously determined filters.
+  The protocol computes the FIR and IIR filters and stores them on the platform,
+  overwriting any existing filters. Set ``use_existing_filter: true`` to instead apply
+  the filters already stored in the platform and assess their effect, without
+  determining new filters.
 
 
 Requirements
