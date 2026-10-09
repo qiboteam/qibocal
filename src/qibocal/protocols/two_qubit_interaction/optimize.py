@@ -170,7 +170,7 @@ def _acquisition(
                 (
                     sequence,
                     flux_pulse,
-                    vz_pulses,
+                    vz_pulse,
                 ) = create_sequence(
                     platform,
                     setup,
@@ -185,7 +185,7 @@ def _acquisition(
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,
                     values=-params.theta_range,
-                    pulses=vz_pulses,
+                    pulses=[vz_pulse],
                 )
 
                 sweeper_amplitude = Sweeper(
@@ -253,7 +253,7 @@ def _fit(
                 temp_leakages = []
                 for j in range(len(data.amplitudes)):
                     new_fitted_parameter, new_phases, new_angle, new_leak = (
-                        fit_virtualz(data.parse(i, j), _pair, data.thetas, 1)
+                        fit_virtualz(data.parse(i, j), _pair, data.thetas)
                     )
                     temp_angles.append(new_angle[_pair])
                     temp_leakages.append(new_leak[_pair])

@@ -158,7 +158,7 @@ def _aquisition(
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,
                     range=(-params.theta_start, -params.theta_end, -params.theta_step),
-                    pulses=theta_pulse,
+                    pulses=[theta_pulse],
                 )
 
                 sweeper_amplitude = Sweeper(
@@ -221,7 +221,6 @@ def _fit(
                     data.parse(i, j),
                     _pair,
                     thetas=data.thetas,
-                    gate_repetition=1,
                 )
                 angles[_pair].append(new_angle[_pair])
                 leakages[_pair].append(new_leak[_pair])
