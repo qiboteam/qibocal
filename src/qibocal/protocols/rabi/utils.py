@@ -95,51 +95,52 @@ def pca_matrix(data, sweep_field: str, freq_field: str):
 
 
 def plot(data, qubit, fit, rx90):
+    """
+    Generate a visualization of Rabi experiment results.
+
+    Creates a two-subplot figure displaying:
+    Panel 1: IQ plane with quadrature data and PCA components
+    Panel 2: Principal axis projection with optional fit curve
+    """
+
     quantity, title, fitting = extract_rabi(data)
     fitting_report = ""
 
-    fig = make_subplots(
-        rows=2,
-        cols=1,
-        vertical_spacing=0.15,
-        subplot_titles=(
-            "IQ Plane",
-            "Principal Axis",
-        ),
-        row_heights=[0.5, 0.5],
-    )
-
     qubit_data = data[qubit]
     quadratures = collect(qubit_data.i, qubit_data.q)
+
+    rabi_parameters = getattr(qubit_data, quantity)
 
     # initialize a PCA instance and fit it to the quadrature data
     pca = PCA().fit(quadratures)
     # apply the pca rotation to the iq signal
     pca_signal = pca.transform(quadratures)
 
-    rabi_parameters = getattr(qubit_data, quantity)
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        vertical_spacing=0.1,
+        horizontal_spacing=0.1,
+        subplot_titles=("IQ Plane", "Principal Axis"),
+        row_heights=[0.5, 0.5],
+    )
 
-    #################################################################
-    # in the first row we plot the IQ plane with the quadrature data
-    # and the principal axes.
+    # row 1: IQ plane with quadrature data and principal axes
     fig.add_traces(
         plot_iq_pca(quadratures, pca.mean_, pca.components_),
         rows=1,
         cols=1,
     )
 
-    #################################################################
-    # in the second row we plot the signal projection along the principal axis
-    # we computed the fit on.
-    principal_signal = pca_signal[:, 0]
+    # row 2: PCA projection along the principal axis
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=principal_signal,
+            y=pca_signal[:, 0],
             opacity=1,
-            name="Signal",
+            name="First Principal Component",
             showlegend=True,
-            legendgroup="Signal",
+            legendgroup="PCA",
             mode="markers",
         ),
         row=2,
