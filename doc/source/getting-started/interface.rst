@@ -59,6 +59,51 @@ regarding the protocols executed.
 
     qq report <output_folder>
 
+Session and protocol notes
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Qibocal stores comment histories separately from acquisition data and fitting
+results. ``notes.json`` in the output folder contains session comments;
+``data/<task-id>/notes.json`` contains comments for one protocol execution
+(including its iteration, for example ``data/flipping-0/notes.json``).
+Each file is a JSON array of objects with ``content``, an ISO 8601 ``timestamp``
+in UTC, and an optional ``author`` (``null`` when unspecified).
+Regular execution leaves these histories empty. Older outputs without these
+files load with empty histories.
+
+Comments can be appended explicitly through the Python API:
+
+.. code-block:: python
+
+    from pathlib import Path
+    from qibocal import Note
+    from qibocal.auto.output import Output
+
+    path = Path("output_folder")
+    output = Output.load(path)
+    output.notes.append(Note(content="Calibration session reviewed."))
+    output.dump_notes(path)
+
+    task_id = next(iter(output.history))
+    completed = output.history[task_id]
+    completed.notes.append(Note(content="Fit reviewed.", author="calibration-agent"))
+    completed.notes.append(Note(content="Follow-up: additional acquisition needed."))
+    completed.dump_notes()
+
+``Output.dump`` also saves session and protocol histories. Notes are retained
+when fitting or refitting existing outputs, including fitting into a copied output
+folder. ``Executor.notes`` holds session notes during managed execution, while
+``Completed.notes`` is also available for direct protocol execution; saving
+protocol notes requires an output folder set as ``Completed.path``.
+
+Notes are immutable records; append new notes to retain earlier findings.
+Nonempty content and timezone-aware timestamps are required. Timestamps default
+to the current UTC time, and supplied timestamps are normalized to UTC.
+Author identity is supplied by callers, not authenticated by Qibocal.
+These APIs replace the stored list when saving; callers managing concurrent
+writes must coordinate them. Report display, authenticated editing, and automatic
+agent annotation are handled outside this persistence API.
+
 
 ``qq run``
 ^^^^^^^^^^^

@@ -1,7 +1,7 @@
 import getpass
 import json
 import shutil
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -12,6 +12,7 @@ from ..config import log
 from ..version import __version__
 from .history import History
 from .mode import ExecutionMode
+from .notes import Note, dump_notes, load_notes
 from .task import Targets
 
 
@@ -154,6 +155,8 @@ class Output:
     history: History
     meta: Metadata
     platform: CalibrationPlatform | None = None
+    notes: list[Note] = field(default_factory=list)
+    """Session comment history, populated only by explicit user or agent input."""
 
     @classmethod
     def load(cls, path: Path):
@@ -161,6 +164,7 @@ class Output:
         return cls(
             history=History.load(path),
             meta=Metadata.load(path),
+            notes=load_notes(path),
         )
 
     @staticmethod
@@ -196,10 +200,17 @@ class Output:
 
         # dump protocols order
         self.history.dump(path)
+        self.dump_notes(path)
+        for task_id, completed in self.history.items():
+            dump_notes(completed.notes, self.history.task_path(task_id, path))
 
         # update platform
         if self.platform is not None:
             self.update_platform(self.platform, path)
+
+    def dump_notes(self, path: Path):
+        """Save only session comments, without rewriting calibration output."""
+        dump_notes(self.notes, path)
 
     @staticmethod
     def update_platform(platform: CalibrationPlatform, path: Path):
@@ -273,10 +284,13 @@ class Output:
             ):
                 raise KeyError(f"{task_id} already contains fitting results.")
             # TODO: this is a plain hack, to be fixed together with the task lifecycle
-            self.history._tasks[task_id.id][task_id.iteration] = completed.task.run(
-                platform=self.platform,
-                mode=mode,
-                folder=self.history.task_path(task_id, output),
+            self.history._tasks[task_id.id][task_id.iteration] = replace(
+                completed.task.run(
+                    platform=self.platform,
+                    mode=mode,
+                    folder=self.history.task_path(task_id, output),
+                ),
+                notes=completed.notes,
             )
             if (
                 ExecutionMode.FIT in mode

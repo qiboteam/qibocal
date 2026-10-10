@@ -2,7 +2,7 @@
 
 import copy
 import json
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, NewType, Union
 
@@ -16,6 +16,7 @@ from qibocal.calibration.calibration import QubitId, QubitPairId
 from .. import protocols
 from ..config import log
 from .mode import ExecutionMode
+from .notes import Note, dump_notes, load_notes
 from .operation import (
     BoundProtocol,
     Data,
@@ -168,13 +169,13 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
         bound = operation(pars=parameters)
-        completed = Completed(self, folder, bound=bound)
+        completed = Completed(self, folder, bound=bound, notes=load_notes(folder))
         completed.dump_parameters()
         executor = Executor(platform, targets=self.targets)
 
         if ExecutionMode.ACQUIRE in mode:
             acquired = executor.acquire(bound)
-            completed = replace(acquired, task=self, path=folder)
+            completed = replace(acquired, task=self, path=folder, notes=completed.notes)
             completed.dump_data()
         if ExecutionMode.FIT in mode and operation.fit is not None:
             completed = executor.fit(completed)
@@ -216,6 +217,8 @@ class Completed:
     """Whether execution completed successfully."""
     _targets: Targets | None = None
     """Acquisition targets for data without target metadata."""
+    notes: list[Note] = field(default_factory=list)
+    """Comment history for this individual protocol execution."""
 
     def __post_init__(self):
         if self.task is not None:
@@ -270,6 +273,13 @@ class Completed:
         if self.task is None or self.path is None:
             raise ValueError("Saving parameters requires a task and output path")
         self.task.dump(self.path)
+        self.dump_notes()
+
+    def dump_notes(self):
+        """Save only protocol comments, without rewriting acquisition or fit data."""
+        if self.path is None:
+            raise ValueError("Saving notes requires an output path")
+        dump_notes(self.notes, self.path)
 
     def dump_data(self):
         """Dumping data."""
@@ -290,7 +300,7 @@ class Completed:
         """Loading completed from path."""
 
         task = Task.load(path)
-        return cls(path=path, task=task)
+        return cls(path=path, task=task, notes=load_notes(path))
 
     def update_platform(self, platform: Platform):
         """Perform update on platform' parameters by looping over qubits or
