@@ -183,7 +183,7 @@ def _signal_phase_figure(
     amplitudes: list,
     raw: np.ndarray,
 ) -> go.Figure:
-    """Build a figure with signal magnitude and phase in 2 stacked subplots."""
+    """Build a figure with signal magnitude and phase in 2 side-by-side subplots."""
     shape = (len(amplitudes), len(frequencies))
     signal_matrix = magnitude(raw).reshape(shape)
     phase_matrix = phase(raw).reshape(shape)
