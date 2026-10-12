@@ -299,7 +299,7 @@ def _plot(
             height=800,
             xaxis_title="I [a.u.]",
             yaxis_title="Q [a.u.]",
-            yaxis2_title="Drive Amplitude [a.u.]",
+            yaxis2_title="Drive amplitude [a.u.]",
             xaxis2_title="Drive frequency [GHz]",
         )
 
