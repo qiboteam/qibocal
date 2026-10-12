@@ -21,7 +21,6 @@ from qibolab import (
 )
 from qibolab._core.components import IqChannel
 from scipy.optimize import curve_fit
-from sklearn.decomposition import PCA
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -30,7 +29,6 @@ from qibocal.protocols.utils import (
     Range,
     RangeLike,
     lorentzian,
-    plot_iq_pca,
     table_dict,
     table_html,
     to_range,
@@ -363,54 +361,17 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     fitting_report = ""
     frequencies = np.array(data.drive_frequencies[target])
 
-    quadratures = data.data[target]
-    pca = PCA().fit(quadratures)
-    pca_signal = pca.transform(quadratures)
-
-    # select only principal axis
-    principal_axis = pca_signal[:, 0]
-
     fig = make_subplots(
-        rows=3,
+        rows=1,
         cols=2,
         vertical_spacing=0.1,
         horizontal_spacing=0.1,
-        specs=[[{"colspan": 2}, None], [{"colspan": 2}, None], [{}, {}]],
         subplot_titles=(
-            "IQ Plane",
-            "Principal Axis",
             "Signal",
             "Phase",
         ),
     )
 
-    # PCA eigenvectors are only defined up to a global sign: enforce a consistent
-    # orientation so that the signal is stable across runs.
-    principal_axis *= np.sign(np.mean(principal_axis))
-
-    # row 1: IQ plane with quadrature data and principal axes
-    fig.add_traces(
-        plot_iq_pca(quadratures, pca.mean_, pca.components_),
-        rows=1,
-        cols=1,
-    )
-
-    # row 2: PCA projection along the principal axis
-    fig.add_trace(
-        go.Scatter(
-            x=frequencies * scipy.constants.nano,  # plotting in GHz
-            y=principal_axis,
-            opacity=1,
-            name="Principal Axis Signal",
-            showlegend=True,
-            legendgroup="PCA",
-            mode="markers",
-        ),
-        row=2,
-        col=1,
-    )
-
-    # row 3: signal magnitude and phase
     fig.add_trace(
         go.Scatter(
             x=frequencies * scipy.constants.nano,  # plotting in GHz
@@ -421,7 +382,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
             legendgroup="Signal",
             mode="markers",
         ),
-        row=3,
+        row=1,
         col=1,
     )
     fig.add_trace(
@@ -434,7 +395,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
             legendgroup="Phase",
             mode="markers",
         ),
-        row=3,
+        row=1,
         col=2,
     )
 
@@ -452,7 +413,7 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
                 name="Fit",
                 mode="lines",
             ),
-            row=3,
+            row=1,
             col=1,
         )
 
@@ -471,14 +432,10 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     fig.update_layout(
         showlegend=True,
         height=1000,
-        xaxis_title="I [a.u.]",
-        yaxis_title="Q [a.u.]",
-        yaxis2_title="Principal Axis Signal [a.u.]",
+        yaxis_title="Signal [a.u.]",
+        xaxis_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
         xaxis2_title="Frequency [GHz]",
-        yaxis3_title="Signal [a.u.]",
-        xaxis3_title="Frequency [GHz]",
-        yaxis4_title="Phase [rad]",
-        xaxis4_title="Frequency [GHz]",
     )
 
     return [fig], fitting_report
