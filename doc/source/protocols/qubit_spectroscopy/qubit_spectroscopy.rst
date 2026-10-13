@@ -187,12 +187,10 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         relaxation_time: 20_000
 
 
-The report uses the same signal magnitude and phase panels as qubit
-spectroscopy. A Lorentzian fit to the signal magnitude extracts
-:math:`\omega_{12}`; the report also includes the fitted frequency and the
-calculated anharmonicity. The image below shows the fitted magnitude trace:
-
-.. image:: qubit_spectroscopy_ef.png
+The report displays the same signal magnitude and phase panels as the
+standard qubit spectroscopy. A Lorentzian fit to the magnitude trace
+extracts :math:`\omega_{12}`, and the report additionally shows the fitted
+frequency and the resulting anharmonicity.
 
 After fitting, the anharmonicity is calculated as
 :math:`\alpha = \omega_{12} - \omega_{01}`. When updates are enabled, both the
