@@ -235,12 +235,19 @@ def _fit(
     )
 
     angle_mask = (angles_ > np.pi * 0.9) & (angles_ < np.pi * 1.1)
-    leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
     x, y = np.meshgrid(data.amplitudes, data.t_idles)
-    best_amplitude[_pair] = x[angle_mask][leakage_mask].item()
-    best_t_idle[_pair] = y[angle_mask][leakage_mask].item()
-    best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
-    best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
+    if angle_mask.any():
+        leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
+        best_amplitude[_pair] = x[angle_mask][leakage_mask].item()
+        best_t_idle[_pair] = y[angle_mask][leakage_mask].item()
+        best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
+        best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
+    else:
+        closest = np.unravel_index(np.abs(angles_ - np.pi).argmin(), angles_.shape)
+        best_amplitude[_pair] = x[closest]
+        best_t_idle[_pair] = y[closest]
+        best_angle[_pair] = angles_[closest]
+        best_leakage[_pair] = leakages_[closest]
     return SNZIdlingResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
