@@ -261,7 +261,6 @@ def _plot(
             rows=2,
             cols=1,
             vertical_spacing=0.1,
-            horizontal_spacing=0.1,
             subplot_titles=(
                 "IQ Plane",
                 "Power Spectroscopy",
