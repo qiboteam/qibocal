@@ -153,16 +153,11 @@ def _acquisition(
 
     transpiler = build_native_gate_transpiler(platform)
     compiler = build_native_gate_compiler(platform)
-    for pair in targets:
-        try:
-            mitigation_matrix = (
-                platform.calibration.get_readout_mitigation_matrix_element(pair)
-            )
-        except AssertionError:
-            mitigation_matrix = None
 
-        circuits = []
-        bases = []
+    circuits = []
+    qubit_maps = []
+    bases = []
+    for pair in targets:
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(
@@ -172,19 +167,28 @@ def _acquisition(
                 )
                 for basis, circuit in chsh_circuits.items():
                     circuits.append(circuit)
-                    bases.append([bell_state, basis])
+                    qubit_maps.append(list(pair))
+                    bases.append((pair, bell_state, basis))
 
-        results = execute_circuits(
-            circuits,
-            [list(pair)] * len(circuits),
-            platform,
-            transpiler,
-            compiler,
-            nshots=params.nshots,
-        )
+    results = execute_circuits(
+        circuits,
+        qubit_maps,
+        platform,
+        transpiler,
+        compiler,
+        nshots=params.nshots,
+    )
 
-        for result, (bell_state, basis) in zip(results, bases):
-            data.register_basis(pair, bell_state, basis, result)
+    for result, (pair, bell_state, basis) in zip(results, bases):
+        data.register_basis(pair, bell_state, basis, result)
+
+    for pair in targets:
+        try:
+            mitigation_matrix = (
+                platform.calibration.get_readout_mitigation_matrix_element(pair)
+            )
+        except AssertionError:
+            mitigation_matrix = None
 
         for bell_state in params.bell_states:
             data.frequencies[bell_state] = freqs = merge_frequencies(
