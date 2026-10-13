@@ -79,8 +79,8 @@ class TwpaFrequencyOffsetData(Data):
 
     ``None`` if native readout frequencies were used.
     """
-    attenuation: dict[QubitId, float] = field(default_factory=dict)
-    """Configured base attenuation [dB] for each target."""
+    power: dict[QubitId, float] = field(default_factory=dict)
+    """Configured base pump power [dB] for each target."""
 
     def reference_value_array(self, qubit: QubitId) -> npt.NDArray:
         """Return reference value as a numpy array.
@@ -249,7 +249,7 @@ def _acquisition(
         frequency={q: np.arange(*freq_ranges[q]).tolist() for q in targets},
         reference_value=reference_data,
         probes=params.probes,
-        attenuation={q: twpa_configs[q].power for q in targets},
+        power={q: twpa_configs[q].power for q in targets},
     )
     for qubit in targets:
         data.data[qubit] = np.stack(raw_data[qubit], axis=2)
@@ -288,15 +288,15 @@ def _plot(
     (primary vertical axis). If fit results are available, the optimal working point is
     highlighted with a marker in the plot and legend.
 
-    To relate the dimensionless amplitude offset to the effective physical attenuation
+    To relate the dimensionless amplitude offset to the effective pump power
     in dB, a secondary vertical axis is rendered on the right edge. Its tick positions
-    and labels are generated dynamically from the platform attenuation and the logarithmic
+    and labels are generated dynamically from the platform pump power and the logarithmic
     offset scaling. Because Plotly requires an associated trace to render secondary layout
     axes, an invisible dummy scatter trace is attached to this secondary scale.
     """
     figures = []
     fig = go.Figure()
-    base_attenuation = data.attenuation.get(target, 0.0)
+    base_power = data.power.get(target, 0.0)
 
     averaged_gain = data.averaged_gain(target)
     offsets = np.array(data.offset[target])
@@ -306,8 +306,8 @@ def _plot(
     if len(tickvals) > 8:
         indices = np.linspace(0, len(tickvals) - 1, 8, dtype=int)
         tickvals = tickvals[indices]
-    attenuations = base_attenuation + 20 * np.log10(np.abs(tickvals))
-    ticktext = [f"{np.round(a, 1)}" for a in attenuations]
+    powers = base_power + 20 * np.log10(np.abs(tickvals))
+    ticktext = [f"{np.round(power, 1)}" for power in powers]
 
     fig.add_trace(
         go.Heatmap(
@@ -316,6 +316,7 @@ def _plot(
             z=averaged_gain,
             colorscale="inferno",
             colorbar_x=1.15,
+            colorbar_title_text="TWPA Gain [dB]",
         ),
     )
     # Invisible trace required for Plotly to render the secondary y-axis (yaxis2).
@@ -353,7 +354,7 @@ def _plot(
         showlegend=True,
         legend={"orientation": "h"},
         yaxis2={
-            "title_text": "Pump Attenuation [dB]",
+            "title_text": "Pump power [dB]",
             "overlaying": "y",
             "side": "right",
             "matches": "y",
@@ -368,17 +369,17 @@ def _plot(
 
     if fit is not None and target in fit:
         opt_offset = fit.offset[target]
-        opt_att = base_attenuation + 20 * np.log10(abs(opt_offset))
+        opt_power = base_power + 20 * np.log10(abs(opt_offset))
         labels = [
             "Pump Frequency [Hz]",
             "Pump Amplitude",
-            "Pump Attenuation [dB]",
+            "Pump power [dB]",
             "TWPA Gain [dB]",
         ]
         values = [
             np.round(fit.frequency[target], 4),
             np.round(opt_offset, 4),
-            np.round(opt_att, 4),
+            np.round(opt_power, 4),
             np.round(fit.gain[target], 4),
         ]
         fitting_report = table_html(table_dict([target] * len(labels), labels, values))

@@ -126,8 +126,8 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert qubit in data.offset
         assert qubit in data.frequency
         assert qubit in data.reference_value
-        assert qubit in data.attenuation
-        assert data.attenuation[qubit] == 10.0
+        assert qubit in data.power
+        assert data.power[qubit] == 10.0
 
         # Shape check: (N_amplitude, N_twpa_freq, N_probes, 2)
         n_offset = len(data.offset[qubit])
@@ -154,7 +154,13 @@ def test_acquisition_and_fit(platform, tmp_path):
     figs, report = _plot(data, fit_res, targets[0])
     assert len(figs) == 1
     fig = figs[0]
+    assert fig.data[0].colorbar.title.text == "TWPA Gain [dB]"
     assert fig.layout.yaxis2 is not None
+    assert fig.layout.yaxis2.title.text == "Pump power [dB]"
+    assert fig.layout.yaxis2.ticktext == tuple(
+        f"{np.round(data.power[targets[0]] + 20 * np.log10(abs(offset)), 1)}"
+        for offset in data.offset[targets[0]]
+    )
     assert fig.layout.yaxis2.side == "right"
     assert fig.layout.yaxis2.overlaying == "y"
     assert fig.layout.showlegend is True
@@ -166,11 +172,13 @@ def test_acquisition_and_fit(platform, tmp_path):
     )
     assert "Pump Frequency [Hz]" in report
     assert "Pump Amplitude" in report
-    assert "Pump Attenuation [dB]" in report
+    assert "Pump power [dB]" in report
     assert "TWPA Gain [dB]" in report
 
     figs_no_fit, report_no_fit = _plot(data, None, targets[0])
     assert len(figs_no_fit) == 1
+    assert figs_no_fit[0].data[0].colorbar.title.text == "TWPA Gain [dB]"
+    assert figs_no_fit[0].layout.yaxis2.title.text == "Pump power [dB]"
     assert any(trace.yaxis == "y2" for trace in figs_no_fit[0].data)
     assert report_no_fit == ""
 
@@ -182,7 +190,7 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert data.offset[qubit] == loaded_data.offset[qubit]
         assert data.frequency[qubit] == loaded_data.frequency[qubit]
         assert data.probes == loaded_data.probes
-        assert data.attenuation == loaded_data.attenuation
+        assert data.power == loaded_data.power
 
     fit_res.save(tmp_path)
     loaded_fit = TwpaFrequencyOffsetResults.load(tmp_path)

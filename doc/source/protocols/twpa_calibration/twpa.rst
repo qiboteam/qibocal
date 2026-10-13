@@ -64,6 +64,25 @@ concurrently using an on-board 2D hardware sweep. Because hardware sweepers enfo
 linear steps, the amplitude/power sweep is replaced by a linear offset sweep.
 Offset values must lie in the inclusive interval [-1, 1].
 
+Before sweeping the pump parameters, a reference scan measures the readout signal
+with the TWPA pump off (its power set to zero). The reference uses the same probe
+frequencies, pulse duration, amplitude, and acquisition settings as the subsequent
+pump sweep: one reference measurement per target at its calibrated readout frequency
+by default, or one per target for each frequency listed in ``probes``.
+The acquired I/Q magnitudes are averaged over the evaluated probe frequencies,
+separately for the reference and for each pump working point. The gain displayed
+in the heatmap is then
+
+.. math::
+
+    G(f, o) = 20 \log_{10} \left(
+        \frac{\langle |IQ_{\mathrm{on}}(f, o)| \rangle_{\mathrm{probes}}}
+             {\langle |IQ_{\mathrm{off}}| \rangle_{\mathrm{probes}}}
+    \right),
+
+where :math:`f` and :math:`o` are the pump frequency and offset. This reference
+normalizes the amplified signal to the unamplified readout signal.
+
 By default, when the ``probes`` parameter is omitted, the protocol performs only a
 **single acquisition run** (a single execution for the reference scan, and a further
 individual one for the 2D pump sweep). In this run, each target qubit is updated and
