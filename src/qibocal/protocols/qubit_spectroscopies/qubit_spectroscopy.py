@@ -431,7 +431,6 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
 
     fig.update_layout(
         showlegend=True,
-        height=1000,
         yaxis_title="Signal [a.u.]",
         xaxis_title="Frequency [GHz]",
         yaxis2_title="Phase [rad]",

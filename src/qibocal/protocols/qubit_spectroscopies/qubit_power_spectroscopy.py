@@ -288,7 +288,10 @@ def _plot(
         )
         # confine the colorbar to the row 2 domain, otherwise it spans the full figure
         row2_domain = figure.layout.yaxis2.domain
-        figure.data[-1].colorbar.update(
+        # heatmap_data is needed to confine the colorbar to the second subplot only
+        heatmap_data = figure.data[-1]
+
+        heatmap_data.colorbar.update(
             y=sum(row2_domain) / 2,
             len=row2_domain[1] - row2_domain[0],
             yanchor="middle",
