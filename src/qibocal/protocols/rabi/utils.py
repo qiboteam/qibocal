@@ -120,7 +120,6 @@ def plot(data, qubit, fit, rx90):
         rows=2,
         cols=1,
         vertical_spacing=0.1,
-        horizontal_spacing=0.1,
         subplot_titles=("IQ Plane", "Principal Axis"),
         row_heights=[0.5, 0.5],
     )
