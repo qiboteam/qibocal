@@ -56,15 +56,14 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         relaxation_time: 20_000
 
 
-The report includes the IQ plane, the projection along its principal axis, and
-the signal magnitude and phase. A Lorentzian fit is performed on the signal
-magnitude to extract the qubit frequency. The image below shows the fitted
-magnitude trace:
+The report shows the signal magnitude and phase, with a Lorentzian fit
+performed on the signal magnitude to extract the qubit frequency. The image
+below shows the fitted magnitude trace:
 
 .. image:: qubit_spec.png
 
-
-To extract the qubit frequency a Lorentzian fit is performed.
+To extract the qubit frequency, a Lorentzian fit is performed on the signal
+magnitude.
 
 Requirements
 ^^^^^^^^^^^^
@@ -188,8 +187,8 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         relaxation_time: 20_000
 
 
-The report uses the same IQ, principal-axis, magnitude, and phase panels as
-qubit spectroscopy. A Lorentzian fit to the signal magnitude extracts
+The report uses the same signal magnitude and phase panels as qubit
+spectroscopy. A Lorentzian fit to the signal magnitude extracts
 :math:`\omega_{12}`; the report also includes the fitted frequency and the
 calculated anharmonicity. The image below shows the fitted magnitude trace:
 

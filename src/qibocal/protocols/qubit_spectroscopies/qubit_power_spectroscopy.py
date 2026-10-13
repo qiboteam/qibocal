@@ -252,9 +252,9 @@ def _plot(
         # PCA eigenvectors are only defined up to a global sign: enforce a consistent
         # orientation so that the heatmap is stable across runs.
         pc_matrix = flattened_pc_matrix.reshape(*raw.shape[:2])
-        pc_per_frequency_mean = np.mean(pc_matrix, axis=1)
-        max_mean_idx = np.argmax(np.abs(pc_per_frequency_mean))
-        absmax_sign = np.sign(pc_per_frequency_mean[max_mean_idx])
+        pc_per_amplitude_mean = np.mean(pc_matrix, axis=1)
+        max_mean_idx = np.argmax(np.abs(pc_per_amplitude_mean))
+        absmax_sign = np.sign(pc_per_amplitude_mean[max_mean_idx]) or 1.0
         pc_matrix *= absmax_sign
 
         figure = make_subplots(

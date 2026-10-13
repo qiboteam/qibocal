@@ -354,9 +354,9 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyResults):
     """Plot QubitSpectroscopy.
 
-    A single figure is built with three rows: the IQ plane (full width), the
-    PCA projection along the principal axis, and the signal magnitude and
-    phase.
+    A single figure is built with two side-by-side panels: the signal
+    magnitude and the signal phase. A Lorentzian fit is overlaid on the
+    magnitude panel when a fit is available.
     """
     fitting_report = ""
     frequencies = np.array(data.drive_frequencies[target])
