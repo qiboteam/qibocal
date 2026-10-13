@@ -154,6 +154,13 @@ def _aquisition(
 
         data.data[target_vz, other_qubit_vz, "I"] = []
         data.data[target_vz, other_qubit_vz, "X"] = []
+
+        # Build all sequences (one per amplitude-ratio/setup combination) so that a
+        # single platform.execute call can acquire the whole sweep grid.
+        sequences = []
+        flux_pulses_to_sweep = []
+        theta_pulses_to_sweep = []
+        readout_ids = {}
         for ratio in params.amplitude_ratio_range:
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
@@ -177,38 +184,45 @@ def _aquisition(
                     dt=params.flux_time_delay,  # TODO: when dt is zero a 16 ns is added
                     flux_pulse=flux_pulse,
                 )
-                sweeper_theta = Sweeper(
-                    parameter=Parameter.phase,
-                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
-                    pulses=[theta_pulse],
-                )
-
-                sweeper_amplitude = Sweeper(
-                    parameter=Parameter.amplitude,
-                    range=(
-                        params.amplitude_min,
-                        params.amplitude_max,
-                        params.amplitude_step,
-                    ),
-                    pulses=[flux_pulse],
-                )
                 ro_target = list(
                     sequence.channel(platform.qubits[target_vz].acquisition)
                 )[-1]
                 ro_control = list(
                     sequence.channel(platform.qubits[other_qubit_vz].acquisition)
                 )[-1]
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper_amplitude], [sweeper_theta]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                )
+                sequences.append(sequence)
+                flux_pulses_to_sweep.append(flux_pulse)
+                theta_pulses_to_sweep.append(theta_pulse)
+                readout_ids[(setup, ratio)] = (ro_target.id, ro_control.id)
 
+        sweeper_theta = Sweeper(
+            parameter=Parameter.phase,
+            range=(-params.theta_start, -params.theta_end, -params.theta_step),
+            pulses=theta_pulses_to_sweep,
+        )
+        sweeper_amplitude = Sweeper(
+            parameter=Parameter.amplitude,
+            range=(
+                params.amplitude_min,
+                params.amplitude_max,
+                params.amplitude_step,
+            ),
+            pulses=flux_pulses_to_sweep,
+        )
+        results = platform.execute(
+            sequences,
+            [[sweeper_amplitude], [sweeper_theta]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        )
+
+        for ratio in params.amplitude_ratio_range:
+            for setup in ("I", "X"):
+                ro_target_id, ro_control_id = readout_ids[(setup, ratio)]
                 data.data[target_vz, other_qubit_vz, setup].append(
-                    np.stack([results[ro_target.id], results[ro_control.id]])
+                    np.stack([results[ro_target_id], results[ro_control_id]])
                 )
 
         for setup in ("I", "X"):
@@ -263,12 +277,19 @@ def _fit(
         )
 
         angle_mask = (angles_ > np.pi * 0.9) & (angles_ < np.pi * 1.1)
-        leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
         x, y = np.meshgrid(data.amplitudes, data.rel_amplitudes)
-        best_amplitude[_pair] = x[angle_mask][leakage_mask].item()
-        best_rel_amplitude[_pair] = y[angle_mask][leakage_mask].item()
-        best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
-        best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
+        if angle_mask.any():
+            leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
+            best_amplitude[_pair] = x[angle_mask][leakage_mask].item()
+            best_rel_amplitude[_pair] = y[angle_mask][leakage_mask].item()
+            best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
+            best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
+        else:
+            closest = np.unravel_index(np.abs(angles_ - np.pi).argmin(), angles_.shape)
+            best_amplitude[_pair] = x[closest]
+            best_rel_amplitude[_pair] = y[closest]
+            best_angle[_pair] = angles_[closest]
+            best_leakage[_pair] = leakages_[closest]
     return SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
