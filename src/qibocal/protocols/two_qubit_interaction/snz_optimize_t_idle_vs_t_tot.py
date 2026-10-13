@@ -282,16 +282,23 @@ def _plot(
         ),
     )
     if fit is not None:
+        angles = (
+            np.array(fit.angles[target])
+            .reshape(len(data.durations), len(data.t_idles))
+            .T
+        )
+        leak = (
+            np.array(fit.leakages[target])
+            .reshape(len(data.durations), len(data.t_idles))
+            .T
+        )
         fig.add_trace(
             go.Heatmap(
                 x=data.durations,
                 y=data.t_idles,
-                z=np.array(fit.angles[target])
-                .reshape(len(data.durations), len(data.t_idles))
-                .T,
+                z=angles,
                 zmin=0,
                 zmax=2 * np.pi,
-                name="{fit.native} angle",
                 colorbar_x=-0.1,
                 colorscale="Twilight",
             ),
@@ -303,9 +310,7 @@ def _plot(
             go.Heatmap(
                 x=data.durations,
                 y=data.t_idles,
-                z=np.array(fit.leakages[target])
-                .reshape(len(data.durations), len(data.t_idles))
-                .T,
+                z=leak,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
