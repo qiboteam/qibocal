@@ -352,36 +352,43 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 
 
 def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyResults):
-    figures = []
+    """Plot QubitSpectroscopy.
+
+    A single figure is built with two side-by-side panels: the signal
+    magnitude and the signal phase. A Lorentzian fit is overlaid on the
+    magnitude panel when a fit is available.
+    """
+    fitting_report = ""
+    frequencies = np.array(data.drive_frequencies[target])
+
     fig = make_subplots(
         rows=1,
         cols=2,
-        horizontal_spacing=0.1,
         vertical_spacing=0.1,
+        horizontal_spacing=0.1,
+        subplot_titles=(
+            "Signal",
+            "Phase",
+        ),
     )
-    fitting_report = ""
-    frequencies = np.array(data.drive_frequencies[target])
-    signal = data.signal(target)
-    phase = data.phase(target)
 
     fig.add_trace(
         go.Scatter(
-            x=frequencies * scipy.constants.nano,
-            y=signal,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
+            y=data.signal(target),
             opacity=1,
-            name="Frequency",
+            name="Signal",
             showlegend=True,
-            legendgroup="Frequency",
+            legendgroup="Signal",
             mode="markers",
         ),
         row=1,
         col=1,
     )
-
     fig.add_trace(
         go.Scatter(
-            x=frequencies * scipy.constants.nano,
-            y=phase,
+            x=frequencies * scipy.constants.nano,  # plotting in GHz
+            y=data.phase(target),
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -392,17 +399,16 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
         col=2,
     )
 
-    freqrange = np.linspace(
-        min(frequencies),
-        max(frequencies),
-        2 * len(frequencies),
-    )
-
     if fit is not None:
+        freqrange = np.linspace(
+            min(frequencies),
+            max(frequencies),
+            2 * len(frequencies),
+        )
         params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
-                x=freqrange * scipy.constants.nano,
+                x=freqrange * scipy.constants.nano,  # plotting in GHz
                 y=_lorentzian_with_offset(freqrange, *params),
                 name="Fit",
                 mode="lines",
@@ -425,14 +431,13 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency [GHz]",
+        xaxis_title="Frequency [GHz]",
         yaxis2_title="Phase [rad]",
+        xaxis2_title="Frequency [GHz]",
     )
-    figures.append(fig)
 
-    return figures, fitting_report
+    return [fig], fitting_report
 
 
 def _update(
