@@ -2,6 +2,7 @@ from inspect import Parameter, signature
 
 import numpy as np
 import pytest
+from qibo import gates
 from qibolab import Pulse, VirtualZ
 
 from qibocal.protocols.two_qubit_interaction.utils import order_pair, sinusoid
@@ -21,9 +22,9 @@ def test_create_sequence_keyword_phase(platform):
         signature(create_sequence).parameters["vzphase"].kind == Parameter.KEYWORD_ONLY
     )
     pair = order_pair((0, 1), platform)
-    _, flux_pulse, _ = create_sequence(platform, "I", *pair, pair, "CZ", 16)
+    _, flux_pulse, _ = create_sequence(platform, "I", *pair, pair, 16)
     sequence, flux, vz = create_sequence(
-        platform, "I", *pair, pair, "CZ", 16, 80, flux_pulse, vzphase=-0.7
+        platform, "I", *pair, pair, 16, 80, flux_pulse, vzphase=-0.7
     )
 
     assert flux.duration == 80
@@ -35,7 +36,47 @@ def test_create_sequence_keyword_phase(platform):
     ]
     assert fluxes == [flux]
     with pytest.raises(TypeError):
-        create_sequence(platform, "I", *pair, pair, "CZ", 16, 80, flux_pulse, -0.7)
+        create_sequence(platform, "I", *pair, pair, 16, 80, flux_pulse, -0.7)
+
+
+def test_phase_correction_sign(platform):
+    phase_error = 2.1
+    thetas = np.linspace(0, 2 * np.pi, 50)
+    pair = order_pair((0, 1), platform)
+    probabilities = []
+    for theta in thetas:
+        sequence, _, _ = create_sequence(platform, "I", *pair, pair, 16, vzphase=-theta)
+        pulses = [
+            pulse
+            for pulse in sequence.to_relative_phases().channel(
+                platform.qubits[pair[0]].drive
+            )
+            if isinstance(pulse, Pulse)
+        ]
+        state = (
+            gates.GPI2(0, pulses[1].relative_phase).matrix()
+            @ gates.RZ(0, phase_error).matrix()
+            @ gates.GPI2(0, pulses[0].relative_phase).matrix()
+            @ np.array([1, 0])
+        )
+        probabilities.append(abs(state[1]) ** 2)
+
+    np.testing.assert_allclose(
+        probabilities, sinusoid(thetas, 0.5, 0.5, phase_error), atol=1e-14
+    )
+    correction = _fit(
+        VirtualZPhasesData(
+            data={
+                (*pair, setup): np.stack([probabilities, np.zeros_like(thetas)])
+                for setup in ("I", "X")
+            },
+            thetas=thetas.tolist(),
+        )
+    ).virtual_phase[tuple(pair)]
+    assert correction == pytest.approx(phase_error)
+    # A frame shift of +correction implements RZ(-correction).
+    corrected = gates.RZ(0, -correction).matrix() @ gates.RZ(0, phase_error).matrix()
+    np.testing.assert_allclose(corrected, np.eye(2), atol=1e-12)
 
 
 @pytest.mark.parametrize("sweep", [True, False])

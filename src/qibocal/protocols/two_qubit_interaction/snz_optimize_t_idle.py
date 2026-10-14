@@ -151,7 +151,6 @@ def _aquisition(
                     target_vz,
                     other_qubit_vz,
                     ordered_pair,
-                    "CZ",
                     dt=0,
                     flux_pulse=flux_pulse,
                 )

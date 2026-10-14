@@ -49,29 +49,16 @@ class VirtualZPhasesParameters(Parameters):
     theta_step: float
     """Step size for the theta sweep in radians."""
     native: str = "CZ"
-    """Two qubit interaction to be calibrated.
-
-    iSWAP and CZ are the possible options.
-
-    """
+    """Two-qubit interaction to be calibrated. Only CZ is supported."""
     dt: float | None = 16
     """Time delay between flux pulses and readout."""
     sweep: bool = True
-    """Toggle sweeping vs unrolling.
+    """Sweep phases when True; unroll them into separate sequences when False.
 
-
-    .. tip::
-
-       Sweeping phases has been proven fragile in certain platforms. For this reason, we
-       are now providing the double implementation.
-       The difference it is just an internal detail, and ideally the result is supposed
-       to be the exact same when sweeping phases is properly supported. Sweeping is
-       often a bit faster.
-
-       The recommended usage is just to toggle this to ``False`` when the user is
-       confident the sweeping is not working properly. Or just to check whether that is
-       actually the problem or not.
-
+    Both modes measure the same phases and should produce equivalent results.
+    Sweeping is the default and avoids expanding the sequence list. Unrolling
+    provides an alternative execution path for comparison when diagnosing phase
+    sweeping.
     """
 
 
@@ -129,7 +116,6 @@ def create_sequence(
     target_qubit: QubitId,
     control_qubit: QubitId,
     ordered_pair: tuple[QubitId, QubitId],
-    native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float | None = None,
     flux_pulse: Pulse | None = None,
@@ -137,10 +123,9 @@ def create_sequence(
     vzphase: float = 0.0,
 ) -> tuple[PulseSequence, Pulse, VirtualZ]:
     """
-    Create the pulse sequence for the calibration of two-qubit gate virtual phases.
+    Create the pulse sequence for the calibration of CZ virtual phases.
 
-    This function constructs a pulse sequence for a given two-qubit native gate `native` (CZ or iSWAP)
-    on the specified qubits. The sequence includes:
+    The sequence includes:
     - A preliminary RX90 pulse on the `target_qubit`.
     - An optional X pulse on the `control_qubit` based on the `setup` type.
     - A flux pulse implementing the two-qubit native gate.
@@ -152,7 +137,7 @@ def create_sequence(
     The function returns:
     - The full experiment pulse sequence.
     - The applied flux pulse.
-    - The final `VirtualZPhase` pulses to be used for phase sweeping.
+    - The final `VirtualZ` pulse to be used for phase sweeping.
     """
 
     target_natives = platform.natives.single_qubit[target_qubit]
@@ -237,12 +222,12 @@ def _acquisition(
         tuple[QubitId, QubitId, Literal["I", "X"]], list[tuple[PulseId, PulseId]]
     ] = defaultdict(list)
 
-    range_ = (
-        -params.theta_start,
-        -params.theta_end,
-        -params.theta_step,
-    )
-    phases = [0.0] if params.sweep else np.arange(*range_).tolist()
+    range_ = (params.theta_start, params.theta_end, params.theta_step)
+    thetas = np.arange(*range_)
+    # RZ(theta) compiles to VirtualZ(phase=-theta). The fit returns the
+    # opposite frame shift, which cancels the CZ's unwanted single-qubit phase.
+    vzphases = -thetas
+    phases = [0.0] if params.sweep else vzphases.tolist()
 
     for pair in targets:
         # order the qubits so that the low frequency one is the first
@@ -260,7 +245,6 @@ def _acquisition(
                         target_q,
                         control_q,
                         ordered_pair,
-                        params.native,
                         dt=params.dt,
                         vzphase=phase,
                     )
@@ -278,12 +262,7 @@ def _acquisition(
                         (ro_target.id, ro_control.id)
                     )
 
-    # The virtual phase values are the opposite of beta, this is
-    # because, according to the circuit we would like to reproduce
-    # after the CZ, an RZ is applied. The RZ gate with `theta` angle
-    # is compiled into  a VirtualPhase pulse with phase `-theta`.
-    # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
-    sweeper = Sweeper(parameter=Parameter.phase, range=range_, pulses=vzs)
+    sweeper = Sweeper(parameter=Parameter.phase, values=vzphases, pulses=vzs)
     sweep = [[sweeper]] if params.sweep else []
 
     results = platform.execute(
@@ -304,9 +283,7 @@ def _acquisition(
 
     return VirtualZPhasesData(
         data=data,
-        thetas=np.arange(
-            params.theta_start, params.theta_end, params.theta_step
-        ).tolist(),
+        thetas=thetas.tolist(),
         native=params.native,
     )
 

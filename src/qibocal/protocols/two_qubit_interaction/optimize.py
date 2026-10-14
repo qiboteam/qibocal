@@ -177,7 +177,6 @@ def _acquisition(
                     target_q,
                     control_q,
                     ordered_pair,
-                    params.native,
                     params.dt,
                     flux_pulse_max_duration=params.duration_max,
                 )

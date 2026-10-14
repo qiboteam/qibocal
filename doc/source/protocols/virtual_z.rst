@@ -2,8 +2,7 @@ Virtual Z
 =========
 
 The protocol applies the CZ gate once and measures conditional oscillations while
-varying the virtual Z phase. Phases can be swept or unrolled by setting ``sweep``
-to ``True`` or ``False``, respectively.
+varying the virtual Z phase.
 
 Parameters
 ^^^^^^^^^^
@@ -20,10 +19,9 @@ Below is an example runcard for this experiment.
 .. code-block:: yaml
 
      - id: cz
-       operation: cz_virtualz
+       operation: correct_virtual_z_phases
        parameters:
         dt: 0
-        flux_pulse_duration: 70
         theta_end: 6.5
         theta_start: 0
         theta_step: 0.5

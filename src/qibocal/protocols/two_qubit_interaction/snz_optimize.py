@@ -174,7 +174,6 @@ def _aquisition(
                     target_vz,
                     other_qubit_vz,
                     ordered_pair,
-                    "CZ",
                     dt=params.flux_time_delay,  # TODO: when dt is zero a 16 ns is added
                     flux_pulse=flux_pulse,
                 )
