@@ -2,7 +2,7 @@ Virtual Z
 =========
 
 The protocol applies the CZ gate once and measures conditional oscillations while
-varying the virtual Z phase.
+sweeping the virtual Z phase.
 
 Parameters
 ^^^^^^^^^^

@@ -1,6 +1,5 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
 
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import Literal
 
@@ -52,14 +51,6 @@ class VirtualZPhasesParameters(Parameters):
     """Two-qubit interaction to be calibrated. Only CZ is supported."""
     dt: float | None = 16
     """Time delay between flux pulses and readout."""
-    sweep: bool = True
-    """Sweep phases when True; unroll them into separate sequences when False.
-
-    Both modes measure the same phases and should produce equivalent results.
-    Sweeping is the default and avoids expanding the sequence list. Unrolling
-    provides an alternative execution path for comparison when diagnosing phase
-    sweeping.
-    """
 
 
 @dataclass
@@ -219,15 +210,14 @@ def _acquisition(
     sequences: list[PulseSequence] = []
     vzs: list[VirtualZ] = []
     readouts: dict[
-        tuple[QubitId, QubitId, Literal["I", "X"]], list[tuple[PulseId, PulseId]]
-    ] = defaultdict(list)
+        tuple[QubitId, QubitId, Literal["I", "X"]], tuple[PulseId, PulseId]
+    ] = {}
 
     range_ = (params.theta_start, params.theta_end, params.theta_step)
     thetas = np.arange(*range_)
     # RZ(theta) compiles to VirtualZ(phase=-theta). The fit returns the
     # opposite frame shift, which cancels the CZ's unwanted single-qubit phase.
     vzphases = -thetas
-    phases = [0.0] if params.sweep else vzphases.tolist()
 
     for pair in targets:
         # order the qubits so that the low frequency one is the first
@@ -238,48 +228,38 @@ def _acquisition(
             (ordered_pair[1], ordered_pair[0]),
         ):
             for setup in ("I", "X"):
-                for phase in phases:
-                    (sequence, _, vz) = create_sequence(
-                        platform,
-                        setup,
-                        target_q,
-                        control_q,
-                        ordered_pair,
-                        dt=params.dt,
-                        vzphase=phase,
-                    )
+                (sequence, _, vz) = create_sequence(
+                    platform,
+                    setup,
+                    target_q,
+                    control_q,
+                    ordered_pair,
+                    dt=params.dt,
+                )
 
-                    sequences.append(sequence)
-                    vzs.append(vz)
+                sequences.append(sequence)
+                vzs.append(vz)
 
-                    ro_target = list(
-                        sequence.channel(platform.qubits[target_q].acquisition)
-                    )[-1]
-                    ro_control = list(
-                        sequence.channel(platform.qubits[control_q].acquisition)
-                    )[-1]
-                    readouts[target_q, control_q, setup].append(
-                        (ro_target.id, ro_control.id)
-                    )
+                ro_target = list(
+                    sequence.channel(platform.qubits[target_q].acquisition)
+                )[-1]
+                ro_control = list(
+                    sequence.channel(platform.qubits[control_q].acquisition)
+                )[-1]
+                readouts[target_q, control_q, setup] = (ro_target.id, ro_control.id)
 
     sweeper = Sweeper(parameter=Parameter.phase, values=vzphases, pulses=vzs)
-    sweep = [[sweeper]] if params.sweep else []
 
     results = platform.execute(
         sequences,
-        sweep,
+        [[sweeper]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    if params.sweep:
-        for key, [(target, control)] in readouts.items():
-            data[key] = np.stack([results[target], results[control]])
-    else:
-        for key, meas in readouts.items():
-            res = [[results[target], results[control]] for target, control in meas]
-            data[key] = np.moveaxis(res, 0, 1)
+    for key, (target, control) in readouts.items():
+        data[key] = np.stack([results[target], results[control]])
 
     return VirtualZPhasesData(
         data=data,

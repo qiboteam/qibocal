@@ -79,27 +79,30 @@ def test_phase_correction_sign(platform):
     np.testing.assert_allclose(corrected, np.eye(2), atol=1e-12)
 
 
-@pytest.mark.parametrize("sweep", [True, False])
-def test_acquisition_phase_range(platform, mocker, sweep):
+@pytest.mark.parametrize("theta_end", [0.4, 6.2])
+def test_acquisition_phase_range(platform, mocker, theta_end):
     params = VirtualZPhasesParameters.load(
-        {"theta_start": 0.2, "theta_end": 6.2, "theta_step": 0.2, "sweep": sweep}
+        {"theta_start": 0.2, "theta_end": theta_end, "theta_step": 0.2}
     )
+    assert "sweep" not in signature(VirtualZPhasesParameters).parameters
     thetas = np.arange(params.theta_start, params.theta_end, params.theta_step)
 
     def execute(sequences, sweepers, **kwargs):
-        assert len(sequences) == 4 * (1 if sweep else len(thetas))
-        if sweep:
-            np.testing.assert_allclose(sweepers[0][0].values, -thetas)
-        else:
-            assert sweepers == []
+        assert len(sequences) == 4
+        assert len(sweepers) == len(sweepers[0]) == 1
+        np.testing.assert_allclose(sweepers[0][0].values, -thetas)
         results = {}
+        vzs = []
         for sequence in sequences:
             vz = next(pulse for _, pulse in sequence if isinstance(pulse, VirtualZ))
-            phases = sweepers[0][0].values if sweep else vz.phase
+            assert vz.phase == 0
+            vzs.append(vz)
+            phases = sweepers[0][0].values
             probabilities = np.asarray(0.5 + 0.4 * np.cos(-phases + 2))
             for qubit in platform.qubits.values():
                 readout = list(sequence.channel(qubit.acquisition))[-1]
                 results[readout.id] = probabilities
+        assert sweepers[0][0].pulses == vzs
         return results
 
     mocker.patch.object(platform, "execute", side_effect=execute)
