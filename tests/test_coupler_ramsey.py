@@ -3,14 +3,6 @@ from copy import deepcopy
 import numpy as np
 import pytest
 from click.testing import CliRunner
-from qibolab import AcquisitionType, AveragingMode, Delay, Parameter, Qubit
-
-from qibocal import Executor, protocols, update
-from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.task import Action, Completed, Task
-from qibocal.calibration.calibration import QubitCalibration, TwoQubitCalibration
-from qibocal.calibration.platform import CalibrationPlatform
-from qibocal.cli._base import command
 from qibocal.protocols.couplers.coupler_ramsey import (
     CouplerRamseyData,
     CouplerRamseyParameters,
@@ -22,6 +14,14 @@ from qibocal.protocols.couplers.coupler_ramsey import (
     _update,
     coupler_ramsey,
 )
+from qibolab import AcquisitionType, AveragingMode, Delay, Parameter, Qubit
+
+from qibocal import Executor, protocols, update
+from qibocal.auto.mode import ExecutionMode
+from qibocal.auto.task import Action, Completed, Task
+from qibocal.calibration.calibration import QubitCalibration, TwoQubitCalibration
+from qibocal.calibration.platform import CalibrationPlatform
+from qibocal.cli._base import command
 
 PAIR = (0, 1)
 COUPLER = 1
@@ -38,7 +38,7 @@ PARAMETERS = {
 def coupler_platform(platform):
     platform.calibration.two_qubits[PAIR] = TwoQubitCalibration(coupler=COUPLER)
     platform.calibration.couplers[COUPLER] = QubitCalibration()
-    update.flux_offset(0.25, platform, COUPLER)
+    update.flux_offset(0.25, platform, COUPLER, coupler=True)
     return platform
 
 
@@ -84,7 +84,7 @@ def test_acquisition_timing_and_grid(
 ):
     """Preserve timing and save the signed DC bias exactly once end to end."""
     platform = coupler_platform
-    update.flux_offset(bias, platform, COUPLER)
+    update.flux_offset(bias, platform, COUPLER, coupler=True)
     control_drive = platform.qubits[1].drive
     platform.update({"native_gates.single_qubit.1.RX.0.1.duration": control_duration})
     captured = {}
@@ -180,7 +180,7 @@ def test_saved_amplitudes_include_each_coupler_bias(
 ):
     """Shared pulse sweeps must retain each pair's own DC bias and readouts."""
     platform = coupler_platform
-    update.flux_offset(biases[0], platform, COUPLER)
+    update.flux_offset(biases[0], platform, COUPLER, coupler=True)
     other_pair = (2, 3)
     other_channel = "other/flux"
     platform.couplers["other"] = Qubit(flux=other_channel)
@@ -325,16 +325,21 @@ def test_invalid_pair_does_not_discard_valid_fit(caplog):
     assert str(invalid_pair) in caplog.text
 
 
-def test_update_sets_absolute_nulling_bias(coupler_platform, tmp_path):
+@pytest.mark.parametrize("qubit", PAIR)
+def test_update_sets_absolute_nulling_bias(coupler_platform, tmp_path, qubit):
     """Repeated updates must not add the DC bias to the fitted value again."""
     platform = coupler_platform
-    platform.calibration.single_qubits[0].qubit.sweetspot = 0.42
+    update.flux_offset(0.42, platform, qubit)
+    update.sweetspot(0.42, platform, qubit)
     results = _fit(synthetic_data())
     _update(results, platform, PAIR)
     assert platform.config(CHANNEL).offset == pytest.approx(0.1)
     _update(results, platform, PAIR)
     assert platform.config(CHANNEL).offset == pytest.approx(0.1)
-    assert platform.calibration.single_qubits[0].qubit.sweetspot == pytest.approx(0.42)
+    assert platform.config(platform.qubits[qubit].flux).offset == pytest.approx(0.42)
+    assert platform.calibration.single_qubits[qubit].qubit.sweetspot == pytest.approx(
+        0.42
+    )
     assert platform.calibration.couplers[COUPLER].qubit.sweetspot == pytest.approx(0.1)
     platform.dump(tmp_path)
     offline = CalibrationPlatform.from_datafolder(tmp_path, platform.name)
@@ -412,13 +417,50 @@ def test_offline_fit_and_report(coupler_platform, tmp_path):
     assert isinstance(completed.results, CouplerRamseyResults)
 
 
-def test_flux_updates_keep_qubit_behavior(platform):
+@pytest.mark.parametrize("qubit", PAIR)
+@pytest.mark.parametrize(
+    "args, kwargs",
+    [
+        pytest.param((), {}, id="default"),
+        pytest.param((), {"coupler": False}, id="keyword"),
+        pytest.param((False,), {}, id="positional"),
+    ],
+)
+def test_flux_updates_keep_qubit_behavior(coupler_platform, qubit, args, kwargs):
     """Updating a qubit must leave the coupler's flux configuration unchanged."""
-    qubit = 0
-    update.flux_offset(0.15, platform, qubit)
-    update.sweetspot(0.15, platform, qubit)
+    platform = coupler_platform
+    update.sweetspot(0.25, platform, COUPLER, coupler=True)
+    update.flux_offset(0.15, platform, qubit, *args, **kwargs)
+    update.sweetspot(0.15, platform, qubit, *args, **kwargs)
     assert platform.config(platform.qubits[qubit].flux).offset == pytest.approx(0.15)
-    assert platform.config(CHANNEL).offset == 0
+    assert platform.config(CHANNEL).offset == pytest.approx(0.25)
+    assert platform.calibration.couplers[COUPLER].qubit.sweetspot == pytest.approx(0.25)
     assert platform.calibration.single_qubits[qubit].qubit.sweetspot == pytest.approx(
         0.15
+    )
+
+
+@pytest.mark.parametrize(
+    "args, kwargs",
+    [
+        pytest.param((), {"coupler": True}, id="keyword"),
+        pytest.param((True,), {}, id="positional"),
+    ],
+)
+def test_flux_updates_select_coupler_with_overlapping_id(
+    coupler_platform, args, kwargs
+):
+    """Explicit coupler updates must not change the qubit with the same ID."""
+    platform = coupler_platform
+    update.flux_offset(0.42, platform, COUPLER)
+    update.sweetspot(0.42, platform, COUPLER)
+
+    update.flux_offset(0.15, platform, COUPLER, *args, **kwargs)
+    update.sweetspot(0.15, platform, COUPLER, *args, **kwargs)
+
+    assert platform.config(CHANNEL).offset == pytest.approx(0.15)
+    assert platform.calibration.couplers[COUPLER].qubit.sweetspot == pytest.approx(0.15)
+    assert platform.config(platform.qubits[COUPLER].flux).offset == pytest.approx(0.42)
+    assert platform.calibration.single_qubits[COUPLER].qubit.sweetspot == pytest.approx(
+        0.42
     )
