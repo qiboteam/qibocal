@@ -67,11 +67,12 @@ def test_serialization_qubit_pairs(tmp_path):
 
     cal = Calibration()
     cal.two_qubits[0, 1] = TwoQubitCalibration(
-        rb_fidelity=[0.99, 0.1], coupling=[0.5, 0.01]
+        rb_fidelity=[0.99, 0.1], coupling=[0.5, 0.01], coupler="coupler_01"
     )
     cal.dump(tmp_path)
     new_cal = cal.model_validate_json((tmp_path / CALIBRATION).read_text())
     assert new_cal == cal
+    assert new_cal.two_qubits[0, 1].coupler == "coupler_01"
 
 
 def test_serialization_crosstalk_matrix(tmp_path):
