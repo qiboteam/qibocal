@@ -572,8 +572,8 @@ def plot_results(
                 threshold = np.round(fit.threshold[qubit], 3)
 
                 x, y = state_data["i"], state_data["q"]
-                c, s = np.cos(rot_angle), np.sin(rot_angle)
-                rot = np.array([[c, -s], [s, c]])
+                cos, sin = np.cos(rot_angle), np.sin(rot_angle)
+                rot = np.array([[cos, -sin], [sin, cos]])
                 rotated = np.vstack([x, y]).T @ rot.T
                 rotated[:, 0] = rotated[:, 0]
 
