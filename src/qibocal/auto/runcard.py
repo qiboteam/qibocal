@@ -6,16 +6,16 @@ from typing import Any
 
 import yaml
 from pydantic.dataclasses import dataclass
-from qibo.backends import construct_backend
 
 from qibocal.calibration.platform import CalibrationPlatform
+from qibocal.config import log
 
 from .. import protocols
-from .execute import Executor
+from .execute import check_overlap_in_input_qubits
 from .history import History
 from .mode import ExecutionMode
-from .output import Metadata
-from .task import Action, Targets
+from .output import PLATFORM
+from .task import Action, Targets, Task
 
 RUNCARD = "runcard.yml"
 """Runcard filename."""
@@ -59,23 +59,34 @@ class Runcard:
     ) -> History:
         """Run runcard and dump to output."""
         targets = self.targets if self.targets is not None else list(platform.qubits)
+        check_overlap_in_input_qubits(targets)
         history = History.load(output)
         update = update and self.update
-        backend = construct_backend(backend="qibolab", platform=platform)
-        instance = Executor(
-            history=history,
-            platform=platform,
-            targets=targets,
-            update=update,
-            path=output,
-            meta=Metadata.generate(backend),
-        )
-
         for action in self.actions:
-            instance.run_protocol(
-                protocol=getattr(protocols, action.operation),
-                parameters=action,
+            protocol = getattr(protocols, action.operation)
+            task = Task(action=action, operation=protocol)
+            log.info(f"Executing mode {mode} on {task.action.id}.")
+            completed = task.run(
+                platform=(
+                    platform
+                    if ExecutionMode.ACQUIRE in mode
+                    else CalibrationPlatform.from_datafolder(
+                        folder_path=output / PLATFORM,
+                        platform_name=platform.name,
+                    )
+                ),
+                targets=targets,
                 mode=mode,
+                folder=history.task_path(history._pending_task_id(task.id), output),
             )
-        instance.history.dump(output)
-        return instance.history
+            history.push(completed)
+            if (
+                ExecutionMode.FIT in mode
+                and update
+                and task.update
+                and protocol.update is not None
+                and completed.results is not None
+            ):
+                completed.update_platform(platform=platform)
+        history.dump(output)
+        return history

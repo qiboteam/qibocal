@@ -2,7 +2,7 @@
 
 import copy
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, NewType, Union
 
@@ -16,7 +16,15 @@ from qibocal.calibration.calibration import QubitId, QubitPairId
 from .. import protocols
 from ..config import log
 from .mode import ExecutionMode
-from .operation import Data, DummyPars, OperationId, Protocol, Results, dummy_operation
+from .operation import (
+    BoundProtocol,
+    Data,
+    DummyPars,
+    OperationId,
+    Protocol,
+    Results,
+    dummy_operation,
+)
 
 Id = NewType("Id", str)
 """Action identifiers type."""
@@ -136,10 +144,11 @@ class Task:
         platform: Platform | None = None,
         targets: Targets | None = None,
     ) -> "Completed":
+        from .execute import Executor
+
         if self.targets is None:
             self.action.targets = targets
 
-        completed = Completed(self, folder)
         try:
             if platform is not None:
                 if self.parameters.nshots is None:
@@ -158,31 +167,26 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
+        bound = operation(pars=parameters)
+        completed = Completed(self, folder, bound=bound)
         completed.dump_parameters()
+        executor = Executor(platform, targets=self.targets)
 
         if ExecutionMode.ACQUIRE in mode:
-            if operation.platform_dependent and operation.targets_dependent:
-                completed.data, completed.data_time = operation.acquisition(
-                    parameters,
-                    platform=platform,
-                    targets=self.targets,
-                )
-            else:
-                completed.data, completed.data_time = operation.acquisition(
-                    parameters, platform=platform
-                )
+            acquired = executor.acquire(bound)
+            completed = replace(acquired, task=self, path=folder)
             completed.dump_data()
-        if ExecutionMode.FIT in mode:
-            completed.results, completed.results_time = operation.fit(completed.data)
+        if ExecutionMode.FIT in mode and operation.fit is not None:
+            completed = executor.fit(completed)
             completed.dump_results()
         return completed
 
 
 @dataclass
 class Completed:
-    """A completed task."""
+    """A complete or partial protocol execution, optionally backed by a task."""
 
-    task: Task
+    task: Task | None = None
     """A snapshot of the task when it was completed.
 
     .. todo::
@@ -190,8 +194,8 @@ class Completed:
         once tasks will be immutable, a separate `iteration` attribute should
         be added
     """
-    path: Path
-    """Folder contaning data and results files for task."""
+    path: Path | None = None
+    """Optional folder containing data and results files for task."""
     _data: Data | None = None
     """Protocol data."""
     _results: Results | None = None
@@ -200,15 +204,46 @@ class Completed:
     """Protocol data."""
     results_time: float = 0
     """Fitting output."""
+    bound: BoundProtocol | None = None
+    """Bound protocol used for this execution."""
+    reports: Any = None
+    """Report output, keyed by target for per-target callbacks."""
+    protocol_id: str | None = None
+    """Identifier for the protocol that was executed."""
+    error: Exception | None = None
+    """Error that occurred during execution, if any."""
+    success: bool = True
+    """Whether execution completed successfully."""
+    _targets: Targets | None = None
+    """Acquisition targets for data without target metadata."""
 
     def __post_init__(self):
-        self.task = copy.deepcopy(self.task)
+        if self.task is not None:
+            self.task = copy.deepcopy(self.task)
+            if self.bound is None:
+                self.bound = self.task.operation(pars=self.task.parameters)
+
+    @property
+    def targets(self) -> Targets:
+        """Targets with acquired data, or the recorded acquisition selection."""
+        data = self.data
+        if isinstance(data, Data) and hasattr(data, "data"):
+            if self.bound is not None and self.bound.protocol.two_qubit_gates:
+                return data.pairs
+            return data.qubits
+        if self._targets is not None:
+            return list(self._targets)
+        if self.task is not None and self.task.targets is not None:
+            return self.task.targets
+        raise ValueError("Completed execution has no target metadata")
 
     @property
     def data(self) -> Data:
         """Access task's data."""
         if self._data is None:
-            Data = self.task.operation.data_type
+            if self.bound is None or self.path is None:
+                raise ValueError("Completed execution has no acquisition data")
+            Data = self.bound.protocol.data_type
             self._data = Data.load(self.path)
             assert self._data is not None
         return self._data
@@ -220,9 +255,10 @@ class Completed:
     @property
     def results(self):
         """Access task's results."""
-        if self._results is None:
-            Results = self.task.operation.results_type
-            self._results = Results.load(self.path)
+        if self._results is None and self.path is not None and self.bound is not None:
+            Results = self.bound.protocol.results_type
+            if Results is not None:
+                self._results = Results.load(self.path)
         return self._results
 
     @results.setter
@@ -231,16 +267,22 @@ class Completed:
 
     def dump_parameters(self):
         """Dump parameters."""
+        if self.task is None or self.path is None:
+            raise ValueError("Saving parameters requires a task and output path")
         self.task.dump(self.path)
 
     def dump_data(self):
         """Dumping data."""
         if self._data is not None:
+            if self.path is None:
+                raise ValueError("Saving data requires an output path")
             self._data.save(self.path)
 
     def dump_results(self):
         """Dumping results."""
         if self._results is not None:
+            if self.path is None:
+                raise ValueError("Saving results requires an output path")
             self._results.save(self.path)
 
     @classmethod
@@ -253,8 +295,10 @@ class Completed:
     def update_platform(self, platform: Platform):
         """Perform update on platform' parameters by looping over qubits or
         pairs."""
-        for qubit in _nested_list_to_tuples(self.task.targets):
+        if self.bound is None or self.bound.protocol.update is None:
+            raise ValueError("Protocol does not support updating")
+        for qubit in _nested_list_to_tuples(self.targets):
             try:
-                self.task.operation.update(self.results, platform, qubit)
+                self.bound.protocol.update(self.results, platform, qubit)
             except KeyError:
                 log.warning(f"Skipping update of qubit {qubit} due to error in fit.")
