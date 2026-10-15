@@ -3,17 +3,6 @@ from copy import deepcopy
 import numpy as np
 import pytest
 from click.testing import CliRunner
-from qibocal.protocols.couplers.coupler_ramsey import (
-    CouplerRamseyData,
-    CouplerRamseyParameters,
-    CouplerRamseyResults,
-    CouplerRamseyType,
-    _acquisition,
-    _fit,
-    _plot,
-    _update,
-    coupler_ramsey,
-)
 from qibolab import AcquisitionType, AveragingMode, Delay, Parameter, Qubit
 
 from qibocal import Executor, protocols, update
@@ -22,6 +11,17 @@ from qibocal.auto.task import Action, Completed, Task
 from qibocal.calibration.calibration import QubitCalibration, TwoQubitCalibration
 from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.cli._base import command
+from qibocal.protocols.couplers.ramsey_zz import (
+    CouplerRamseyData,
+    CouplerRamseyParameters,
+    CouplerRamseyResults,
+    CouplerRamseyType,
+    _acquisition,
+    _fit,
+    _plot,
+    _update,
+    coupler_ramsey_zz,
+)
 
 PAIR = (0, 1)
 COUPLER = 1
@@ -61,11 +61,11 @@ def synthetic_data():
 
 def test_protocol_metadata():
     """Keep protocol registration and serialized data/result types consistent."""
-    assert protocols.PROTOCOLS["coupler_ramsey"] is coupler_ramsey
-    assert coupler_ramsey.data_type is CouplerRamseyData
-    assert coupler_ramsey.parameters_type is CouplerRamseyParameters
-    assert coupler_ramsey.results_type is CouplerRamseyResults
-    assert coupler_ramsey.two_qubit_gates
+    assert protocols.PROTOCOLS["coupler_ramsey_zz"] is coupler_ramsey_zz
+    assert coupler_ramsey_zz.data_type is CouplerRamseyData
+    assert coupler_ramsey_zz.parameters_type is CouplerRamseyParameters
+    assert coupler_ramsey_zz.results_type is CouplerRamseyResults
+    assert coupler_ramsey_zz.two_qubit_gates
 
 
 def pulse_times(sequence, channel):
@@ -168,7 +168,7 @@ def test_acquisition_timing_and_grid(
     fitted = _fit(CouplerRamseyData.load(tmp_path))
     fitted.save(tmp_path)
     reloaded = CouplerRamseyResults.load(tmp_path)
-    assert reloaded.offset_adjustment[PAIR] == pytest.approx(bias + 0.125)
+    assert reloaded.nulling_point[PAIR] == pytest.approx(bias + 0.125)
     _update(reloaded, platform, PAIR)
     _update(reloaded, platform, PAIR)
     assert platform.config(CHANNEL).offset == pytest.approx(bias + 0.125)
@@ -254,7 +254,7 @@ def test_fit_plot_and_serialization(tmp_path):
     assert "flux_channels" not in loaded.params
     assert "flux_offsets" not in loaded.params
     results = _fit(loaded)
-    assert results.offset_adjustment[PAIR] == pytest.approx(0.1)
+    assert results.nulling_point[PAIR] == pytest.approx(0.1)
     assert "flux_offset" not in results.params
     results.save(tmp_path)
     results = CouplerRamseyResults.load(tmp_path)
@@ -269,7 +269,7 @@ def test_fit_plot_and_serialization(tmp_path):
     assert figures[0].layout.shapes[0].x1 == pytest.approx(0.1)
     assert not figures[0].layout.annotations
     assert not figures[1].layout.shapes
-    assert "Offset adjustment" in report
+    assert "Coupler nulling point" in report
     assert "Errors" not in report
     for fit in (None, CouplerRamseyResults({})):
         unfitted_figures, unfitted_report = _plot(loaded, PAIR, fit)
@@ -308,7 +308,7 @@ def test_invalid_fit_is_not_updated(invalid, caplog):
         data.data[PAIR] = data[PAIR][:0]
     results = _fit(data)
     assert PAIR not in results
-    assert not results.offset_adjustment
+    assert not results.nulling_point
     assert "failed" in caplog.text.lower()
 
 
@@ -321,7 +321,7 @@ def test_invalid_pair_does_not_discard_valid_fit(caplog):
     results = _fit(data)
     assert PAIR in results
     assert invalid_pair not in results
-    assert results.offset_adjustment == {PAIR: pytest.approx(0.1)}
+    assert results.nulling_point == {PAIR: pytest.approx(0.1)}
     assert str(invalid_pair) in caplog.text
 
 
@@ -375,12 +375,12 @@ def test_saved_task_pipeline(coupler_platform, tmp_path):
     """Reload acquired data before fitting, updating, and generating figures."""
     task = Task(
         Action(
-            id="coupler_ramsey",
-            operation="coupler_ramsey",
+            id="coupler_ramsey_zz",
+            operation="coupler_ramsey_zz",
             targets=[PAIR],
             parameters=PARAMETERS,
         ),
-        coupler_ramsey,
+        coupler_ramsey_zz,
     )
     platform = coupler_platform
     platform.connect()
@@ -393,7 +393,7 @@ def test_saved_task_pipeline(coupler_platform, tmp_path):
     completed = reloaded.task.run(ExecutionMode.FIT, tmp_path, platform)
     completed.update_platform(platform)
     assert isinstance(Completed.load(tmp_path).results, CouplerRamseyResults)
-    figures, _ = coupler_ramsey.report(completed.data, PAIR, completed.results)
+    figures, _ = coupler_ramsey_zz.report(completed.data, PAIR, completed.results)
     assert len(figures) == 2
 
 
@@ -401,7 +401,7 @@ def test_offline_fit_and_report(coupler_platform, tmp_path):
     """Fit and report saved acquisitions without requiring coupler hardware."""
     output = tmp_path / "coupler"
     with Executor.open(output, targets=[PAIR], platform=coupler_platform) as executor:
-        executor.coupler_ramsey(mode=ExecutionMode.ACQUIRE, **PARAMETERS)
+        executor.coupler_ramsey_zz(mode=ExecutionMode.ACQUIRE, **PARAMETERS)
     runner = CliRunner()
     result = runner.invoke(command, ["report", str(output)], catch_exceptions=False)
     assert result.exit_code == 0
@@ -413,7 +413,7 @@ def test_offline_fit_and_report(coupler_platform, tmp_path):
     result = runner.invoke(command, ["report", str(output)], catch_exceptions=False)
     assert result.exit_code == 0
     assert (output / "index.html").is_file()
-    completed = Completed.load(output / "data" / "coupler_ramsey-0")
+    completed = Completed.load(output / "data" / "coupler_ramsey_zz-0")
     assert isinstance(completed.results, CouplerRamseyResults)
 
 
