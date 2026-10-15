@@ -1,3 +1,3 @@
-from .coupler_ramsey import coupler_ramsey
+from .ramsey_zz import coupler_ramsey_zz
 
-__all__ = ["coupler_ramsey"]
+__all__ = ["coupler_ramsey_zz"]
