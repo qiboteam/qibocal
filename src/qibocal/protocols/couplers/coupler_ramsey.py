@@ -26,6 +26,7 @@ from qibolab import (
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
 from qibocal.protocols.utils import Range, RangeLike, table_dict, table_html, to_range
 
 
@@ -34,7 +35,7 @@ class CouplerRamseyResults(Results):
     """CouplerRamsey outputs."""
 
     offset_adjustment: dict[QubitPairId, float]
-    """Coupler offset adjustment."""
+    """Absolute coupler nulling bias, including the acquisition DC offset."""
 
 
 CouplerRamseyType = np.dtype(
@@ -61,7 +62,7 @@ class CouplerRamseyData(Data):
 
 @dataclass
 class CouplerRamseyParameters(Parameters):
-    """T2Signal runcard inputs."""
+    """Coupler Ramsey runcard inputs."""
 
     delay_range: RangeLike
     """Range of delays between RX(pi/2) pulses in ns."""
@@ -81,35 +82,39 @@ def _acquisition(
     params: CouplerRamseyParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-):
+) -> CouplerRamseyData:
 
     data = CouplerRamseyData()
 
-    coupler_pulse = Pulse(
-        duration=params.delay_sweep[0],
-        amplitude=params.amplitude_coupler_sweep[0],
-        envelope=Rectangular(),
-    )
-    delay = Delay(duration=params.delay_sweep[0])
-
-    readout_pulses: dict[QubitPairId, tuple[PulseLike, PulseLike]] = {}
+    flux_offsets: dict[QubitPairId, float] = {}
+    coupler_pulses: list[PulseLike] = []
+    delays: list[PulseLike] = []
+    control_readout_pulses: dict[QubitPairId, PulseLike] = {}
+    target_readout_pulses: dict[QubitPairId, PulseLike] = {}
     full_sequence = PulseSequence()
+
     for pair in targets:
-        # Get the coupler ID for the current qubit pair
         coupler_id = platform.calibration.two_qubits[pair].coupler
-        # Raise an error if the coupler ID is not found
         if coupler_id is None:
             raise ValueError("Coupler ID should not be None")
 
-        # Get the flux channel for the current coupler ID
         coupler_channel = platform.couplers[coupler_id].flux
         assert coupler_channel is not None, "Coupler channel should not be None"
 
+        flux_offsets[pair] = platform.config(coupler_channel).offset
+
+        coupler_pulse = Pulse(
+            duration=params.delay_sweep[0],
+            amplitude=params.amplitude_coupler_sweep[0],
+            envelope=Rectangular(),
+        )
+        delay = Delay(duration=params.delay_sweep[0])
+        coupler_pulses.append(coupler_pulse)
+        delays.append(delay)
+
         target_qubit_id, control_qubit_id = pair
 
-        # Get the target qubit ntive gates
         target_qubit_natives = platform.natives.single_qubit[target_qubit_id]
-        # Get the control qubit native gates
         control_qubit_natives = platform.natives.single_qubit[control_qubit_id]
 
         target_rx90 = target_qubit_natives.R(np.pi / 2)
@@ -118,46 +123,50 @@ def _acquisition(
 
         control_rx180 = control_qubit_natives.RX()
 
-        # initialize the sequence with the first set of pulses
         seq = target_rx90 + control_rx180
+        preparation_duration = seq.duration
 
+        # Start the biased Ramsey wait only after both preparation pulses finish.
         seq |= (
             PulseSequence([(coupler_channel, coupler_pulse), (target_drive_ch, delay)])
             + target_rx90
         )
 
-        # Create the readout sequence for the target and control qubits
         ro_ch, ro_pulse = platform.natives.single_qubit[target_qubit_id].MZ()[0]
         ro_ch_control, ro_pulse_control = platform.natives.single_qubit[
             control_qubit_id
         ].MZ()[0]
-        # define the readout sequence
-        ro_seq = PulseSequence(
+
+        # Keep the swept delay separate so readout follows the second RX90
+        # for every wait value, even when preparation pulses differ in length.
+        readout_delay = Delay(duration=preparation_duration + target_rx90.duration)
+
+        seq += PulseSequence(
             [
+                (ro_ch, readout_delay),
                 (ro_ch, delay),
-                (ro_ch, Delay(duration=2 * target_rx90.duration)),
                 (ro_ch, ro_pulse),
+                (ro_ch_control, readout_delay),
                 (ro_ch_control, delay),
-                (ro_ch_control, Delay(duration=2 * target_rx90.duration)),
                 (ro_ch_control, ro_pulse_control),
             ]
         )
 
-        # save the readout pulses for the current qubit pair
-        readout_pulses[pair] = (ro_pulse, ro_pulse_control)
+        target_readout_pulses[pair] = ro_pulse
+        control_readout_pulses[pair] = ro_pulse_control
 
-        # Add the partial sequence to the full sequence
-        full_sequence += seq + ro_seq
+        full_sequence += seq
 
+    # Sweep the flux-pulse duration and drive/readout delays together.
     wait_sweeper = Sweeper(
         parameter=Parameter.duration,
         range=params.delay_sweep,
-        pulses=[delay, coupler_pulse],
+        pulses=delays + coupler_pulses,
     )
     amplitude_sweeper = Sweeper(
         parameter=Parameter.amplitude,
         range=params.amplitude_coupler_sweep,
-        pulses=[coupler_pulse],
+        pulses=coupler_pulses,
     )
 
     results = platform.execute(
@@ -169,49 +178,77 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
+    # Amplitude is the outer sweep: flattening varies waits fastest.
     ampl_values = np.array(amplitude_sweeper.values)
     wait_values = np.array(wait_sweeper.values)
     for pair in targets:
-        ro_pulse, ro_pulse_control = readout_pulses[pair]
-        # probs has shape (len(amplitudes), len(waits))
-        probs = np.asarray(results[ro_pulse.id])
-        error = np.sqrt(probs * (1 - probs) / params.nshots)
-        probs_control = np.asarray(results[ro_pulse_control.id])
-        error_control = np.sqrt(probs_control * (1 - probs_control) / params.nshots)
+        t_ro_pulse = target_readout_pulses[pair]
+        c_ro_pulse = control_readout_pulses[pair]
+
+        t_probs = np.asarray(results[t_ro_pulse.id])
+        t_error = np.sqrt(t_probs * (1 - t_probs) / params.nshots)
+
+        c_probs = np.asarray(results[c_ro_pulse.id])
+        c_error = np.sqrt(c_probs * (1 - c_probs) / params.nshots)
+
+        # Store absolute bias here; fitting and updates must not add DC again.
         data.register_qubit(
             CouplerRamseyType,
             pair,
             {
                 "tau": np.tile(wait_values, len(ampl_values)),
-                "amplitude": np.repeat(ampl_values, len(wait_values)),
-                "prob": probs.ravel(),
-                "error": error.ravel(),
-                "prob_control": probs_control.ravel(),
-                "error_control": error_control.ravel(),
+                "amplitude": np.repeat(
+                    ampl_values + flux_offsets[pair], len(wait_values)
+                ),
+                "prob": t_probs.ravel(),
+                "error": t_error.ravel(),
+                "prob_control": c_probs.ravel(),
+                "error_control": c_error.ravel(),
             },
         )
     return data
 
 
 def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
-    offset_adjustment: dict[QubitPairId, list[float]] = {}
+    offset_adjustment: dict[QubitPairId, float] = {}
 
     for pair in data.pairs:
         pair_data = data[pair]
+        # Omitted pairs are treated as failed fits by downstream consumers.
+        if (
+            len(np.unique(pair_data["tau"])) < 2
+            or not all(
+                np.all(np.isfinite(pair_data[name]))
+                for name in ("tau", "amplitude", "prob")
+            )
+            or np.any((pair_data["prob"] < 0) | (pair_data["prob"] > 1))
+        ):
+            log.warning(f"Coupler Ramsey fit failed for pair {pair}: invalid data.")
+            continue
         amplitudes = np.unique(pair_data["amplitude"])
         variances = []
 
         for amp in amplitudes:
             mask = pair_data["amplitude"] == amp
+            if len(np.unique(pair_data["tau"][mask])) < 2:
+                break
             probs = pair_data["prob"][mask]
             variances.append(float(np.var(probs)))
 
+        if len(variances) != len(amplitudes):
+            log.warning(
+                f"Coupler Ramsey fit failed for pair {pair}: insufficient delays."
+            )
+            continue
+
+        # A nulling bias suppresses Ramsey fringes. Minimum variance is only
+        # a heuristic: decoherence or undersampling can also flatten the trace.
         best_idx = int(np.argmin(variances))
         best_amp = float(amplitudes[best_idx])
 
-        offset_adjustment[pair] = [best_amp, 0.0]
+        offset_adjustment[pair] = best_amp
 
-    return CouplerRamseyResults(offset_adjustment=offset_adjustment)
+    return CouplerRamseyResults(offset_adjustment)
 
 
 def _build_heatmap(pair_data, field: str) -> go.Heatmap:
@@ -250,12 +287,10 @@ def _plot(
     fig_control = go.Figure(_build_heatmap(pair_data, "prob_control"))
 
     if fit is not None and target in fit.offset_adjustment:
-        best_amp = fit.offset_adjustment[target][0]
+        best_amp = fit.offset_adjustment[target]
         fig_target.add_vline(
             x=best_amp,
             line={"color": "black", "dash": "dash", "width": 2},
-            annotation_text=f"Offset adjustment: {best_amp:.4f}",
-            annotation_position="right",
         )
 
     fig_target.update_layout(
@@ -276,7 +311,6 @@ def _plot(
                 str(target),
                 ["Offset adjustment [a.u.]"],
                 [fit.offset_adjustment[target]],
-                display_error=True,
             )
         )
 
@@ -286,7 +320,7 @@ def _plot(
 def _update(
     results: CouplerRamseyResults, platform: CalibrationPlatform, pair: QubitPairId
 ):
-    """Update the coupler's flux offset and sweet spot from Ramsey results."""
+    """Update the coupler's flux offset and sweet spot with the nulling point."""
     assert platform.calibration is not None
 
     coupler_id = platform.calibration.two_qubits[pair].coupler
@@ -298,5 +332,5 @@ def _update(
     update.sweetspot(nulling_point, platform, coupler_id)
 
 
-coupler_ramsey = Protocol(_acquisition, _fit, _plot, _update)
+coupler_ramsey = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Ramsey Protocol object."""
