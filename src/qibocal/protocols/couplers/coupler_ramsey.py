@@ -299,4 +299,4 @@ def _update(
 
 
 coupler_ramsey = Protocol(_acquisition, _fit, _plot, _update)
-"""Coupler ramsey zz protocol."""
+"""Ramsey Protocol object."""
