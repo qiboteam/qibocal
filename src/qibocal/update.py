@@ -227,17 +227,27 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
     )
 
 
-def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
-    """Update sweetspot parameter in platform for specific qubit."""
-    if qubit in platform.couplers:
+def sweetspot(
+    sweetspot: float, platform: Platform, qubit: QubitId, coupler: bool = False
+):
+    """Update a qubit's sweetspot, or a coupler's when ``coupler=True``.
+
+    Qubit and coupler IDs may overlap; the namespace is selected explicitly.
+    """
+    if coupler:
         platform.calibration.couplers[qubit].qubit.sweetspot = sweetspot
     else:
         platform.calibration.single_qubits[qubit].qubit.sweetspot = sweetspot
 
 
-def flux_offset(offset: float, platform: Platform, qubit: QubitId):
-    """Update flux offset parameter in platform for specific qubit."""
-    if qubit in platform.couplers:
+def flux_offset(
+    offset: float, platform: Platform, qubit: QubitId, coupler: bool = False
+):
+    """Update a qubit's flux offset, or a coupler's when ``coupler=True``.
+
+    Qubit and coupler IDs may overlap; the namespace is selected explicitly.
+    """
+    if coupler:
         platform.update({f"configs.{platform.couplers[qubit].flux}.offset": offset})
     else:
         platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})

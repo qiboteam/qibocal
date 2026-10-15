@@ -29,12 +29,14 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import Range, RangeLike, table_dict, table_html, to_range
 
+__all__ = ["coupler_ramsey_zz"]
+
 
 @dataclass
 class CouplerRamseyResults(Results):
     """CouplerRamsey outputs."""
 
-    offset_adjustment: dict[QubitPairId, float]
+    nulling_point: dict[QubitPairId, float]
     """Absolute coupler nulling bias, including the acquisition DC offset."""
 
 
@@ -210,7 +212,7 @@ def _acquisition(
 
 
 def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
-    offset_adjustment: dict[QubitPairId, float] = {}
+    nulling_point: dict[QubitPairId, float] = {}
 
     for pair in data.pairs:
         pair_data = data[pair]
@@ -246,9 +248,9 @@ def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
         best_idx = int(np.argmin(variances))
         best_amp = float(amplitudes[best_idx])
 
-        offset_adjustment[pair] = best_amp
+        nulling_point[pair] = best_amp
 
-    return CouplerRamseyResults(offset_adjustment)
+    return CouplerRamseyResults(nulling_point)
 
 
 def _build_heatmap(pair_data, field: str) -> go.Heatmap:
@@ -286,8 +288,8 @@ def _plot(
     fig_target = go.Figure(_build_heatmap(pair_data, "prob"))
     fig_control = go.Figure(_build_heatmap(pair_data, "prob_control"))
 
-    if fit is not None and target in fit.offset_adjustment:
-        best_amp = fit.offset_adjustment[target]
+    if fit is not None and target in fit.nulling_point:
+        best_amp = fit.nulling_point[target]
         fig_target.add_vline(
             x=best_amp,
             line={"color": "black", "dash": "dash", "width": 2},
@@ -295,22 +297,22 @@ def _plot(
 
     fig_target.update_layout(
         yaxis_title="Time [ns]",
-        xaxis_title="Amplitude [a.u.]",
+        xaxis_title="Coupler Offset [a.u.]",
         title="Target qubit",
     )
     fig_control.update_layout(
         yaxis_title="Time [ns]",
-        xaxis_title="Amplitude [a.u.]",
+        xaxis_title="Coupler Offset [a.u.]",
         title="Control qubit",
     )
 
     fitting_report = ""
-    if fit is not None and target in fit.offset_adjustment:
+    if fit is not None and target in fit.nulling_point:
         fitting_report = table_html(
             table_dict(
                 str(target),
-                ["Offset adjustment [a.u.]"],
-                [fit.offset_adjustment[target]],
+                ["Coupler nulling point [a.u.]"],
+                [fit.nulling_point[target]],
             )
         )
 
@@ -327,10 +329,10 @@ def _update(
     if coupler_id is None:
         raise ValueError("Coupler ID should not be None")
 
-    nulling_point = results.offset_adjustment[pair]
-    update.flux_offset(nulling_point, platform, coupler_id)
-    update.sweetspot(nulling_point, platform, coupler_id)
+    nulling_point = results.nulling_point[pair]
+    update.flux_offset(nulling_point, platform, coupler_id, coupler=True)
+    update.sweetspot(nulling_point, platform, coupler_id, coupler=True)
 
 
-coupler_ramsey = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""Ramsey Protocol object."""
+coupler_ramsey_zz = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""Ramsey ZZ Protocol for coupler nulling point calibration."""
