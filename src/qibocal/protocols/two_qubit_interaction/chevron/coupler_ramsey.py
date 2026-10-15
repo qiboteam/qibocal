@@ -17,14 +17,16 @@ from qibolab import (
     Delay,
     Parameter,
     Pulse,
+    PulseLike,
     PulseSequence,
     Rectangular,
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import Range, RangeLike, table_dict, table_html, to_range
 
 
 @dataclass
@@ -41,6 +43,8 @@ CouplerRamseyType = np.dtype(
         ("amplitude", np.float64),
         ("prob", np.float64),
         ("error", np.float64),
+        ("prob_control", np.float64),
+        ("error_control", np.float64),
     ]
 )
 
@@ -59,18 +63,18 @@ class CouplerRamseyData(Data):
 class CouplerRamseyParameters(Parameters):
     """T2Signal runcard inputs."""
 
-    delay_between_pulses_start: int
-    """Initial delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_end: int
-    """Final delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_step: int
-    """Step delay between RX(pi/2) pulses in ns."""
-    amplitude_coupler_min: float
-    """Amplitude coupler minimum."""
-    amplitude_coupler_max: float
-    """Amplitude coupler maximum."""
-    amplitude_coupler_step: float
-    """Amplitude coupler step."""
+    delay_range: RangeLike
+    """Range of delays between RX(pi/2) pulses in ns."""
+    amplitude_coupler_range: RangeLike
+    """Range of coupler amplitudes."""
+
+    @property
+    def delay_sweep(self) -> Range:
+        return to_range(self.delay_range)
+
+    @property
+    def amplitude_coupler_sweep(self) -> Range:
+        return to_range(self.amplitude_coupler_range)
 
 
 def _acquisition(
@@ -78,85 +82,114 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ):
-    waits = np.arange(
-        params.delay_between_pulses_start,
-        params.delay_between_pulses_end,
-        params.delay_between_pulses_step,
-    )
-    amplitudes = np.arange(
-        params.amplitude_coupler_min,
-        params.amplitude_coupler_max,
-        params.amplitude_coupler_step,
-    )
 
     data = CouplerRamseyData()
-    sequences_dict: dict[float, PulseSequence] = {}
-    for w in waits:
-        sequence = PulseSequence()
 
-        coupler_pulse = Pulse(duration=w, amplitude=0, envelope=Rectangular())
-        delay = Delay(duration=w)
+    coupler_pulse = Pulse(
+        duration=params.delay_sweep[0],
+        amplitude=params.amplitude_coupler_sweep[0],
+        envelope=Rectangular(),
+    )
+    delay = Delay(duration=params.delay_sweep[0])
 
-        amplitude_sweeper = Sweeper(
-            parameter=Parameter.amplitude,
-            values=amplitudes,
-            pulses=[coupler_pulse],
+    readout_pulses: dict[QubitPairId, tuple[PulseLike, PulseLike]] = {}
+    full_sequence = PulseSequence()
+    for pair in targets:
+        # Get the coupler ID for the current qubit pair
+        coupler_id = platform.calibration.two_qubits[pair].coupler
+        # Raise an error if the coupler ID is not found
+        if coupler_id is None:
+            raise ValueError("Coupler ID should not be None")
+
+        # Get the flux channel for the current coupler ID
+        coupler_channel = platform.couplers[coupler_id].flux
+        assert coupler_channel is not None, "Coupler channel should not be None"
+
+        target_qubit_id, control_qubit_id = pair
+
+        # Get the target qubit ntive gates
+        target_qubit_natives = platform.natives.single_qubit[target_qubit_id]
+        # Get the control qubit native gates
+        control_qubit_natives = platform.natives.single_qubit[control_qubit_id]
+
+        target_rx90 = target_qubit_natives.R(np.pi / 2)
+        target_drive_ch = platform.qubits[target_qubit_id].drive
+        assert target_drive_ch is not None, "Target drive channel should not be None"
+
+        control_rx180 = control_qubit_natives.RX()
+
+        # initialize the sequence with the first set of pulses
+        seq = target_rx90 + control_rx180
+
+        seq |= (
+            PulseSequence([(coupler_channel, coupler_pulse), (target_drive_ch, delay)])
+            + target_rx90
         )
 
-        for pair in targets:
-            coupler_channel = platform.couplers[
-                platform.calibration.two_qubits[pair].coupler
-            ].flux
-            target_qubit_id, control_qubit_id = pair
-            target_qubit = platform.qubits[target_qubit_id]
-            rx90 = platform.natives.single_qubit[target_qubit_id].R(np.pi / 2)
-
-            seq = PulseSequence()
-            seq += rx90
-            seq |= [
-                (coupler_channel, coupler_pulse),
-                (target_qubit.acquisition, delay),
-                (target_qubit.drive, delay),
+        # Create the readout sequence for the target and control qubits
+        ro_ch, ro_pulse = platform.natives.single_qubit[target_qubit_id].MZ()[0]
+        ro_ch_control, ro_pulse_control = platform.natives.single_qubit[
+            control_qubit_id
+        ].MZ()[0]
+        # define the readout sequence
+        ro_seq = PulseSequence(
+            [
+                (ro_ch, delay),
+                (ro_ch, Delay(duration=2 * target_rx90.duration)),
+                (ro_ch, ro_pulse),
+                (ro_ch_control, delay),
+                (ro_ch_control, Delay(duration=2 * target_rx90.duration)),
+                (ro_ch_control, ro_pulse_control),
             ]
-            seq += (
-                rx90 | platform.natives.single_qubit[target_qubit_id].MZ()
-            ).align_to_delays()
+        )
 
-            seq += platform.natives.single_qubit[control_qubit_id].RX()
-            # Add the partial sequence to the full sequence
-            sequence += seq
+        # save the readout pulses for the current qubit pair
+        readout_pulses[pair] = (ro_pulse, ro_pulse_control)
 
-        sequences_dict[w] = sequence
+        # Add the partial sequence to the full sequence
+        full_sequence += seq + ro_seq
+
+    wait_sweeper = Sweeper(
+        parameter=Parameter.duration,
+        range=params.delay_sweep,
+        pulses=[delay, coupler_pulse],
+    )
+    amplitude_sweeper = Sweeper(
+        parameter=Parameter.amplitude,
+        range=params.amplitude_coupler_sweep,
+        pulses=[coupler_pulse],
+    )
 
     results = platform.execute(
-        sequences=[sequence],
-        sweepers=[[amplitude_sweeper]],
+        sequences=[full_sequence],
+        sweepers=[[amplitude_sweeper], [wait_sweeper]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for w in waits:
-        for pair in targets:
-            target_qubit_id, control_qubit_id = pair
-            ro_pulse = list(
-                sequence.channel(platform.qubits[target_qubit_id].acquisition)
-            )[-1]
-            prob_1d = results[ro_pulse.id]
-
-            for amplitude, prob in zip(amplitudes, prob_1d):
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    CouplerRamseyType,
-                    pair,
-                    {
-                        "tau": np.array([w]),
-                        "amplitude": np.array([amplitude]),
-                        "prob": np.array([prob]),
-                        "error": np.array([error]),
-                    },
-                )
+    ampl_values = np.array(amplitude_sweeper.values)
+    wait_values = np.array(wait_sweeper.values)
+    for pair in targets:
+        ro_pulse, ro_pulse_control = readout_pulses[pair]
+        # probs has shape (len(amplitudes), len(waits))
+        probs = np.asarray(results[ro_pulse.id])
+        error = np.sqrt(probs * (1 - probs) / params.nshots)
+        probs_control = np.asarray(results[ro_pulse_control.id])
+        error_control = np.sqrt(probs_control * (1 - probs_control) / params.nshots)
+        data.register_qubit(
+            CouplerRamseyType,
+            pair,
+            {
+                "tau": np.tile(wait_values, len(ampl_values)),
+                "amplitude": np.repeat(ampl_values, len(wait_values)),
+                "prob": probs.ravel(),
+                "error": error.ravel(),
+                "prob_control": probs_control.ravel(),
+                "error_control": error_control.ravel(),
+            },
+        )
     return data
 
 
@@ -181,12 +214,8 @@ def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
     return CouplerRamseyResults(offset_adjustment=offset_adjustment)
 
 
-def _plot(
-    data: CouplerRamseyData,
-    target: QubitPairId,
-    fit: CouplerRamseyResults | None = None,
-):
-    pair_data = data[target]
+def _build_heatmap(pair_data, field: str) -> go.Heatmap:
+    """Build a 2D heatmap of ``field`` over (waits, amplitudes)."""
     amplitudes = np.unique(pair_data["amplitude"])
     waits = np.unique(pair_data["tau"])
 
@@ -198,31 +227,46 @@ def _plot(
     for row in pair_data:
         i = amp_index[row["amplitude"]]
         j = tau_index[row["tau"]]
-        z[j, i] = row["prob"]
+        z[j, i] = row[field]
 
-    fig = go.Figure(
-        go.Heatmap(
-            x=amplitudes,
-            y=waits,
-            z=z,
-            colorscale="viridis",
-            zmid=0.5,
-            colorbar=dict(title={"text": "Excited State Probability", "side": "right"}),
-        )
+    return go.Heatmap(
+        x=amplitudes,
+        y=waits,
+        z=z,
+        colorscale="viridis",
+        zmid=0.5,
+        colorbar={"title": {"text": "Excited State Probability", "side": "right"}},
     )
+
+
+def _plot(
+    data: CouplerRamseyData,
+    target: QubitPairId,
+    fit: CouplerRamseyResults | None = None,
+):
+    pair_data = data[target]
+
+    fig_target = go.Figure(_build_heatmap(pair_data, "prob"))
+    fig_control = go.Figure(_build_heatmap(pair_data, "prob_control"))
 
     if fit is not None and target in fit.offset_adjustment:
         best_amp = fit.offset_adjustment[target][0]
-        fig.add_vline(
+        fig_target.add_vline(
             x=best_amp,
-            line=dict(color="black", dash="dash", width=2),
+            line={"color": "black", "dash": "dash", "width": 2},
             annotation_text=f"Offset adjustment: {best_amp:.4f}",
             annotation_position="right",
         )
 
-    fig.update_layout(
+    fig_target.update_layout(
         yaxis_title="Time [ns]",
         xaxis_title="Amplitude [a.u.]",
+        title="Target qubit",
+    )
+    fig_control.update_layout(
+        yaxis_title="Time [ns]",
+        xaxis_title="Amplitude [a.u.]",
+        title="Control qubit",
     )
 
     fitting_report = ""
@@ -236,13 +280,22 @@ def _plot(
             )
         )
 
-    return [fig], fitting_report
+    return [fig_target, fig_control], fitting_report
 
 
 def _update(
     results: CouplerRamseyResults, platform: CalibrationPlatform, pair: QubitPairId
 ):
-    pass
+    """Update the coupler's flux offset and sweet spot from Ramsey results."""
+    assert platform.calibration is not None
+
+    coupler_id = platform.calibration.two_qubits[pair].coupler
+    if coupler_id is None:
+        raise ValueError("Coupler ID should not be None")
+
+    nulling_point = results.offset_adjustment[pair]
+    update.flux_offset(nulling_point, platform, coupler_id)
+    update.sweetspot(nulling_point, platform, coupler_id)
 
 
 coupler_ramsey = Protocol(_acquisition, _fit, _plot, _update)

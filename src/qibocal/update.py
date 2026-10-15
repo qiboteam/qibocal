@@ -229,12 +229,18 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     """Update sweetspot parameter in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].qubit.sweetspot = sweetspot
+    if qubit in platform.couplers:
+        platform.calibration.couplers[qubit].qubit.sweetspot = sweetspot
+    else:
+        platform.calibration.single_qubits[qubit].qubit.sweetspot = sweetspot
 
 
 def flux_offset(offset: float, platform: Platform, qubit: QubitId):
     """Update flux offset parameter in platform for specific qubit."""
-    platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})
+    if qubit in platform.couplers:
+        platform.update({f"configs.{platform.couplers[qubit].flux}.offset": offset})
+    else:
+        platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})
 
 
 def frequency_12_transition(frequency: float, platform: Platform, qubit: QubitId):
