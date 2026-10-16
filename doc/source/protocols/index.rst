@@ -25,6 +25,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t2_echo/t2_echo
     zz_interaction/zz_interaction
     couplers/ramsey_zz
+    couplers/zz
     cpmg/cpmg
     flux/single
     flux/crosstalk
