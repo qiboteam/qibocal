@@ -22,11 +22,13 @@ References:
       with a Tunable Coupler", PRX 11, 021058 (2021).
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.constants as const
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
@@ -34,144 +36,75 @@ from qibolab import (
     Delay,
     Parameter,
     Pulse,
+    PulseLike,
+    PulseSequence,
     Rectangular,
     Sweeper,
 )
-from scipy.optimize import least_squares
-from scipy.signal import find_peaks
 
-from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
+from qibocal.auto.operation import Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.ramsey.acquisition import single_qubit_ramsey_sequence
-from qibocal.protocols.utils import (
-    RangeLike,
-    table_dict,
-    table_html,
-    to_range,
+from qibocal.protocols.couplers.jazz import (
+    CouplerJAZZData,
+    CouplerJAZZParameters,
+    CouplerJAZZResults,
+    CouplerZZType,
 )
+from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
+from qibocal.protocols.ramsey.processing import ramsey_fit as ramsey_func
 
 __all__ = ["coupler_zz"]
 
 SETUPS = ["I", "X"]
 """Control qubit preparations: identity (ground state) and X (excited state)."""
 
-HZ_TO_KHZ = 1e-3
-"""Conversion factor from Hz to kHz."""
-
-
-def _sweep_values(spec: RangeLike, center: float = 0) -> npt.NDArray:
-    """Expand a range specification, retaining the endpoint for linspace variants."""
-    start, stop, step = to_range(spec, center=center)
-    if not np.all(np.isfinite([start, stop, step])) or step <= 0 or stop <= start:
-        raise ValueError(
-            "Sweep ranges require an increasing interval and positive step."
-        )
-    if isinstance(spec[0], str) and spec[0].startswith("lin"):
-        return np.linspace(start, stop, spec[-1])
-    return np.arange(start, stop, step)
-
 
 @dataclass
-class CouplerZZParameters(Parameters):
+class CouplerZZParameters(CouplerJAZZParameters):
     """CouplerZZ runcard inputs."""
 
-    delay_range: RangeLike
-    """Ramsey wait and coupler pulse duration sweep [ns]."""
-    amplitude_range: RangeLike
-    """Coupler flux-pulse amplitude sweep [a.u.], relative to the idle bias."""
-    detuning: float = 1e6
+    detuning: float | None = None
     """Artificial detuning of the target drive frequency [Hz], to produce
     Ramsey fringes."""
 
 
 @dataclass
-class CouplerZZResults(Results):
+class CouplerZZResults(CouplerJAZZResults):
     """CouplerZZ outputs."""
 
-    amplitudes: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    """Coupler flux-pulse amplitudes at which ZZ was evaluated."""
     zz: dict[QubitPairId, list[float]] = field(default_factory=dict)
     """ZZ coupling [Hz] for each pulse amplitude (NaN where fitting failed)."""
-    zz_free_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
-    """Pulse amplitude minimizing fitted |ZZ| within the measured interval.
-
-    This is a minimum, not necessarily a zero. No extrapolation is performed."""
-    residual_zz: dict[QubitPairId, float] = field(default_factory=dict)
-    """Residual ZZ [Hz] at the amplitude closest to the ZZ-free point."""
-    zz_error: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    """One-sigma ZZ fit uncertainties [Hz], NaN for failed fits."""
-    minimum_zz: dict[QubitPairId, float] = field(default_factory=dict)
-    """ZZ [Hz] predicted at the fitted minimum."""
-    polynomial: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    """Local polynomial coefficients in ascending powers of pulse amplitude."""
-    fit_amplitudes: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    """Interval over which the local polynomial is valid."""
-    fitted_parameters: dict[QubitPairId, dict[str, list[list[float]]]] = field(
+    fitting_params: dict[QubitPairId, dict[float, dict[str, list[float]]]] = field(
         default_factory=dict
     )
-    """Per-amplitude [offset, cosine, sine, frequency Hz, decay 1/ns, time origin ns]."""
+    """Fitting parameters for each qubit pair."""
 
     def __contains__(self, pair: QubitPairId) -> bool:
         return pair in self.zz
 
 
-CouplerZZType = np.dtype(
-    [
-        ("wait", np.float64),
-        ("amplitude", np.float64),
-        ("prob", np.float64),
-    ]
-)
-"""Custom dtype for coupler ZZ acquisition."""
-
-
 @dataclass
-class CouplerZZData(Data):
+class CouplerZZData(CouplerJAZZData):
     """CouplerZZ acquisition outputs."""
 
-    detuning: float = 1e6
+    detuning: float | None = None
     """Artificial detuning of the target drive frequency [Hz]."""
-    flux_offsets: dict[QubitPairId, float] = field(default_factory=dict)
-    """Acquisition DC coupler offsets, for absolute-bias calibration."""
-    data: dict[tuple[QubitPairId, str], npt.NDArray[CouplerZZType]] = field(
+    data: dict[tuple[QubitId, QubitId, str], npt.NDArray[CouplerZZType]] = field(
         default_factory=dict
     )
-    """Raw data acquired, keyed by (pair, control setup)."""
-
-    @property
-    def frequency_scale(self) -> float:
-        """Convert the unsigned conditional fringe difference to physical ZZ."""
-        return -float(np.sign(self.detuning))
-
-    @property
-    def pairs(self) -> list[QubitPairId]:
-        """Qubit pairs in the data (keys are (pair, setup) tuples)."""
-        return list({key[0] for key in self.data})
-
-    def waits(self, pair: QubitPairId) -> npt.NDArray:
-        """Ramsey wait times for a pair."""
-        return np.unique(
-            np.concatenate(
-                [
-                    records["wait"]
-                    for (key, _), records in self.data.items()
-                    if key == pair
-                ]
-            )
-        )
+    """Acquired data for each pulse amplitude."""
 
     def amplitudes(self, pair: QubitPairId) -> npt.NDArray:
-        """Coupler flux-pulse amplitudes for a pair."""
-        return np.unique(
-            np.concatenate(
-                [
-                    records["amplitude"]
-                    for (key, _), records in self.data.items()
-                    if key == pair
-                ]
-            )
-        )
+        key = pair + ("X",)
+        return np.unique(self.data[key]["amplitude"])
+
+    def return_data_per_amplitude(
+        self, pair: QubitPairId, amp: float, setup: str
+    ) -> npt.NDArray[CouplerZZType]:
+        return self.data[pair + (setup,)][
+            np.array(self.data[pair + (setup,)])["amplitude"] == amp
+        ]
 
 
 def _acquisition(
@@ -191,359 +124,173 @@ def _acquisition(
     the outer sweeper varies the pulse amplitude, leaving the DC bias unchanged.
     """
 
-    if len(targets) != 1:
-        raise ValueError("coupler_zz requires exactly one qubit pair.")
-    if (
-        params.detuning is None
-        or not np.isfinite(params.detuning)
-        or params.detuning == 0
-    ):
-        raise ValueError("A finite nonzero detuning is required to resolve ZZ.")
-    pair = targets[0]
-    target_qubit, control_qubit = pair
-    if target_qubit == control_qubit:
-        raise ValueError("Target and control must be different qubits.")
-
-    coupler_id = platform.calibration.two_qubits[pair].coupler
-    if coupler_id is None:
-        raise ValueError("Coupler ID should not be None.")
-    coupler_channel = platform.couplers[coupler_id].flux
-    if coupler_channel is None:
-        raise ValueError("Coupler flux channel should not be None.")
-    waits = _sweep_values(params.delay_range)
-    amplitudes = _sweep_values(params.amplitude_range)
-    if waits[0] <= 0:
-        raise ValueError("Ramsey waits and coupler pulse durations must be positive.")
-    if len(waits) < 8:
-        raise ValueError("At least eight Ramsey waits are required for joint fitting.")
-    if abs(params.detuning) >= 0.5e9 / np.max(np.diff(waits)):
-        raise ValueError("Detuning must be below the wait sweep's Nyquist frequency.")
-    data = CouplerZZData(
-        detuning=params.detuning,
-        flux_offsets={pair: platform.config(coupler_channel).offset},
+    coupler_pulse = Pulse(
+        duration=params.delay_range[0],
+        amplitude=params._coupler_range[0],
+        envelope=Rectangular(),
     )
+
+    delay = Delay(duration=params.delay_range[0])
 
     updates = []
-    if params.detuning is not None:
-        drive_channel = platform.qubits[target_qubit].drive
-        f0 = platform.config(drive_channel).frequency
-        updates.append({drive_channel: {"frequency": f0 + params.detuning}})
+    coupler_offsets: dict[QubitPairId, float] = {}
+    sequences: dict[str, PulseSequence] = defaultdict(PulseSequence)
+    target_ro_pulses: dict[str, dict[QubitPairId, PulseLike]] = defaultdict(dict)
+    spectator_ro_pulses: dict[str, dict[QubitPairId, PulseLike]] = defaultdict(dict)
+    for s in SETUPS:
+        for pair in targets:
+            target_qubit, spectator_qubit = pair
 
-    for setup in SETUPS:
-        sequence, ro_sequence, delays = single_qubit_ramsey_sequence(
-            platform=platform, target=target_qubit, wait=waits[0]
-        )
-        rx90_duration = (
-            platform.natives.single_qubit[target_qubit].R(theta=np.pi / 2).duration
-        )
-        coupler_pulse = Pulse(
-            duration=waits[0],
-            amplitude=amplitudes[0],
-            envelope=Rectangular(),
-        )
-        sequence.extend(
-            [
-                (coupler_channel, Delay(duration=rx90_duration)),
-                (coupler_channel, coupler_pulse),
+            target_natives = platform.natives.single_qubit[target_qubit]
+            target_rx90_channel, target_rx90_pulse = target_natives.R(theta=np.pi / 2)[
+                0
             ]
-        )
-        ramsey_sequence = sequence + ro_sequence
-        if setup == "X":
-            # prepare the control qubit in the excited state
-            experiment_sequence = (
-                platform.natives.single_qubit[control_qubit].RX() | ramsey_sequence
+            target_ro_channel, target_ro_pulse = target_natives.MZ()[0]
+
+            spectator_natives = platform.natives.single_qubit[spectator_qubit]
+            spectator_rx_channel, spectator_rx_pulse = spectator_natives.RX()[0]
+            spectator_ro_channel, spectator_ro_pulse = spectator_natives.MZ()[0]
+
+            target_ro_pulses[s][pair] = target_ro_pulse
+            spectator_ro_pulses[s][pair] = spectator_ro_pulse
+
+            if params.detuning is not None:
+                f0 = platform.config(target_rx90_channel).frequency
+                updates.append(
+                    {target_rx90_channel: {"frequency": f0 + params.detuning}}
+                )
+
+            coupler_id = platform.calibration.two_qubits[pair].coupler
+            if coupler_id is None:
+                raise ValueError("Coupler ID should not be None")
+
+            coupler_channel = platform.couplers[coupler_id].flux
+            assert coupler_channel is not None, "Coupler channel should not be None"
+
+            if pair not in coupler_offsets:
+                coupler_offsets[pair] = platform.config(coupler_channel).offset
+
+            seq = PulseSequence([(target_rx90_channel, target_rx90_pulse)])
+            if s == "X":
+                seq |= PulseSequence([(spectator_rx_channel, spectator_rx_pulse)])
+
+            waiting_seq = PulseSequence(
+                [
+                    (target_ro_channel, delay),
+                    (spectator_ro_channel, delay),
+                    (target_rx90_channel, delay),
+                    (coupler_channel, coupler_pulse),
+                ]
             )
-        else:
-            experiment_sequence = ramsey_sequence
 
-        wait_sweeper = Sweeper(
-            parameter=Parameter.duration,
-            values=waits,
-            pulses=[*delays, coupler_pulse],
-        )
-        amplitude_sweeper = Sweeper(
-            parameter=Parameter.amplitude,
-            values=amplitudes,
-            pulses=[coupler_pulse],
-        )
-        results = platform.execute(
-            [experiment_sequence],
-            [[amplitude_sweeper], [wait_sweeper]],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            updates=updates,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        )
+            ro_seq = target_natives.R(theta=np.pi / 2) | PulseSequence(
+                [
+                    (target_ro_channel, target_ro_pulse),
+                    (spectator_ro_channel, spectator_ro_pulse),
+                ]
+            )
 
-        ro_pulse = list(
-            experiment_sequence.channel(platform.qubits[target_qubit].acquisition)
-        )[-1]
-        # probs has shape (len(amplitudes), len(waits))
-        probs = np.asarray(results[ro_pulse.id])
-        waits = wait_sweeper.values
-        amplitudes = amplitude_sweeper.values
+            sequences[s] += seq | waiting_seq | ro_seq
 
-        data.register_qubit(
-            CouplerZZType,
-            (pair, setup),
-            {
-                "wait": np.tile(waits, len(amplitudes)),
-                "amplitude": np.repeat(amplitudes, len(waits)),
-                "prob": probs.ravel(),
-            },
-        )
+    wait_sweeper = Sweeper(
+        parameter=Parameter.duration,
+        range=params.delay_range,
+        pulses=[delay, coupler_pulse],
+    )
+    amplitude_sweeper = Sweeper(
+        parameter=Parameter.amplitude,
+        range=params._coupler_range,
+        pulses=[coupler_pulse],
+    )
+
+    results = platform.execute(
+        list(sequences.values()),
+        [[amplitude_sweeper], [wait_sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        updates=updates,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
+    data = CouplerZZData(
+        detuning=params.detuning,
+        couplers_offsets=coupler_offsets,
+    )
+
+    amplitudes = np.asarray(amplitude_sweeper.values)
+    delays = np.asarray(wait_sweeper.values)
+
+    for s in SETUPS:
+        for pair in targets:
+            t_ro_pulse = target_ro_pulses[s][pair]
+            s_ro_pulse = spectator_ro_pulses[s][pair]
+
+            t_probs = np.asarray(results[t_ro_pulse.id])
+            t_error = np.sqrt(t_probs * (1 - t_probs) / params.nshots)
+
+            s_probs = np.asarray(results[s_ro_pulse.id])
+            s_error = np.sqrt(s_probs * (1 - s_probs) / params.nshots)
+
+            # Store absolute bias here; fitting and updates must not add DC again.
+            data.register_qubit(
+                CouplerZZType,
+                (*pair, s),
+                {
+                    "delay": np.tile(delays, len(amplitudes)),
+                    "amplitude": np.repeat(
+                        amplitudes + coupler_offsets[pair], len(delays)
+                    ),
+                    "prob": t_probs.ravel(),
+                    "error": t_error.ravel(),
+                    "prob_control": s_probs.ravel(),
+                    "error_control": s_error.ravel(),
+                },
+            )
 
     return data
-
-
-def _conditional_fit(
-    waits: npt.NDArray, probs: npt.NDArray, detuning: float
-) -> tuple[float, float, list[list[float]]]:
-    """Joint damped-fringe fit, with a shared target dephasing rate.
-
-    Variable projection solves each trace's offset and two quadratures exactly
-    at every nonlinear step. Multiple spectral seeds avoid harmonic/local minima.
-    Frequencies are positive; their physical branch is set by the acquisition.
-    """
-    waits = np.asarray(waits, dtype=float)
-    probs = np.asarray(probs, dtype=float)
-    if (
-        waits.ndim != 1
-        or len(waits) < 8
-        or probs.shape != (2, len(waits))
-        or not np.all(np.isfinite(waits))
-        or not np.all(np.isfinite(probs))
-        or np.any((probs < 0) | (probs > 1))
-        or np.any(np.diff(waits) <= 0)
-        or np.any(np.ptp(probs, axis=1) < 1e-6)
-    ):
-        raise ValueError(
-            "Need two finite, nonconstant probability traces and >=8 waits."
-        )
-    span = np.ptp(waits)
-    x = (waits - waits[0]) / span
-    # Conservative band also applies to nonuniform sampling.
-    upper_frequency = span / (2 * np.max(np.diff(waits)))
-    grid = np.linspace(0.05, upper_frequency * 0.999, max(64, 8 * len(waits)))
-    if upper_frequency <= 0.1:
-        raise ValueError("Insufficient sampling bandwidth.")
-
-    def design(frequency, decay):
-        angle = 2 * np.pi * frequency * x
-        envelope = np.exp(-decay * x)
-        return np.column_stack(
-            (np.ones_like(x), envelope * np.cos(angle), envelope * np.sin(angle))
-        )
-
-    def residual(parameters):
-        f0, f1, decay = parameters
-        residuals = []
-        for frequency, trace in zip((f0, f1), probs):
-            matrix = design(frequency, decay)
-            coefficients = np.linalg.lstsq(matrix, trace, rcond=None)[0]
-            residuals.append(matrix @ coefficients - trace)
-        return np.concatenate(residuals)
-
-    seeds = []
-    for trace in probs:
-        power = np.array(
-            [
-                np.sum(
-                    (
-                        trace
-                        - design(frequency, 0)
-                        @ np.linalg.lstsq(design(frequency, 0), trace, rcond=None)[0]
-                    )
-                    ** 2
-                )
-                for frequency in grid
-            ]
-        )
-        peaks, _ = find_peaks(-power)
-        candidates = list(peaks[np.argsort(power[peaks])[:3]])
-        candidates.append(int(np.argmin(power)))
-        frequencies = [grid[index] for index in dict.fromkeys(candidates)]
-        carrier = abs(detuning) * span * 1e-9
-        if 0.01 < carrier < upper_frequency:
-            frequencies.append(carrier)
-        seeds.append(frequencies)
-
-    best = None
-    for f0 in seeds[0]:
-        for f1 in seeds[1]:
-            result = least_squares(
-                residual,
-                [f0, f1, 0.2],
-                bounds=([0.001, 0.001, 0], [upper_frequency, upper_frequency, 20]),
-                max_nfev=1000,
-                ftol=1e-10,
-                xtol=1e-10,
-                gtol=1e-10,
-            )
-            if result.success and (best is None or result.cost < best.cost):
-                best = result
-    if best is None:
-        raise RuntimeError("Joint conditional Ramsey fit did not converge.")
-    f0, f1, decay = best.x
-    if (
-        min(f0, f1) < 0.1
-        or max(f0, f1) > 0.99 * upper_frequency
-        or decay > 19.9
-        or np.linalg.matrix_rank(best.jac) < 3
-    ):
-        raise ValueError("Unresolved, aliased or ill-conditioned conditional fringes.")
-    parameters = []
-    noise = np.sqrt(2 * best.cost / (probs.size - 9))
-    for frequency, trace in zip((f0, f1), probs):
-        offset, cosine, sine = np.linalg.lstsq(
-            design(frequency, decay), trace, rcond=None
-        )[0]
-        oscillation = design(frequency, decay)[:, 1:] @ [cosine, sine]
-        if (
-            np.hypot(cosine, sine) < 1e-4
-            or np.linalg.norm(oscillation - np.mean(oscillation)) < 5 * noise
-        ):
-            raise ValueError("Conditional Ramsey contrast is below the noise floor.")
-        parameters.append(
-            [
-                float(offset),
-                float(cosine),
-                float(sine),
-                float(frequency / span * 1e9),
-                float(decay / span),
-                float(waits[0]),
-            ]
-        )
-    covariance = np.linalg.inv(best.jac.T @ best.jac) * noise**2
-    if np.any(np.sqrt(np.maximum(0, np.diag(covariance)[:2])) > 0.5 * best.x[:2]):
-        raise ValueError("Conditional frequencies are not statistically resolved.")
-    difference = np.array([-1.0, 1.0, 0.0])
-    error = np.sqrt(max(0, difference @ covariance @ difference)) / span * 1e9
-    return float((f1 - f0) / span * 1e9), float(error), parameters
-
-
-def _zero_crossing(amplitudes: npt.NDArray, zz: npt.NDArray) -> float | None:
-    """Linearly interpolate the first zero crossing of ZZ versus pulse amplitude."""
-    signs = np.sign(zz)
-    for i in range(len(zz) - 1):
-        if not np.isfinite(zz[i]):
-            continue
-        if signs[i] == 0:
-            return float(amplitudes[i])
-        if signs[i] * signs[i + 1] < 0:
-            x0, x1 = amplitudes[i], amplitudes[i + 1]
-            y0, y1 = zz[i], zz[i + 1]
-            return float(x0 - y0 * (x1 - x0) / (y1 - y0))
-    if len(signs) and signs[-1] == 0:
-        return float(amplitudes[-1])
-    return None
-
-
-def _minimum(
-    amplitudes: npt.NDArray, zz: npt.NDArray, errors: npt.NDArray
-) -> tuple[float, float, list[float], list[float]]:
-    """Minimize a local ZZ polynomial without extrapolating or bridging failed fits."""
-    index = int(np.nanargmin(np.abs(zz)))
-    left = right = index
-    while left > 0 and np.isfinite(zz[left - 1]) and index - left < 2:
-        left -= 1
-    while right + 1 < len(zz) and np.isfinite(zz[right + 1]) and right - index < 2:
-        right += 1
-    x, y = amplitudes[left : right + 1], zz[left : right + 1]
-    if len(x) < 3:
-        crossing = _zero_crossing(x, y)
-        if crossing is not None:
-            return crossing, 0.0, [], []
-        return float(amplitudes[index]), float(zz[index]), [], []
-    uncertainty = errors[left : right + 1]
-    weights = None
-    if np.all(np.isfinite(uncertainty)) and np.all(uncertainty > 0):
-        weights = 1 / np.maximum(uncertainty, np.max(uncertainty) * 1e-3)
-    polynomial = np.polynomial.Polynomial.fit(x, y, 2, w=weights).convert()
-    candidates = [x[0], x[-1]]
-    for root in [*polynomial.roots(), *polynomial.deriv().roots()]:
-        if np.isreal(root) and x[0] <= np.real(root) <= x[-1]:
-            candidates.append(float(np.real(root)))
-    point = min(candidates, key=lambda value: abs(polynomial(value)))
-    # Never replace a better measured point with a worse polynomial prediction.
-    if abs(polynomial(point)) > abs(zz[index]):
-        return float(amplitudes[index]), float(zz[index]), [], []
-    return (
-        float(point),
-        float(polynomial(point)),
-        polynomial.coef.tolist(),
-        [float(x[0]), float(x[-1])],
-    )
 
 
 def _fit(data: CouplerZZData) -> CouplerZZResults:
     """Extract physical ZZ from both conditional fringes and minimize its magnitude."""
 
-    results = CouplerZZResults()
-
+    delays = data.delays
+    zz: dict[QubitPairId, list[float]] = defaultdict(list)
+    fitting_params: dict[QubitPairId, dict[float, dict[str, list[float]]]] = (
+        defaultdict(dict)
+    )
+    delta_fitting_measure: dict[tuple[QubitId, QubitId, str], list[float]] = {}
     for pair in data.pairs:
+        target, spectator = pair
+
         amplitudes = data.amplitudes(pair)
-        zz = np.full(len(amplitudes), np.nan)
-        errors = np.full(len(amplitudes), np.nan)
-        parameters = {setup: [[] for _ in amplitudes] for setup in SETUPS}
-        if (
-            data.detuning is None
-            or not np.isfinite(data.detuning)
-            or data.detuning == 0
-        ):
-            log.warning(
-                f"ZZ extraction failed for pair {pair}: nonzero detuning required."
-            )
-            continue
-        scale = data.frequency_scale
-
-        for i, amplitude in enumerate(amplitudes):
-            try:
-                traces = []
-                times = []
+        for amp in amplitudes:
+            try:  # try outside of the for loop because we need both signals to fit (both control in 0 or 1)
                 for setup in SETUPS:
-                    setup_data = data[pair, setup]
-                    trace = setup_data[setup_data["amplitude"] == amplitude]
-                    trace = np.sort(trace, order="wait")
-                    times.append(trace["wait"])
-                    traces.append(trace["prob"])
-                if not np.array_equal(times[0], times[1]):
-                    raise ValueError("Control-state traces have different wait grids.")
-                difference, error, fitted = _conditional_fit(
-                    times[0], np.asarray(traces), data.detuning
-                )
-                zz[i], errors[i] = scale * difference, abs(scale) * error
-                for setup, values in zip(SETUPS, fitted):
-                    parameters[setup][i] = values
-            except (ValueError, RuntimeError, KeyError, np.linalg.LinAlgError) as e:
-                log.warning(
-                    f"ZZ fitting failed for pair {pair}, "
-                    f"coupler pulse amplitude {amplitude:.6f}: {e}."
-                )
+                    setup_data = data.return_data_per_amplitude(pair, amp, setup)
+                    popt, perr = ramsey_fitting(
+                        delays, setup_data["prob"], setup_data["error"]
+                    )
+                    delta_fitting_measure[target, spectator, setup] = [
+                        -popt[2] / (2 * np.pi) * const.giga,
+                        perr[2] * const.giga / (2 * np.pi),
+                    ]
 
-        if np.all(np.isnan(zz)):
-            log.warning(f"ZZ extraction failed for pair {pair}: no valid fits.")
-            continue
+                    fitting_params[pair].setdefault(amp, {})[setup] = popt
 
-        results.amplitudes[pair] = amplitudes.tolist()
-        results.zz[pair] = zz.tolist()
-        results.zz_error[pair] = errors.tolist()
-        results.fitted_parameters[pair] = parameters
-        point, minimum, polynomial, interval = _minimum(amplitudes, zz, errors)
-        results.zz_free_amplitude[pair] = point
-        results.minimum_zz[pair] = minimum
-        results.polynomial[pair] = polynomial
-        results.fit_amplitudes[pair] = interval
-        valid = np.isfinite(zz)
-        closest = int(np.argmin(np.abs(amplitudes[valid] - point)))
-        results.residual_zz[pair] = float(zz[valid][closest])
-        if point in (amplitudes[0], amplitudes[-1]):
-            log.warning(
-                f"ZZ minimum for pair {pair} is at the sweep boundary; "
-                "extend the amplitude range before treating it as a null."
-            )
-    return results
+                zz_amp = float(
+                    delta_fitting_measure[target, spectator, "X"][0]
+                    - delta_fitting_measure[target, spectator, "I"][0]
+                )
+                zz[pair].append(zz_amp)
+
+            # here we are catching two possible errors: fitting error in curve_fit
+            # call or error in estimating coupling strenght because anharmonicities
+            # are unknown
+            except (RuntimeError, ValueError) as e:
+                log.warning(f"Ramsey fitting failed for qubit pair {pair} due to {e}.")
+
+    return CouplerZZResults(zz=zz, fitting_params=fitting_params)
 
 
 def _plot(
@@ -554,7 +301,7 @@ def _plot(
     """Heatmaps of the conditional Ramsey fringes and ZZ versus pulse amplitude."""
 
     figures = []
-    waits = data.waits(target)
+    waits = data.delays
     amplitudes = data.amplitudes(target)
 
     heatmap_fig = make_subplots(
@@ -568,88 +315,95 @@ def _plot(
     )
 
     for col, setup in enumerate(SETUPS, start=1):
-        setup_data = data.data.get((target, setup), [])
-        z = np.full((len(amplitudes), len(waits)), np.nan)
-        for row in setup_data:
-            z[
-                np.searchsorted(amplitudes, row["amplitude"]),
-                np.searchsorted(waits, row["wait"]),
-            ] = row["prob"]
         heatmap_fig.add_trace(
-            go.Heatmap(
-                x=waits,
-                y=amplitudes,
-                z=z,
-                colorscale="Viridis",
-                zmin=0,
-                zmax=1,
+            _probability_heatmap(
+                data.data.get((target + (setup,)), []),
+                waits,
+                amplitudes,
                 showscale=(col == 2),
-                colorbar={
-                    "title": {"text": "Excited State Probability", "side": "right"}
-                },
             ),
             row=1,
             col=col,
         )
-        heatmap_fig.update_xaxes(title_text="Wait time [ns]", row=1, col=col)
+        heatmap_fig.update_xaxes(
+            title_text="Coupler pulse amplitude [a.u.]", row=1, col=col
+        )
 
-    heatmap_fig.update_yaxes(title_text="Coupler pulse amplitude [a.u.]", row=1, col=1)
+    heatmap_fig.update_yaxes(title_text="Wait time [ns]", row=1, col=1)
     figures.append(heatmap_fig)
 
     fitting_report = ""
     if fit is not None and target in fit.zz:
-        zz_fig = go.Figure(
-            go.Scatter(
-                x=fit.amplitudes[target],
-                y=np.array(fit.zz[target]) * HZ_TO_KHZ,
-                mode="lines+markers",
-                name="ZZ",
-                error_y={"array": np.asarray(fit.zz_error.get(target, [])) * HZ_TO_KHZ},
-            )
-        )
-        zz_fig.add_hline(y=0, line={"color": "gray", "dash": "dot"})
-        if fit.polynomial.get(target):
-            x = np.linspace(*fit.fit_amplitudes[target], 200)
-            zz_fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=np.polynomial.polynomial.polyval(x, fit.polynomial[target])
-                    * HZ_TO_KHZ,
-                    name="Local ZZ fit",
-                )
-            )
-
-        if target in fit.zz_free_amplitude:
-            zz_fig.add_vline(
-                x=fit.zz_free_amplitude[target],
-                line={"color": "black", "dash": "dash", "width": 2},
-                annotation_text=f"Minimum |ZZ|: {fit.zz_free_amplitude[target]:.4f}",
-                annotation_position="top right",
-            )
-            fitting_report = table_html(
-                table_dict(
-                    str(target),
-                    [
-                        "Minimum-|ZZ| coupler pulse amplitude [a.u.]",
-                        "Fitted minimum ZZ [Hz]",
-                        "Residual ZZ at closest amplitude [Hz]",
-                    ],
-                    [
-                        np.round(fit.zz_free_amplitude[target], 6),
-                        np.round(fit.minimum_zz.get(target, np.nan), 1),
-                        np.round(fit.residual_zz[target], 1),
-                    ],
-                )
-            )
-
-        zz_fig.update_layout(
-            xaxis_title="Coupler pulse amplitude [a.u.]",
-            yaxis_title="ZZ coupling [kHz]",
-            showlegend=True,
-        )
+        zz_fig, fitting_report = _plot_zz(fit, target, amplitudes)
         figures.append(zz_fig)
 
+    if fit is not None and target in fit.fitting_params:
+        for amp in amplitudes:
+            fig = go.Figure()
+            for s in SETUPS:
+                data_amp = data.return_data_per_amplitude(target, amp, s)
+                plot_t = np.linspace(data_amp["delay"][0], data_amp["delay"][-1], 200)
+                fig.add_traces(
+                    [
+                        go.Scatter(
+                            x=data_amp["delay"],
+                            y=data_amp["prob"],
+                            mode="markers",
+                            name=f"{amp} ({s})",
+                        ),
+                        go.Scatter(
+                            x=plot_t,
+                            y=ramsey_func(plot_t, *fit.fitting_params[target][amp][s]),
+                            mode="lines",
+                            name=f"{np.round(amp, 3)} ({s}) fit",
+                        ),
+                    ]
+                )
+            fig.update_layout(
+                xaxis_title="Wait time [ns]",
+                yaxis_title="Fitting parameter value",
+                showlegend=True,
+            )
+            figures.append(fig)
+
     return figures, fitting_report
+
+
+def _probability_heatmap(records, waits, amplitudes, **kwargs) -> go.Heatmap:
+    """Excited-state probability over (wait, amplitude), robust to row order."""
+    z = records["prob"].reshape((len(amplitudes), len(waits)))
+    return go.Heatmap(
+        x=amplitudes,
+        y=waits,
+        z=z.T,
+        colorscale="Viridis",
+        zmin=0,
+        zmax=1,
+        colorbar={"title": {"text": "Excited State Probability", "side": "right"}},
+        **kwargs,
+    )
+
+
+def _plot_zz(
+    fit: CouplerZZResults, target: QubitPairId, amp: np.ndarray
+) -> tuple[go.Figure, str]:
+    """Plot ZZ values versus coupler pulse amplitude for a qubit pair."""
+    zz_fig = go.Figure(
+        go.Scatter(
+            x=amp,
+            y=np.array(fit.zz[target]) * const.milli,
+            mode="lines+markers",
+            name="ZZ",
+        )
+    )
+    zz_fig.add_hline(y=0, line={"color": "gray", "dash": "dot"})
+
+    zz_fig.update_layout(
+        xaxis_title="Coupler pulse amplitude [a.u.]",
+        yaxis_title="ZZ coupling [kHz]",
+        showlegend=True,
+    )
+    return zz_fig, ""
 
 
 coupler_zz = Protocol(_acquisition, _fit, _plot, two_qubit_gates=True)

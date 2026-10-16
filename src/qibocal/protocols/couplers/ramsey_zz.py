@@ -42,7 +42,7 @@ class CouplerRamseyResults(Results):
 
 CouplerRamseyType = np.dtype(
     [
-        ("tau", np.float64),
+        ("delay", np.float64),
         ("amplitude", np.float64),
         ("prob", np.float64),
         ("error", np.float64),
@@ -198,7 +198,7 @@ def _acquisition(
             CouplerRamseyType,
             pair,
             {
-                "tau": np.tile(wait_values, len(ampl_values)),
+                "delay": np.tile(wait_values, len(ampl_values)),
                 "amplitude": np.repeat(
                     ampl_values + flux_offsets[pair], len(wait_values)
                 ),
@@ -218,10 +218,10 @@ def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
         pair_data = data[pair]
         # Omitted pairs are treated as failed fits by downstream consumers.
         if (
-            len(np.unique(pair_data["tau"])) < 2
+            len(np.unique(pair_data["delay"])) < 2
             or not all(
                 np.all(np.isfinite(pair_data[name]))
-                for name in ("tau", "amplitude", "prob")
+                for name in ("delay", "amplitude", "prob")
             )
             or np.any((pair_data["prob"] < 0) | (pair_data["prob"] > 1))
         ):
@@ -232,7 +232,7 @@ def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
 
         for amp in amplitudes:
             mask = pair_data["amplitude"] == amp
-            if len(np.unique(pair_data["tau"][mask])) < 2:
+            if len(np.unique(pair_data["delay"][mask])) < 2:
                 break
             probs = pair_data["prob"][mask]
             variances.append(float(np.var(probs)))
@@ -256,16 +256,16 @@ def _fit(data: CouplerRamseyData) -> CouplerRamseyResults:
 def _build_heatmap(pair_data, field: str) -> go.Heatmap:
     """Build a 2D heatmap of ``field`` over (waits, amplitudes)."""
     amplitudes = np.unique(pair_data["amplitude"])
-    waits = np.unique(pair_data["tau"])
+    waits = np.unique(pair_data["delay"])
 
     # Build 2D probability matrix: rows = waits, cols = amplitudes
     z = np.full((len(waits), len(amplitudes)), np.nan)
     amp_index = {amp: i for i, amp in enumerate(amplitudes)}
-    tau_index = {tau: j for j, tau in enumerate(waits)}
+    delay_index = {delay: j for j, delay in enumerate(waits)}
 
     for row in pair_data:
         i = amp_index[row["amplitude"]]
-        j = tau_index[row["tau"]]
+        j = delay_index[row["delay"]]
         z[j, i] = row[field]
 
     return go.Heatmap(

@@ -14,7 +14,7 @@ from qibocal.auto.operation import (
     QubitPairId,
     Results,
 )
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import Range, RangeLike, table_dict, table_html, to_range
 
 EPS = 1  # Hz
 """we add 1Hz when computing Delta frequency between the two qubit frequencies in order to avoid numerical error."""
@@ -24,8 +24,12 @@ EPS = 1  # Hz
 class ZZInteractionParameters(Parameters):
     """Parameters for ZZ-interaction experiments."""
 
-    delay_range: tuple[float, float, float]
+    delays_settings: RangeLike
     """delay time range (start, stop, step) in the sequence. Applied twice."""
+
+    @property
+    def delay_range(self) -> Range:
+        return to_range(self.delays_settings)
 
 
 ZZIntType = np.dtype(
