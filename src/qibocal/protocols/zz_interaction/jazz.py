@@ -60,6 +60,52 @@ class JAZZResults(ZZInteractionResults):
     """Parameters fitted during the execution."""
 
 
+def jazz_sequence(
+    calibration_platform: CalibrationPlatform,
+    target: QubitId,
+    spectator: QubitId,
+    delay: Delay,
+) -> tuple[PulseSequence, PulseSequence]:
+    """Create delay and refocusing sequences for a target-spectator pair.
+
+    Returns the requested delay on both qubits and simultaneous X(π)
+    refocusing pulses, in that order. Target rotations are handled separately.
+    """
+
+    # target qubit channels and native pulses
+    target_natives = calibration_platform.natives.single_qubit[target]
+    target_ro_ch, _ = target_natives.MZ()[0]
+    target_drive_ch, target_pi_pulse = target_natives.RX()[0]
+
+    # spectator qubit channnels and native pulses
+    spectator_natives = calibration_platform.natives.single_qubit[spectator]
+    spectator_ro_ch, _ = spectator_natives.MZ()[0]
+    spectator_drive_ch, spectator_pi_pulse = spectator_natives.RX()[0]
+
+    # first delay dequence
+    delay_sequence = PulseSequence(
+        [
+            (target_drive_ch, delay),
+            (spectator_drive_ch, delay),
+            (target_ro_ch, delay),
+            (spectator_ro_ch, delay),
+        ]
+    )
+
+    # X(pi) on both spectator and target qubits
+    max_flip_time = max(spectator_natives.RX().duration, target_natives.RX().duration)
+    flip_sequence = PulseSequence(
+        [
+            (target_drive_ch, target_pi_pulse),
+            (spectator_drive_ch, spectator_pi_pulse),
+            (target_ro_ch, Delay(duration=max_flip_time)),
+            (spectator_ro_ch, Delay(duration=max_flip_time)),
+        ]
+    )
+
+    return delay_sequence, flip_sequence
+
+
 def _acquisition(
     params: ZZInteractionParameters,
     platform: CalibrationPlatform,
@@ -93,54 +139,41 @@ def _acquisition(
     for pair in targets:
         target, spectator = pair
 
-        # target qubit channels and native pulses
-        target_drive_channel = platform.qubits[target].drive
+        # target qubit readout
         target_natives = platform.natives.single_qubit[target]
         target_ro_channel, target_ro_pulse = target_natives.MZ()[0]
 
-        # spectator qubit channnels and native pulses
-        spectator_drive_channel = platform.qubits[spectator].drive
+        # spectator qubit readout
         spectator_natives = platform.natives.single_qubit[spectator]
         spectator_ro_channel, spectator_ro_pulse = spectator_natives.MZ()[0]
 
-        pair_sequence = PulseSequence()
+        acquisition_seq = PulseSequence(
+            [
+                (target_ro_channel, target_ro_pulse),
+                (spectator_ro_channel, spectator_ro_pulse),
+            ]
+        )
+        targets_ro_pulses[target] = target_ro_pulse
+        spectator_ro_pulses[spectator] = spectator_ro_pulse
 
-        # delay
-        pair_sequence += [(target_drive_channel, delay)]
-        pair_sequence += [(spectator_drive_channel, delay)]
-        pair_sequence += [(target_ro_channel, delay)]
-        pair_sequence += [(spectator_ro_channel, delay)]
+        delay_sequence, flip_sequence = jazz_sequence(
+            calibration_platform=platform,
+            target=target,
+            spectator=spectator,
+            delay=delay,
+        )
 
-        # X(pi) on both spectator and target qubits
-        _, target_pi_pulse = target_natives.RX()[0]
-        pair_sequence += [
-            (target_drive_channel, target_pi_pulse),
-            (target_ro_channel, Delay(duration=target_pi_pulse.duration)),
-        ]
-        pair_sequence += spectator_natives.RX()
+        target_rx90_seq = target_natives.R(theta=np.pi / 2)
+        target_ry90_seq = target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
 
-        # delay
-        pair_sequence += [(target_drive_channel, delay)]
-        pair_sequence += [(target_ro_channel, delay)]
-        pair_sequence += [(spectator_ro_channel, delay)]
-
-        # Y(pi/2)
-        pair_sequence += target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
-
-        # measuring target qubit
-        pair_sequence |= [
-            (target_ro_channel, target_ro_pulse),
-            (spectator_ro_channel, spectator_ro_pulse),
-        ]
-
-        # adding the initial X(pi/2) on target
-        pair_sequence = target_natives.R(theta=np.pi / 2) | pair_sequence
-
-        # adding both qubits ro pulses in the dictionary
-        targets_ro_pulses |= {target: target_ro_pulse}
-        spectator_ro_pulses |= {spectator: spectator_ro_pulse}
-
-        complete_sequence += pair_sequence
+        complete_sequence += (
+            target_rx90_seq  # rotating target on the equator
+            | delay_sequence  # first delay sequence
+            | flip_sequence  # spectator and target flipping
+            | delay_sequence  # second delay sequence
+            | target_ry90_seq  # rotating target on the equator with a pi/2 phase shift
+            | acquisition_seq  # measure both qubits
+        )
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
