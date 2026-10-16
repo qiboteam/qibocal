@@ -1,3 +1,5 @@
+from .jazz import coupler_jazz
 from .ramsey_zz import coupler_ramsey_zz
+from .zz import coupler_zz
 
-__all__ = ["coupler_ramsey_zz"]
+__all__ = ["coupler_jazz", "coupler_ramsey_zz", "coupler_zz"]
