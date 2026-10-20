@@ -69,12 +69,25 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     results = fit(data, single_qubit=False)
     fidelity_cz = {}
     for qubit in data.pairs:
-        fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
-        # TODO: check this error formula
-        uncertainty_cz = np.sqrt(
-            1 / data.fidelity[qubit][0] ** 2 * results.fit_uncertainties[qubit][1] ** 2
-            + (results.fidelity[qubit] / data.fidelity[qubit][0] ** 2) ** 2
-            * data.fidelity[qubit][1] ** 2
+        # Interleaved RB fidielity as defined in Eq. (4) of
+        # https://arxiv.org/abs/1203.4550.
+        #
+        # Only the reference fidelity F_ref = 1/4 + 3/4 * p_ref and its uncertainty are
+        # stored in the calibration, so p_ref and sigma_p_ref are reconstructed by
+        # inverting that relation. The reference and interleaved runs are assumed to be
+        # statistically independent, so their errors are added in quadrature.
+        f_ref, sigma_f_ref = data.fidelity[qubit]
+        p_ref = (4 * f_ref - 1) / 3
+        sigma_p_ref = 4 * sigma_f_ref / 3
+        p_int = results.fit_parameters[qubit][1]
+        sigma_p_int = results.fit_uncertainties[qubit][1]
+        fid_cz = 1 / 4 + 3 / 4 * p_int / p_ref
+        uncertainty_cz = (
+            3
+            / 4
+            * np.sqrt(
+                (sigma_p_int / p_ref) ** 2 + (p_int * sigma_p_ref / p_ref**2) ** 2
+            )
         )
         fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
 
