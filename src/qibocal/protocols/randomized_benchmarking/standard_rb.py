@@ -10,7 +10,14 @@ from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func
-from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
+from .utils import (
+    RBData,
+    StandardRBResult,
+    fidelity_uncertainty,
+    fit,
+    number_to_str,
+    rb_acquisition,
+)
 
 __all__ = ["RBData", "StandardRBParameters", "standard_rb"]
 
@@ -94,26 +101,23 @@ def _fit(data: RBData) -> StandardRBResult:
     return fit(data)
 
 
-def _plot(
-    data: RBData, fit: StandardRBResult, target: QubitId
-) -> tuple[list[go.Figure], str]:
-    """Builds the table for the qq pipe, calls the plot function of the result
-    object and returns the figure es list.
+def survival_figure(
+    data: RBData, fit: StandardRBResult | None, target, single_qubit: bool
+) -> go.Figure:
+    """Builds the survival probability figure, with the fit when available.
 
     Args:
-        data (RBData): Data object used for the table.
-        fit (StandardRBResult): Is called for the plot.
-        target (_type_): Not used yet.
+        data (RBData): Data object with the survival probabilities.
+        fit (StandardRBResult, optional): Fit results, ``None`` if not available.
+        target: Qubit or qubit pair to plot.
+        single_qubit (bool): Whether ``target`` is a single qubit or a qubit pair.
 
     Returns:
-        tuple[list[go.Figure], str]:
+        go.Figure: Survival probability versus circuit depth.
     """
-    target = tuple(target) if isinstance(target, list) else target
     qubit = target
     fig = go.Figure()
-    fitting_report = ""
     x = data.depths
-    single_qubit = isinstance(target, int)
     raw_data = np.array(
         [
             val["survival_probs"]
@@ -148,7 +152,7 @@ def _plot(
     error_y_dict = None
     if fit is not None:
         popt, perr = fit.fit_parameters[qubit], fit.fit_uncertainties[qubit]
-        label = f"Fit: y=Ap^x<br>A: {number_to_str(popt[0], perr[0])}<br>p: {number_to_str(popt[1], perr[1])}<br>B: {number_to_str(popt[2], perr[2])}"
+        label = f"Fit: y = A p^x + B<br>A: {number_to_str(popt[0], perr[0])}<br>p: {number_to_str(popt[1], perr[1])}<br>B: {number_to_str(popt[2], perr[2])}"
         x_fit = np.linspace(min(x), max(x), len(x) * 20)
         y_fit = exp1B_func(x_fit, *popt)
         fig.add_trace(
@@ -186,35 +190,58 @@ def _plot(
                 )
             )
 
-    if fit is not None:
-        fitting_report = table_html(
-            table_dict(
-                str(qubit),
-                ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
-                [
-                    data.niter,
-                    data.nshots,
-                    data.uncertainties,
-                    number_to_str(
-                        fit.fidelity[qubit],
-                        np.array(fit.fit_uncertainties[qubit][1]) / 2,
-                    ),
-                    number_to_str(
-                        fit.pulse_fidelity[qubit],
-                        np.array(fit.fit_uncertainties[qubit][1])
-                        / (2 * data.npulses_per_clifford),
-                    ),
-                ],
-            )
-        )
-
     fig.update_layout(
         showlegend=True,
         xaxis_title="Circuit depth",
         yaxis_title="Survival Probability",
     )
 
-    return [fig], fitting_report
+    return fig
+
+
+def _plot(
+    data: RBData, fit: StandardRBResult, target: QubitId
+) -> tuple[list[go.Figure], str]:
+    """Builds the table for the qq pipe, calls the plot function of the result
+    object and returns the figure es list.
+
+    Args:
+        data (RBData): Data object used for the table.
+        fit (StandardRBResult): Is called for the plot.
+        target (_type_): Not used yet.
+
+    Returns:
+        tuple[list[go.Figure], str]:
+    """
+    target = tuple(target) if isinstance(target, list) else target
+    qubit = target
+    fig = survival_figure(data, fit, target, single_qubit=isinstance(target, int))
+    metadata = table_html(
+        table_dict(str(qubit), ["niter", "nshots"], [data.niter, data.nshots])
+    )
+
+    model_note = (
+        "<p>(d = 2): F_Cl = 1 - (d - 1) / d * (1 - p) = (1 + p) / 2 <br>"
+        "F_avg,gate = 1 - (1 - F_Cl) / N, with N = {npulses} gates per Clifford</p>"
+    ).format(npulses=f"{data.npulses_per_clifford:g}")
+
+    fitting_report = ""
+    if fit is not None:
+        sigma_clifford = fidelity_uncertainty(fit.fit_uncertainties[qubit][1], 2)
+        sigma_gate = sigma_clifford / data.npulses_per_clifford
+        fitting_report = table_html(
+            table_dict(
+                str(qubit),
+                ["F_Cl", "F_avg,gate"],
+                [
+                    (fit.fidelity[qubit], sigma_clifford),
+                    (fit.pulse_fidelity[qubit], sigma_gate),
+                ],
+                display_error=True,
+            )
+        )
+
+    return [fig], metadata + fitting_report + model_note
 
 
 def _update(results: StandardRBResult, platform: CalibrationPlatform, target: QubitId):

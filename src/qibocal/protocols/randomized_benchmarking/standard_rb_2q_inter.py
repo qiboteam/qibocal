@@ -1,15 +1,25 @@
 from dataclasses import dataclass, fields
 
 import numpy as np
+import plotly.graph_objects as go
 
 from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.randomized_benchmarking.standard_rb import _plot
+from qibocal.protocols.randomized_benchmarking.standard_rb import survival_figure
 from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
+    TWO_QUBIT_DIMENSION,
     StandardRB2QParameters,
+    metadata_table,
 )
 
-from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
+from ..utils import table_dict, table_html
+from .utils import (
+    RB2QInterData,
+    StandardRBResult,
+    fidelity_uncertainty,
+    fit,
+    twoq_rb_acquisition,
+)
 
 __all__ = ["standard_rb_2q_inter"]
 
@@ -55,6 +65,19 @@ def _acquisition(
     return data
 
 
+def _reference_decay(reference) -> tuple[float, float] | None:
+    """Reference decay and its uncertainty from the stored fidelity, or ``None``
+    when the reference is missing or the decay ratio would be undefined."""
+    if reference is None:
+        return None
+    f_ref, sigma_f_ref = reference
+    p_ref = (4 * f_ref - 1) / 3
+    sigma_p_ref = 4 * sigma_f_ref / 3
+    if not np.isfinite(p_ref) or p_ref <= 0:
+        return None
+    return p_ref, sigma_p_ref
+
+
 def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     """Takes a data frame, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B.
@@ -69,16 +92,17 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     results = fit(data, single_qubit=False)
     fidelity_cz = {}
     for qubit in data.pairs:
-        # Interleaved RB fidielity as defined in Eq. (4) of
+        # Interleaved RB fidelity as defined in Eq. (4) of
         # https://arxiv.org/abs/1203.4550.
         #
         # Only the reference fidelity F_ref = 1/4 + 3/4 * p_ref and its uncertainty are
         # stored in the calibration, so p_ref and sigma_p_ref are reconstructed by
         # inverting that relation. The reference and interleaved runs are assumed to be
         # statistically independent, so their errors are added in quadrature.
-        f_ref, sigma_f_ref = data.fidelity[qubit]
-        p_ref = (4 * f_ref - 1) / 3
-        sigma_p_ref = 4 * sigma_f_ref / 3
+        reference = _reference_decay(data.fidelity.get(qubit))
+        if reference is None:
+            continue
+        p_ref, sigma_p_ref = reference
         p_int = results.fit_parameters[qubit][1]
         sigma_p_int = results.fit_uncertainties[qubit][1]
         fid_cz = 1 / 4 + 3 / 4 * p_int / p_ref
@@ -99,6 +123,44 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
         results.error_bars,
         fidelity_cz,
     )
+
+
+def _plot(
+    data: RB2QInterData, fit: StandardRB2QInterResult | None, target: QubitPairId
+) -> tuple[list[go.Figure], str]:
+    """Survival probability figure and CZ interleaved RB table."""
+    fig = survival_figure(data, fit, target, single_qubit=False)
+    if fit is None:
+        return [fig], ""
+
+    reference = _reference_decay(data.fidelity.get(target))
+    cz = (fit.fidelity_cz or {}).get(target)
+    sigma_p_int = fit.fit_uncertainties[target][1]
+
+    names = ["F_step (Clifford + CZ)"]
+    values = [
+        (
+            fit.fidelity[target],
+            fidelity_uncertainty(sigma_p_int, TWO_QUBIT_DIMENSION),
+        )
+    ]
+    if reference is not None:
+        names.append("Reference decay p_ref")
+        values.append(reference)
+    if cz is not None:
+        names.append("CZ fidelity (IRB estimate)")
+        values.append((cz[0], cz[1]))
+
+    fitting_report = table_html(
+        table_dict(str(target), names, values, display_error=True)
+    )
+
+    model_note = (
+        "<p> F_step = (1 + 3 p_int) / 4. <br> F_CZ = 1/4 + 3/4 p_int / p_ref <br>"
+        "with p_ref from the stored standard 2q RB calibration</p>"
+    )
+
+    return [fig], metadata_table(data, target) + fitting_report + model_note
 
 
 def _update(

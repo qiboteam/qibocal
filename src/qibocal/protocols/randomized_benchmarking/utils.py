@@ -701,6 +701,12 @@ def add_measurement_layer(circuit: Circuit):
         circuit.add(gates.M(qubit))
 
 
+def fidelity_uncertainty(decay_uncertainty: float, dimension: int) -> float:
+    """Uncertainty of the fidelity ``F = 1 - (d - 1) / d * (1 - p)`` given the
+    uncertainty of the decay ``p``."""
+    return (dimension - 1) / dimension * decay_uncertainty
+
+
 def fit(data, single_qubit: bool = True) -> StandardRBResult:
     """Takes data, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B."""
