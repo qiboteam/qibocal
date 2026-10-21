@@ -2,11 +2,9 @@ from __future__ import annotations
 
 import inspect
 import json
-import time
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
-from functools import wraps
 from pathlib import Path
 from typing import Any, Generic, NewType, TypeVar
 
@@ -15,7 +13,6 @@ import numpy.typing as npt
 from qibolab import Platform, Qubit
 
 from qibocal.calibration.calibration import QubitId, QubitPairId
-from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
 
@@ -31,25 +28,6 @@ DATAFILE = "data"
 """Name of the file where data are dumped."""
 RESULTSFILE = "results"
 """Name of the file where results are dumped."""
-
-
-def show_logs(func):
-    """Decorator to add logs."""
-
-    @wraps(func)
-    # necessary to maintain the function signature
-    def wrapper(*args, **kwds):
-        start = time.perf_counter()
-        out = func(*args, **kwds)
-        end = time.perf_counter()
-        if end - start < 1:
-            message = " in less than 1 second."
-        else:
-            message = f" in {end - start:.2f} seconds"
-        log.info(f"Finished {func.__name__[1:]}" + message)
-        return out, end - start
-
-    return wrapper
 
 
 DEFAULT_PARENT_PARAMETERS = {
@@ -293,13 +271,6 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
     two_qubit_gates: bool | None = False
     """Flag to determine whether to allocate list of Qubits or Pairs."""
 
-    def __post_init__(self):
-        # add decorator to show logs
-        self.acquisition = show_logs(self.acquisition)
-        self.fit = show_logs(self.fit)
-        if self.update is None:
-            self.update = _dummy_update
-
     @property
     def parameters_type(self) -> type:
         """Extract the type of acquisition parameters."""
@@ -318,17 +289,6 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
         if self.fit is None:
             return None
         return inspect.signature(self.fit, eval_str=True).return_annotation
-
-    # TODO: I don't like these properties but it seems to work
-    @property
-    def platform_dependent(self) -> bool:
-        """Check if acquisition involves platform."""
-        return "platform" in inspect.signature(self.acquisition).parameters
-
-    @property
-    def targets_dependent(self) -> bool:
-        """Check if acquisition involves qubits."""
-        return "targets" in inspect.signature(self.acquisition).parameters
 
     def __call__(
         self,
@@ -413,12 +373,6 @@ class DummyRes(Results):
 def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     """Dummy data acquisition."""
     return DummyData()
-
-
-def _dummy_update(
-    results: DummyRes, platform: Platform, qubit: QubitId | QubitPairId
-) -> None:
-    """Dummy update function."""
 
 
 dummy_operation = Protocol(_dummy_acquisition)

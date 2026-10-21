@@ -80,7 +80,7 @@ class Runcard:
                 folder=history.task_path(history._pending_task_id(task.id), output),
             )
             history.push(completed)
-            if ExecutionMode.FIT in mode and update and task.update:
+            if completed.should_update(mode, update):
                 completed.update_platform(platform=platform)
         history.dump(output)
         return history
