@@ -1,0 +1,5 @@
+# Versions actually used to produce the shipped artifacts (2026-10-22, macOS arm64)
+# Simulation + validation (validate_shortcut.py, run_irb_sim.py): system Python 3.9.6
+numpy==1.26.2
+# Figures (make_figures.py): ephemeral uv 0.13.1 env, Python 3.13.15, numpy 2.5.4
+matplotlib==3.11.2

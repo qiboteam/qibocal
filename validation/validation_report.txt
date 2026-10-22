@@ -1,0 +1,47 @@
+Toggling-frame shortcut validation
+
+Clifford group order: 11520 (expected 11520); unitarity err 2.2e-16
+C^+ ZZ C over all Cliffords: uniform over 30 signed non-identity Paulis, 384 each: True
+Consecutive derived-Pauli pair independence: chi2=848.2 / 899 dof (z=-1.20), 165000 pairs
+Exact cancellation (coherent opposing F=.99/.99, direct sim): min P00 = 0.999999999999995
+
+[ref_coherent_F95] m=12 a_eff=1.00000 theta_eff=+0.50536 p_eff=0.93333
+   same-sequence |direct - toggling| max = 3.00e-15; derived Pauli chi2 = 29.9 (29 dof)
+   P00    mean dir 0.57983 sc 0.57809 (z +0.51)  sd dir 0.18604 sc 0.18698  KS D=0.0119 p=0.798 theory 0.57772 z_sc=+0.62 z_dir=+0.62
+   q1     mean dir 0.72015 sc 0.71866 (z +0.48)  sd dir 0.16838 sc 0.16850  KS D=0.0141 p=0.608 theory 0.71848 z_sc=+0.34 z_dir=+0.54
+   H      mean dir 0.71732 sc 0.71874 (z -0.55)  sd dir 0.14030 sc 0.13677  KS D=0.0174 p=0.340 theory 0.71848 z_sc=+0.59 z_dir=-0.45
+   min_q  mean dir 0.64684 sc 0.64614 (z +0.23)  sd dir 0.16728 sc 0.16774  KS D=0.0123 p=0.764
+[ref_mixed_F99] m=12 a_eff=0.99331 theta_eff=+0.15854 p_eff=0.98667
+   same-sequence |direct - toggling| max = 3.55e-15; derived Pauli chi2 = 20.9 (29 dof)
+   P00    mean dir 0.88799 sc 0.88829 (z -0.53)  sd dir 0.03078 sc 0.02971  KS D=0.0210 p=0.151 theory 0.88842 z_sc=-1.35 z_dir=-0.76
+   q1     mean dir 0.92516 sc 0.92548 (z -0.66)  sd dir 0.02657 sc 0.02546  KS D=0.0214 p=0.138 theory 0.92561 z_sc=-1.62 z_dir=-0.94
+   H      mean dir 0.92509 sc 0.92550 (z -0.98)  sd dir 0.02253 sc 0.02143  KS D=0.0140 p=0.611 theory 0.92561 z_sc=-1.75 z_dir=-1.28
+   min_q  mean dir 0.91545 sc 0.91593 (z -0.92)  sd dir 0.02780 sc 0.02679  KS D=0.0155 p=0.480
+[int_coherent_aligned_95_95] m=12 a_eff=1.00000 theta_eff=+1.01072 p_eff=0.75000
+   same-sequence |direct - toggling| max = 4.44e-15; derived Pauli chi2 = 17.8 (29 dof)
+   P00    mean dir 0.27602 sc 0.27392 (z +0.57)  sd dir 0.20004 sc 0.20271  KS D=0.0173 p=0.347 theory 0.27376 z_sc=+0.25 z_dir=+0.62
+   q1     mean dir 0.51420 sc 0.51564 (z -0.35)  sd dir 0.22409 sc 0.22275  KS D=0.0169 p=0.371 theory 0.51584 z_sc=-0.28 z_dir=-0.40
+   H      mean dir 0.51622 sc 0.51648 (z -0.09)  sd dir 0.16140 sc 0.16131  KS D=0.0096 p=0.952 theory 0.51584 z_sc=+1.26 z_dir=+0.13
+   min_q  mean dir 0.39558 sc 0.39524 (z +0.10)  sd dir 0.18874 sc 0.19063  KS D=0.0106 p=0.901
+[int_coherent_opposing_95_99] m=12 a_eff=1.00000 theta_eff=+0.28129 p_eff=0.97904
+   same-sequence |direct - toggling| max = 4.55e-15; derived Pauli chi2 = 37.0 (29 dof)
+   P00    mean dir 0.83101 sc 0.83173 (z -0.43)  sd dir 0.08953 sc 0.08874  KS D=0.0082 p=0.989 theory 0.83165 z_sc=+0.27 z_dir=-0.39
+   q1     mean dir 0.88828 sc 0.88796 (z +0.22)  sd dir 0.07609 sc 0.07634  KS D=0.0129 p=0.711 theory 0.88777 z_sc=+0.80 z_dir=+0.37
+   H      mean dir 0.88736 sc 0.88787 (z -0.43)  sd dir 0.06388 sc 0.06380  KS D=0.0160 p=0.445 theory 0.88777 z_sc=+0.48 z_dir=-0.35
+   min_q  mean dir 0.85740 sc 0.85805 (z -0.44)  sd dir 0.08017 sc 0.07962  KS D=0.0106 p=0.900
+[int_mixed_opposing_95_95] m=12 a_eff=0.93333 theta_eff=+0.00000 p_eff=0.93333
+   same-sequence |direct - toggling| max = 2.22e-15; derived Pauli chi2 = 23.5 (29 dof)
+   P00    deterministic: direct 0.577720 shortcut 0.577720 theory 0.577720 max|dev| 2.2e-15
+   q1     deterministic: direct 0.718480 shortcut 0.718480 theory 0.718480 max|dev| 2.6e-15
+   H      deterministic: direct 0.718480 shortcut 0.718480 theory 0.718480 max|dev| 2.6e-15
+   min_q  deterministic: direct 0.718480 shortcut 0.718480 theory 0.718480 max|dev| 2.3e-15
+
+F=0.95 depol    a=0.933333 theta=0.000000  Favg=0.9500000000 (via Fe: 0.9500000000)
+F=0.95 coherent a=1.000000 theta=0.505361  Favg=0.9500000000 (via Fe: 0.9500000000)
+F=0.95 mixed    a=0.966092 theta=0.358506  Favg=0.9500000000 (via Fe: 0.9500000000)
+F=0.99 depol    a=0.986667 theta=0.000000  Favg=0.9900000000 (via Fe: 0.9900000000)
+F=0.99 coherent a=1.000000 theta=0.224075  Favg=0.9900000000 (via Fe: 0.9900000000)
+F=0.99 mixed    a=0.993311 theta=0.158545  Favg=0.9900000000 (via Fe: 0.9900000000)
+
+Fitter self-test: noiseless max param err 1.1e-16, converged True, jacobian FD err 7.9e-10
+runtime 4.9s

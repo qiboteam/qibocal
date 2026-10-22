@@ -1,0 +1,410 @@
+{
+  "clifford_group_order": 11520,
+  "clifford_unitarity_max_err": 2.220446049250313e-16,
+  "zz_conjugation_counts": {
+    "II": {
+      "-": 0,
+      "+": 0
+    },
+    "IX": {
+      "-": 384,
+      "+": 384
+    },
+    "IY": {
+      "-": 384,
+      "+": 384
+    },
+    "IZ": {
+      "-": 384,
+      "+": 384
+    },
+    "XI": {
+      "-": 384,
+      "+": 384
+    },
+    "XX": {
+      "-": 384,
+      "+": 384
+    },
+    "XY": {
+      "-": 384,
+      "+": 384
+    },
+    "XZ": {
+      "-": 384,
+      "+": 384
+    },
+    "YI": {
+      "-": 384,
+      "+": 384
+    },
+    "YX": {
+      "-": 384,
+      "+": 384
+    },
+    "YY": {
+      "-": 384,
+      "+": 384
+    },
+    "YZ": {
+      "-": 384,
+      "+": 384
+    },
+    "ZI": {
+      "-": 384,
+      "+": 384
+    },
+    "ZX": {
+      "-": 384,
+      "+": 384
+    },
+    "ZY": {
+      "-": 384,
+      "+": 384
+    },
+    "ZZ": {
+      "-": 384,
+      "+": 384
+    }
+  },
+  "zz_conjugation_uniform_signed_nonidentity": true,
+  "zz_conjugation_count_each": 384,
+  "sequence_checks": [
+    {
+      "case": "ref_coherent_F95",
+      "m": 12,
+      "n_direct": 3000,
+      "n_shortcut": 100000,
+      "a_eff": 1.0,
+      "theta_eff": 0.5053605102841575,
+      "p_eff": 0.9333333333333332,
+      "max_abs_diff_direct_vs_toggling_same_sequence": 2.9976021664879227e-15,
+      "derived_pauli_chi2_29dof": 29.85333333333334,
+      "comparison": {
+        "P00": {
+          "mean_direct": 0.5798304847778496,
+          "mean_shortcut": 0.5780884062200669,
+          "z_direct_vs_shortcut": 0.5052780668770585,
+          "sd_direct": 0.18604406350009933,
+          "sd_shortcut": 0.18697561999468756,
+          "ks_D": 0.011946666666666661,
+          "ks_p": 0.7978668530751193,
+          "theory_mean": 0.577719725833929,
+          "z_shortcut_vs_theory": 0.6235410524960084,
+          "z_direct_vs_theory": 0.6214174563223547
+        },
+        "q1": {
+          "mean_direct": 0.7201451194281073,
+          "mean_shortcut": 0.718659995215327,
+          "z_direct_vs_shortcut": 0.47599301275704364,
+          "sd_direct": 0.16838201044383472,
+          "sd_shortcut": 0.1684954612927885,
+          "ks_D": 0.014073333333333382,
+          "ks_p": 0.6082857467149946,
+          "theory_mean": 0.7184798172226194,
+          "z_shortcut_vs_theory": 0.33815322788008656,
+          "z_direct_vs_theory": 0.5416989502646806
+        },
+        "H": {
+          "mean_direct": 0.7173180512733609,
+          "mean_shortcut": 0.7187357873488234,
+          "z_direct_vs_shortcut": -0.545737494148063,
+          "sd_direct": 0.1403034043353949,
+          "sd_shortcut": 0.136772073478768,
+          "ks_D": 0.01737333333333324,
+          "ks_p": 0.3402506821305129,
+          "theory_mean": 0.7184798172226194,
+          "z_shortcut_vs_theory": 0.5918230170655604,
+          "z_direct_vs_theory": -0.4535352652093683
+        },
+        "min_q": {
+          "mean_direct": 0.6468433983717584,
+          "mean_shortcut": 0.6461404583645475,
+          "z_direct_vs_shortcut": 0.22677123967093255,
+          "sd_direct": 0.16727754715402712,
+          "sd_shortcut": 0.16773518505362223,
+          "ks_D": 0.012349999999999972,
+          "ks_p": 0.7635953019088376
+        }
+      }
+    },
+    {
+      "case": "ref_mixed_F99",
+      "m": 12,
+      "n_direct": 3000,
+      "n_shortcut": 100000,
+      "a_eff": 0.993310961716756,
+      "theta_eff": 0.15854495612729458,
+      "p_eff": 0.9866666666666668,
+      "max_abs_diff_direct_vs_toggling_same_sequence": 3.552713678800501e-15,
+      "derived_pauli_chi2_29dof": 20.876666666666665,
+      "comparison": {
+        "P00": {
+          "mean_direct": 0.8879906393554958,
+          "mean_shortcut": 0.8882932590347975,
+          "z_direct_vs_shortcut": -0.5311212622873336,
+          "sd_direct": 0.030780736534800696,
+          "sd_shortcut": 0.029708197438147656,
+          "ks_D": 0.021006666666666618,
+          "ks_p": 0.1511493070334594,
+          "theory_mean": 0.8884203757607094,
+          "z_shortcut_vs_theory": -1.3530891041839301,
+          "z_direct_vs_theory": -0.7646871043860575
+        },
+        "q1": {
+          "mean_direct": 0.9251589907282458,
+          "mean_shortcut": 0.9254835352198986,
+          "z_direct_vs_shortcut": -0.6600297036946949,
+          "sd_direct": 0.026568825024086973,
+          "sd_shortcut": 0.02545548902708235,
+          "ks_D": 0.0213633333333334,
+          "ks_p": 0.13837113190774028,
+          "theory_mean": 0.925613583840473,
+          "z_shortcut_vs_theory": -1.6155645139665789,
+          "z_direct_vs_theory": -0.937154359771534
+        },
+        "H": {
+          "mean_direct": 0.9250875015351254,
+          "mean_shortcut": 0.925495199616764,
+          "z_direct_vs_shortcut": -0.9778223690507098,
+          "sd_direct": 0.022533313699966185,
+          "sd_shortcut": 0.02143128853970248,
+          "ks_D": 0.014039999999999997,
+          "ks_p": 0.6113096921119261,
+          "theory_mean": 0.925613583840473,
+          "z_shortcut_vs_theory": -1.7468095082472135,
+          "z_direct_vs_theory": -1.2787606367172433
+        },
+        "min_q": {
+          "mean_direct": 0.9154547060275227,
+          "mean_shortcut": 0.9159300704262846,
+          "z_direct_vs_shortcut": -0.9238334163955432,
+          "sd_direct": 0.02779889634831594,
+          "sd_shortcut": 0.026786958422926097,
+          "ks_D": 0.015539999999999998,
+          "ks_p": 0.47975549054079214
+        }
+      }
+    },
+    {
+      "case": "int_coherent_aligned_95_95",
+      "m": 12,
+      "n_direct": 3000,
+      "n_shortcut": 100000,
+      "a_eff": 1.0,
+      "theta_eff": 1.010721020568315,
+      "p_eff": 0.7499999999999998,
+      "max_abs_diff_direct_vs_toggling_same_sequence": 4.440892098500626e-15,
+      "derived_pauli_chi2_29dof": 17.805,
+      "comparison": {
+        "P00": {
+          "mean_direct": 0.27601624542879605,
+          "mean_shortcut": 0.2739184632873686,
+          "z_direct_vs_shortcut": 0.5657251889779321,
+          "sd_direct": 0.20004484180872703,
+          "sd_shortcut": 0.20270912531499807,
+          "ks_D": 0.017270000000000008,
+          "ks_p": 0.34734015950563024,
+          "theory_mean": 0.27375726401805867,
+          "z_shortcut_vs_theory": 0.25147207723483467,
+          "z_direct_vs_theory": 0.618508862542303
+        },
+        "q1": {
+          "mean_direct": 0.5141976927324606,
+          "mean_shortcut": 0.5156378638537437,
+          "z_direct_vs_shortcut": -0.3469044429432051,
+          "sd_direct": 0.2240896233154299,
+          "sd_shortcut": 0.22274840056575948,
+          "ks_D": 0.016936666666666655,
+          "ks_p": 0.37086574078720835,
+          "theory_mean": 0.5158381760120392,
+          "z_shortcut_vs_theory": -0.2843758525893624,
+          "z_direct_vs_theory": -0.4009688999166426
+        },
+        "H": {
+          "mean_direct": 0.5162167830513177,
+          "mean_shortcut": 0.5164819128351246,
+          "z_direct_vs_shortcut": -0.08865680049669353,
+          "sd_direct": 0.16139698186181328,
+          "sd_shortcut": 0.16130852974216617,
+          "ks_D": 0.009563333333333368,
+          "ks_p": 0.9517990253012398,
+          "theory_mean": 0.5158381760120392,
+          "z_shortcut_vs_theory": 1.2619757789153947,
+          "z_direct_vs_theory": 0.12848543600439122
+        },
+        "min_q": {
+          "mean_direct": 0.39558183274638864,
+          "mean_shortcut": 0.3952394354490627,
+          "z_direct_vs_shortcut": 0.09787742621606248,
+          "sd_direct": 0.18873924273683587,
+          "sd_shortcut": 0.1906341043455814,
+          "ks_D": 0.010550000000000004,
+          "ks_p": 0.9005919322741509
+        }
+      }
+    },
+    {
+      "case": "int_coherent_opposing_95_99",
+      "m": 12,
+      "n_direct": 3000,
+      "n_shortcut": 100000,
+      "a_eff": 1.0,
+      "theta_eff": 0.28128522498233816,
+      "p_eff": 0.9790397149268617,
+      "max_abs_diff_direct_vs_toggling_same_sequence": 4.551914400963142e-15,
+      "derived_pauli_chi2_29dof": 36.96,
+      "comparison": {
+        "P00": {
+          "mean_direct": 0.8310115555655708,
+          "mean_shortcut": 0.8317287706098944,
+          "z_direct_vs_shortcut": -0.4324573711312575,
+          "sd_direct": 0.08952808962368237,
+          "sd_shortcut": 0.08873765275578811,
+          "ks_D": 0.00823666666666667,
+          "ks_p": 0.9887551733078118,
+          "theory_mean": 0.8316543443239515,
+          "z_shortcut_vs_theory": 0.26522741368226554,
+          "z_direct_vs_theory": -0.3932507709655005
+        },
+        "q1": {
+          "mean_direct": 0.8882767061096775,
+          "mean_shortcut": 0.8879620545435101,
+          "z_direct_vs_shortcut": 0.2231514402405898,
+          "sd_direct": 0.0760904015335285,
+          "sd_shortcut": 0.07634470802029573,
+          "ks_D": 0.012946666666666662,
+          "ks_p": 0.7107442908755276,
+          "theory_mean": 0.8877695628826343,
+          "z_shortcut_vs_theory": 0.7973205933203662,
+          "z_direct_vs_theory": 0.3650575890509643
+        },
+        "H": {
+          "mean_direct": 0.8873590665702065,
+          "mean_shortcut": 0.8878665130655626,
+          "z_direct_vs_shortcut": -0.42871634555065863,
+          "sd_direct": 0.06388188017174809,
+          "sd_shortcut": 0.06380376184640375,
+          "ks_D": 0.015959999999999974,
+          "ks_p": 0.4453591202889703,
+          "theory_mean": 0.8877695628826343,
+          "z_shortcut_vs_theory": 0.48050990843066743,
+          "z_direct_vs_theory": -0.3519590993329177
+        },
+        "min_q": {
+          "mean_direct": 0.8574006522744196,
+          "mean_shortcut": 0.8580544489228875,
+          "z_direct_vs_shortcut": -0.44020626872648205,
+          "sd_direct": 0.08017044064516533,
+          "sd_shortcut": 0.07962497282996203,
+          "ks_D": 0.010556666666666659,
+          "ks_p": 0.9001783663955842
+        }
+      }
+    },
+    {
+      "case": "int_mixed_opposing_95_95",
+      "m": 12,
+      "n_direct": 3000,
+      "n_shortcut": 100000,
+      "a_eff": 0.9333333333333333,
+      "theta_eff": 0.0,
+      "p_eff": 0.9333333333333333,
+      "max_abs_diff_direct_vs_toggling_same_sequence": 2.220446049250313e-15,
+      "derived_pauli_chi2_29dof": 23.521666666666665,
+      "comparison": {
+        "P00": {
+          "degenerate_zero_variance": true,
+          "mean_direct": 0.5777197258339283,
+          "mean_shortcut": 0.5777197258339298,
+          "theory_mean": 0.5777197258339295,
+          "max_abs_dev_from_theory": 2.220446049250313e-15
+        },
+        "q1": {
+          "degenerate_zero_variance": true,
+          "mean_direct": 0.7184798172226183,
+          "mean_shortcut": 0.7184798172226194,
+          "theory_mean": 0.7184798172226197,
+          "max_abs_dev_from_theory": 2.55351295663786e-15
+        },
+        "H": {
+          "degenerate_zero_variance": true,
+          "mean_direct": 0.7184798172226183,
+          "mean_shortcut": 0.7184798172226194,
+          "theory_mean": 0.7184798172226197,
+          "max_abs_dev_from_theory": 2.55351295663786e-15
+        },
+        "min_q": {
+          "degenerate_zero_variance": true,
+          "mean_direct": 0.7184798172226183,
+          "mean_shortcut": 0.7184798172226194,
+          "theory_mean": 0.7184798172226194,
+          "max_abs_dev_from_theory": 2.3314683517128287e-15
+        }
+      }
+    }
+  ],
+  "consecutive_pair_independence": {
+    "pairs": 165000,
+    "chi2": 848.1818181818182,
+    "dof": 899,
+    "z": -1.1984620296629405
+  },
+  "exact_cancellation_direct_P00_min": 0.9999999999999948,
+  "noise_parametrisation": [
+    {
+      "F": 0.95,
+      "kind": "depol",
+      "a": 0.9333333333333332,
+      "theta": 0.0,
+      "Favg_formula": 0.95,
+      "Favg_from_Fe": 0.95
+    },
+    {
+      "F": 0.95,
+      "kind": "coherent",
+      "a": 1.0,
+      "theta": 0.5053605102841575,
+      "Favg_formula": 0.95,
+      "Favg_from_Fe": 0.95
+    },
+    {
+      "F": 0.95,
+      "kind": "mixed",
+      "a": 0.9660917830792959,
+      "theta": 0.3585059527908877,
+      "Favg_formula": 0.95,
+      "Favg_from_Fe": 0.95
+    },
+    {
+      "F": 0.99,
+      "kind": "depol",
+      "a": 0.9866666666666667,
+      "theta": 0.0,
+      "Favg_formula": 0.99,
+      "Favg_from_Fe": 0.99
+    },
+    {
+      "F": 0.99,
+      "kind": "coherent",
+      "a": 1.0,
+      "theta": 0.22407528530181936,
+      "Favg_formula": 0.99,
+      "Favg_from_Fe": 0.99
+    },
+    {
+      "F": 0.99,
+      "kind": "mixed",
+      "a": 0.993310961716756,
+      "theta": 0.15854495612729458,
+      "Favg_formula": 0.9900000000000001,
+      "Favg_from_Fe": 0.9900000000000002
+    }
+  ],
+  "fitter_selftest": {
+    "max_param_err_noiseless": 1.1102230246251565e-16,
+    "all_converged": true,
+    "jacobian_max_abs_err": 7.897755782693139e-10
+  },
+  "runtime_s": 4.861523151397705
+}
