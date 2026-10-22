@@ -9,7 +9,7 @@ from ..utils import fallback_period, guess_period
 
 
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
-    """Order a pair of qubits by drive frequency."""
+    """Order a pair of qubits by drive frequency, with the lower frequency qubit first."""
     q0, q1 = pair
 
     drive0 = platform.config(platform.qubits[q0].drive)
