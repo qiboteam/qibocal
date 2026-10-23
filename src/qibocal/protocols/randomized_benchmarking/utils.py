@@ -318,6 +318,10 @@ class StandardRBResult(Results):
     """Fitting parameters uncertainties."""
     error_bars: dict[QubitId, float | list[float] | None] = field(default_factory=dict)
     """Error bars for y."""
+    fidelity_uncertainty: dict[QubitId, float] = field(default_factory=dict)
+    """Uncertainty of ``fidelity``, propagated from the decay uncertainty."""
+    pulse_fidelity_uncertainty: dict[QubitId, float] = field(default_factory=dict)
+    """Uncertainty of ``pulse_fidelity``."""
 
 
 def setup_data(
@@ -701,12 +705,6 @@ def add_measurement_layer(circuit: Circuit):
         circuit.add(gates.M(qubit))
 
 
-def fidelity_uncertainty(decay_uncertainty: float, dimension: int) -> float:
-    """Uncertainty of the fidelity ``F = 1 - (d - 1) / d * (1 - p)`` given the
-    uncertainty of the decay ``p``."""
-    return (dimension - 1) / dimension * decay_uncertainty
-
-
 def fit(data, single_qubit: bool = True) -> StandardRBResult:
     """Takes data, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B."""
@@ -719,6 +717,7 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
         dimension = 2**2
 
     fidelity, pulse_fidelity = {}, {}
+    fidelity_uncertainty, pulse_fidelity_uncertainty = {}, {}
     popts, perrs = {}, {}
     error_bars = {}
     for target in targets:
@@ -739,10 +738,23 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
         infidelity = (1 - popt[1]) * (dimension - 1) / dimension
         fidelity[target] = 1 - infidelity
         pulse_fidelity[target] = 1 - infidelity / data.npulses_per_clifford
+        # F = 1 - (d - 1) / d * (1 - p), so sigma_F = (d - 1) / d * sigma_p
+        fidelity_uncertainty[target] = perr[1] * (dimension - 1) / dimension
+        pulse_fidelity_uncertainty[target] = (
+            fidelity_uncertainty[target] / data.npulses_per_clifford
+        )
 
         # conversion from np.array to list/tuple
         error_bars[target] = sigma.tolist()
         perrs[target] = perr
         popts[target] = popt
 
-    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_bars)
+    return StandardRBResult(
+        fidelity,
+        pulse_fidelity,
+        popts,
+        perrs,
+        error_bars,
+        fidelity_uncertainty,
+        pulse_fidelity_uncertainty,
+    )

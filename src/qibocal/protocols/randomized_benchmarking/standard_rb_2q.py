@@ -14,7 +14,6 @@ from ..utils import table_dict, table_html
 from .utils import (
     RB2QData,
     StandardRBResult,
-    fidelity_uncertainty,
     fit,
     twoq_rb_acquisition,
 )
@@ -24,8 +23,6 @@ __all__ = ["StandardRB2QParameters", "standard_rb_2q"]
 
 FILE_CLIFFORDS = "2qubitCliffs.json"
 FILE_INV = "2qubitCliffsInv.npz"
-TWO_QUBIT_DIMENSION = 2**2
-"""Hilbert space dimension of a qubit pair."""
 
 
 @dataclass
@@ -71,13 +68,11 @@ def _plot(
     if fit is None:
         return [fig], ""
 
-    sigma_decay = fit.fit_uncertainties[target][1]
-    sigma_fidelity = fidelity_uncertainty(sigma_decay, TWO_QUBIT_DIMENSION)
     fitting_report = table_html(
         table_dict(
             str(target),
             ["F_Cl"],
-            [(fit.fidelity[target], sigma_fidelity)],
+            [(fit.fidelity[target], fit.fidelity_uncertainty[target])],
             display_error=True,
         )
     )
@@ -94,7 +89,7 @@ def _update(
 
     platform.calibration.two_qubits[target].rb_fidelity = (
         results.fidelity[target],
-        fidelity_uncertainty(results.fit_uncertainties[target][1], TWO_QUBIT_DIMENSION),
+        results.fidelity_uncertainty[target],
     )
 
 
