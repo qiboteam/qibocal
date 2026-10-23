@@ -9,6 +9,7 @@ from qibolab._core.pulses.envelope import Snz
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
 
 from .snz_optimize_t_idle import SNZIdlingResults
 from .utils import fit_virtualz, order_pair
@@ -246,11 +247,7 @@ def _fit(
             best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
             best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
         else:
-            closest = np.unravel_index(np.abs(angles_ - np.pi).argmin(), angles_.shape)
-            best_duration[_pair] = x[closest].item()
-            best_t_idle[_pair] = y[closest].item()
-            best_angle[_pair] = angles_[closest].item()
-            best_leakage[_pair] = leakages_[closest].item()
+            log.warning(f"No CZ angle within 10% of pi for pair {_pair}.")
     results = SNZDurationResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
@@ -335,6 +332,8 @@ def _plot(
 def _update(
     results: SNZDurationResults, platform: CalibrationPlatform, target: QubitPairId
 ):
+    if target not in results.best_duration:
+        return
     platform.update(
         {
             f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
