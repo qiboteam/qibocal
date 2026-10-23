@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 
@@ -366,15 +367,14 @@ def _plot(
 def _update(
     results: SNZDurationResults, platform: CalibrationPlatform, target: QubitPairId
 ):
+    path = update.cz_flux_path(platform, target)
+    if target not in results.best_duration:
+        target = (target[1], target[0])
     platform.update(
         {
-            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
-            f"native_gates.two_qubit.{target}.CZ.0.1.duration": results.best_duration[
-                target
-            ],
-            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.t_idling": results.best_t_idle[
-                target
-            ],
+            f"{path}.envelope.kind": "snz",
+            f"{path}.duration": results.best_duration[target],
+            f"{path}.envelope.t_idling": results.best_t_idle[target],
         }
     )
 
