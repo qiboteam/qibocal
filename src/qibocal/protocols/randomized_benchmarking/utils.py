@@ -186,38 +186,6 @@ def number_to_str(
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
 
 
-def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
-    """Compute the uncertainties of the median (or specified) values.
-
-    Args:
-        data (list or np.ndarray): 2d array with rows containing data points
-            from which the median value is extracted.
-        method (float, optional): method of computing the method.
-            If it is `None`, computes the standard deviation, otherwise it
-            computes the corresponding confidence interval using ``np.percentile``.
-            Defaults to ``None``.
-        data_median (list or np.ndarray, optional): 1d array for computing the errors from the
-            confidence interval. If ``None``, the median values are computed from ``data``.
-        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
-            and returns ``np.ndarray``. Default is ``True``.
-
-    Returns:
-        np.ndarray: uncertainties of the data.
-    """
-    if method is None:
-        return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
-
-    percentiles = [
-        (100 - method) / 2,
-        (100 + method) / 2,
-    ]
-    percentile_interval = np.percentile(data, percentiles, axis=1)
-
-    uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
-
-    return uncertainties
-
-
 class RBGenerator:
     """
     This class generates random two qubit cliffords for randomized benchmarking.
@@ -263,8 +231,6 @@ class RBData(Data):
 
     depths: list[CircuitDepth]
     """Circuits depths."""
-    uncertainties: float | None
-    """Parameters uncertainties."""
     seed: int | None
     nshots: int
     """Number of shots."""
@@ -318,6 +284,10 @@ class StandardRBResult(Results):
     """Fitting parameters uncertainties."""
     error_bars: dict[QubitId, float | list[float] | None] = field(default_factory=dict)
     """Error bars for y."""
+    fidelity_uncertainty: dict[QubitId, float] = field(default_factory=dict)
+    """Uncertainty of ``fidelity``, propagated from the decay uncertainty."""
+    pulse_fidelity_uncertainty: dict[QubitId, float] = field(default_factory=dict)
+    """Uncertainty of ``pulse_fidelity``."""
 
 
 def setup_data(
@@ -346,7 +316,6 @@ def setup_data(
         cls = RB2QData
     data = cls(
         depths=params.depths,
-        uncertainties=params.uncertainties,
         seed=params.seed,
         nshots=params.nshots,
         niter=params.niter,
@@ -713,6 +682,7 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
         dimension = 2**2
 
     fidelity, pulse_fidelity = {}, {}
+    fidelity_uncertainty, pulse_fidelity_uncertainty = {}, {}
     popts, perrs = {}, {}
     error_bars = {}
     for target in targets:
@@ -733,10 +703,23 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
         infidelity = (1 - popt[1]) * (dimension - 1) / dimension
         fidelity[target] = 1 - infidelity
         pulse_fidelity[target] = 1 - infidelity / data.npulses_per_clifford
+        # F = 1 - (d - 1) / d * (1 - p), so sigma_F = (d - 1) / d * sigma_p
+        fidelity_uncertainty[target] = perr[1] * (dimension - 1) / dimension
+        pulse_fidelity_uncertainty[target] = (
+            fidelity_uncertainty[target] / data.npulses_per_clifford
+        )
 
         # conversion from np.array to list/tuple
         error_bars[target] = sigma.tolist()
         perrs[target] = perr
         popts[target] = popt
 
-    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_bars)
+    return StandardRBResult(
+        fidelity,
+        pulse_fidelity,
+        popts,
+        perrs,
+        error_bars,
+        fidelity_uncertainty,
+        pulse_fidelity_uncertainty,
+    )
