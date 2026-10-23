@@ -62,6 +62,21 @@ def phase_diff(phase_1, phase_2):
     return np.mod(phase_2 - phase_1, 2 * np.pi)
 
 
+def best_cz_point(angles, leakages, x, y):
+    """Return ``(x, y, angle, leakage)`` of the lowest-leakage grid point with an
+    angle within 10% of pi, or ``None`` if there is no such point."""
+    mask = (angles > np.pi * 0.9) & (angles < np.pi * 1.1)
+    if not mask.any():
+        return None
+    i = leakages[mask].argmin()
+    return (
+        x[mask][i].item(),
+        y[mask][i].item(),
+        angles[mask][i].item(),
+        leakages[mask][i].item(),
+    )
+
+
 def fit_sinusoid(thetas, data):
     """Fit sinusoid to the given data."""
     pguess = [

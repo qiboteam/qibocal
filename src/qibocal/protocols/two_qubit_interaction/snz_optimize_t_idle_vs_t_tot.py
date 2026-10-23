@@ -7,11 +7,13 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 
+from ..utils import table_dict, table_html
 from .snz_optimize_t_idle import SNZIdlingResults
-from .utils import fit_virtualz, order_pair
+from .utils import best_cz_point, fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
 
@@ -116,15 +118,20 @@ def _aquisition(
         flux_channel = platform.qubits[ordered_pair[1]].flux
         flux_pulses = list(cz_sequence.channel(flux_channel))
         assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
-        flux_pulse = flux_pulses[0]
+        cz_flux_pulse = flux_pulses[0]
 
         data.data[target_vz, other_qubit_vz, "I"] = []
         data.data[target_vz, other_qubit_vz, "X"] = []
+        # One sequence per (t_idle, setup), all acquired in a single execute call.
+        sequences = []
+        flux_pulses_to_sweep = []
+        theta_pulses_to_sweep = []
+        readout_ids = {}
         for t_idle in params.t_idle_range:
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
-                    amplitude=flux_pulse.amplitude,
-                    duration=flux_pulse.duration,
+                    amplitude=cz_flux_pulse.amplitude,
+                    duration=cz_flux_pulse.duration,
                     envelope=Snz(
                         t_idling=t_idle,
                         b_amplitude=params.b_amplitude,
@@ -143,38 +150,45 @@ def _aquisition(
                     dt=0,
                     flux_pulse=flux_pulse,
                 )
-                sweeper_theta = Sweeper(
-                    parameter=Parameter.phase,
-                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
-                    pulses=[theta_pulse],
-                )
-
-                sweeper_duration = Sweeper(
-                    parameter=Parameter.duration,
-                    range=(
-                        params.duration_min,
-                        params.duration_max,
-                        params.duration_step,
-                    ),
-                    pulses=[flux_pulse],
-                )
                 ro_target = list(
                     sequence.channel(platform.qubits[target_vz].acquisition)
                 )[-1]
                 ro_control = list(
                     sequence.channel(platform.qubits[other_qubit_vz].acquisition)
                 )[-1]
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper_duration], [sweeper_theta]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                )
+                sequences.append(sequence)
+                flux_pulses_to_sweep.append(flux_pulse)
+                theta_pulses_to_sweep.append(theta_pulse)
+                readout_ids[(setup, t_idle)] = (ro_target.id, ro_control.id)
 
+        sweeper_theta = Sweeper(
+            parameter=Parameter.phase,
+            range=(-params.theta_start, -params.theta_end, -params.theta_step),
+            pulses=theta_pulses_to_sweep,
+        )
+        sweeper_duration = Sweeper(
+            parameter=Parameter.duration,
+            range=(
+                params.duration_min,
+                params.duration_max,
+                params.duration_step,
+            ),
+            pulses=flux_pulses_to_sweep,
+        )
+        results = platform.execute(
+            sequences,
+            [[sweeper_duration], [sweeper_theta]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        )
+
+        for t_idle in params.t_idle_range:
+            for setup in ("I", "X"):
+                ro_target_id, ro_control_id = readout_ids[(setup, t_idle)]
                 data.data[target_vz, other_qubit_vz, setup].append(
-                    np.stack([results[ro_target.id], results[ro_control.id]])
+                    np.stack([results[ro_target_id], results[ro_control_id]])
                 )
 
         for setup in ("I", "X"):
@@ -225,13 +239,15 @@ def _fit(
             np.array(leakages[_pair]).reshape(len(data.durations), len(data.t_idles)).T
         )
 
-        angle_mask = (angles_ > np.pi * 0.9) & (angles_ < np.pi * 1.1)
-        leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
         x, y = np.meshgrid(data.durations, data.t_idles)
-        best_duration[_pair] = x[angle_mask][leakage_mask].item()
-        best_t_idle[_pair] = y[angle_mask][leakage_mask].item()
-        best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
-        best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
+        best = best_cz_point(angles_, leakages_, x, y)
+        if best is not None:
+            (
+                best_duration[_pair],
+                best_t_idle[_pair],
+                best_angle[_pair],
+                best_leakage[_pair],
+            ) = best
     results = SNZDurationResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
@@ -263,16 +279,23 @@ def _plot(
         ),
     )
     if fit is not None:
+        angles = (
+            np.array(fit.angles[target])
+            .reshape(len(data.durations), len(data.t_idles))
+            .T
+        )
+        leakages = (
+            np.array(fit.leakages[target])
+            .reshape(len(data.durations), len(data.t_idles))
+            .T
+        )
         fig.add_trace(
             go.Heatmap(
                 x=data.durations,
                 y=data.t_idles,
-                z=np.array(fit.angles[target])
-                .reshape(len(data.durations), len(data.t_idles))
-                .T,
+                z=angles,
                 zmin=0,
                 zmax=2 * np.pi,
-                name="{fit.native} angle",
                 colorbar_x=-0.1,
                 colorscale="Twilight",
             ),
@@ -284,9 +307,7 @@ def _plot(
             go.Heatmap(
                 x=data.durations,
                 y=data.t_idles,
-                z=np.array(fit.leakages[target])
-                .reshape(len(data.durations), len(data.t_idles))
-                .T,
+                z=leakages,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
@@ -295,6 +316,22 @@ def _plot(
             row=1,
             col=2,
         )
+
+        for i in range(2):
+            if target in fit.best_duration:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.best_duration[target]],
+                        y=[fit.best_t_idle[target]],
+                        name="Best CZ",
+                        legendgroup="Best CZ",
+                        showlegend=i == 0,
+                        mode="markers",
+                        marker={"color": "yellow", "size": 8},
+                    ),
+                    row=1,
+                    col=i + 1,
+                )
 
         fig.update_layout(
             xaxis1_title="Pulse duration [ns]",
@@ -305,21 +342,39 @@ def _plot(
             yaxis2={"matches": "y"},
         )
 
+        if target in fit.best_duration:
+            fitting_report = table_html(
+                table_dict(
+                    [target, target, target, target],
+                    [
+                        "Duration [ns]",
+                        "T idle [ns]",
+                        "Angle [rad]",
+                        "Leakage [a.u.]",
+                    ],
+                    [
+                        np.round(fit.best_duration[target], 4),
+                        np.round(fit.best_t_idle[target], 4),
+                        np.round(fit.best_angle[target], 4),
+                        np.round(fit.best_leakage[target], 4),
+                    ],
+                )
+            )
+
     return [fig], fitting_report
 
 
 def _update(
     results: SNZDurationResults, platform: CalibrationPlatform, target: QubitPairId
 ):
+    path = update.cz_flux_path(platform, target)
+    if target not in results.best_duration:
+        target = (target[1], target[0])
     platform.update(
         {
-            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
-            f"native_gates.two_qubit.{target}.CZ.0.1.amplitude": results.best_duration[
-                target
-            ],
-            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.t_idling": results.best_t_idle[
-                target
-            ],
+            f"{path}.envelope.kind": "snz",
+            f"{path}.duration": results.best_duration[target],
+            f"{path}.envelope.t_idling": results.best_t_idle[target],
         }
     )
 
