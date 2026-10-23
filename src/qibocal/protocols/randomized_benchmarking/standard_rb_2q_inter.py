@@ -141,7 +141,7 @@ def _plot(
     )
 
     model_note = (
-        "<p> F_step = (1 + 3 p_int) / 4. <br> F_CZ = 1/4 + 3/4 p_int / p_ref <br>"
+        "<p>F_step = (1 + 3 p_int) / 4. <br> F_CZ = 1/4 + 3/4 p_int / p_ref <br>"
         "with p_ref from the stored standard 2q RB calibration</p>"
     )
 
