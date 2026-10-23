@@ -322,7 +322,7 @@ def _plot(
             .reshape(len(data.amplitudes), len(data.rel_amplitudes))
             .T
         )
-        leak = (
+        leakages = (
             np.array(fit.leakages[target])
             .reshape(len(data.amplitudes), len(data.rel_amplitudes))
             .T
@@ -346,7 +346,7 @@ def _plot(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.rel_amplitudes,
-                z=leak,
+                z=leakages,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
@@ -365,7 +365,8 @@ def _plot(
                         name="Best CZ",
                         legendgroup="Best CZ",
                         showlegend=i == 0,
-                        line={"color": "yellow", "width": 1},
+                        mode="markers",
+                        marker={"color": "yellow", "size": 8},
                     ),
                     row=1,
                     col=i + 1,
