@@ -335,7 +335,7 @@ def _update(
     platform.update(
         {
             f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
-            f"native_gates.two_qubit.{target}.CZ.0.1.amplitude": results.best_duration[
+            f"native_gates.two_qubit.{target}.CZ.0.1.duration": results.best_duration[
                 target
             ],
             f"native_gates.two_qubit.{target}.CZ.0.1.envelope.t_idling": results.best_t_idle[
