@@ -113,14 +113,7 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
         )
         fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
 
-    return StandardRB2QInterResult(
-        results.fidelity,
-        results.pulse_fidelity,
-        results.fit_parameters,
-        results.fit_uncertainties,
-        results.error_bars,
-        fidelity_cz=fidelity_cz,
-    )
+    return StandardRB2QInterResult(**vars(results), fidelity_cz=fidelity_cz)
 
 
 def _plot(
