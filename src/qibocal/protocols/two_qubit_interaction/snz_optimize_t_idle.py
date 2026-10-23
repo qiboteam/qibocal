@@ -131,6 +131,11 @@ def _aquisition(
 
         data.data[target_vz, other_qubit_vz, "I"] = []
         data.data[target_vz, other_qubit_vz, "X"] = []
+        # One sequence per (t_idle, setup), all acquired in a single execute call.
+        sequences = []
+        flux_pulses_to_sweep = []
+        theta_pulses_to_sweep = []
+        readout_ids = {}
         for t_idle in params.t_idle_range:
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
@@ -154,38 +159,45 @@ def _aquisition(
                     dt=0,
                     flux_pulse=flux_pulse,
                 )
-                sweeper_theta = Sweeper(
-                    parameter=Parameter.phase,
-                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
-                    pulses=[theta_pulse],
-                )
-
-                sweeper_amplitude = Sweeper(
-                    parameter=Parameter.amplitude,
-                    range=(
-                        params.amplitude_min,
-                        params.amplitude_max,
-                        params.amplitude_step,
-                    ),
-                    pulses=[flux_pulse],
-                )
                 ro_target = list(
                     sequence.channel(platform.qubits[target_vz].acquisition)
                 )[-1]
                 ro_control = list(
                     sequence.channel(platform.qubits[other_qubit_vz].acquisition)
                 )[-1]
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper_amplitude], [sweeper_theta]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                )
+                sequences.append(sequence)
+                flux_pulses_to_sweep.append(flux_pulse)
+                theta_pulses_to_sweep.append(theta_pulse)
+                readout_ids[(setup, t_idle)] = (ro_target.id, ro_control.id)
 
+        sweeper_theta = Sweeper(
+            parameter=Parameter.phase,
+            range=(-params.theta_start, -params.theta_end, -params.theta_step),
+            pulses=theta_pulses_to_sweep,
+        )
+        sweeper_amplitude = Sweeper(
+            parameter=Parameter.amplitude,
+            range=(
+                params.amplitude_min,
+                params.amplitude_max,
+                params.amplitude_step,
+            ),
+            pulses=flux_pulses_to_sweep,
+        )
+        results = platform.execute(
+            sequences,
+            [[sweeper_amplitude], [sweeper_theta]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        )
+
+        for t_idle in params.t_idle_range:
+            for setup in ("I", "X"):
+                ro_target_id, ro_control_id = readout_ids[(setup, t_idle)]
                 data.data[target_vz, other_qubit_vz, setup].append(
-                    np.stack([results[ro_target.id], results[ro_control.id]])
+                    np.stack([results[ro_target_id], results[ro_control_id]])
                 )
 
         for setup in ("I", "X"):
