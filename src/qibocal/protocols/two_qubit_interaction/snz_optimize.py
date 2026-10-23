@@ -150,7 +150,7 @@ def _aquisition(
         flux_channel = platform.qubits[ordered_pair[1]].flux
         flux_pulses = list(cz_sequence.channel(flux_channel))
         assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
-        flux_pulse = flux_pulses[0]
+        cz_flux_pulse = flux_pulses[0]
 
         data.data[target_vz, other_qubit_vz, "I"] = []
         data.data[target_vz, other_qubit_vz, "X"] = []
@@ -164,7 +164,7 @@ def _aquisition(
         for ratio in params.amplitude_ratio_range:
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
-                    amplitude=flux_pulse.amplitude,
+                    amplitude=cz_flux_pulse.amplitude,
                     duration=params.tp + params.t_idling / platform.sampling_rate,
                     envelope=Snz(
                         t_idling=params.t_idling,
