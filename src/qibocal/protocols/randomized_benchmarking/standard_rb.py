@@ -13,7 +13,6 @@ from .fitting import exp1B_func
 from .utils import (
     RBData,
     StandardRBResult,
-    fidelity_uncertainty,
     fit,
     number_to_str,
     rb_acquisition,
@@ -227,15 +226,13 @@ def _plot(
 
     fitting_report = ""
     if fit is not None:
-        sigma_clifford = fidelity_uncertainty(fit.fit_uncertainties[qubit][1], 2)
-        sigma_gate = sigma_clifford / data.npulses_per_clifford
         fitting_report = table_html(
             table_dict(
                 str(qubit),
                 ["F_Cl", "F_avg,gate"],
                 [
-                    (fit.fidelity[qubit], sigma_clifford),
-                    (fit.pulse_fidelity[qubit], sigma_gate),
+                    (fit.fidelity[qubit], fit.fidelity_uncertainty[qubit]),
+                    (fit.pulse_fidelity[qubit], fit.pulse_fidelity_uncertainty[qubit]),
                 ],
                 display_error=True,
             )
@@ -250,7 +247,7 @@ def _update(results: StandardRBResult, platform: CalibrationPlatform, target: Qu
     # TODO: shall we use the gate fidelity or the pulse fidelity
     platform.calibration.single_qubits[target].rb_fidelity = (
         results.fidelity[target],
-        results.fit_uncertainties[target][1] / 2,
+        results.fidelity_uncertainty[target],
     )
 
 

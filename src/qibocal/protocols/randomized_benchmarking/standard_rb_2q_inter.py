@@ -7,7 +7,6 @@ from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.standard_rb import survival_figure
 from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
-    TWO_QUBIT_DIMENSION,
     StandardRB2QParameters,
     metadata_table,
 )
@@ -16,7 +15,6 @@ from ..utils import table_dict, table_html
 from .utils import (
     RB2QInterData,
     StandardRBResult,
-    fidelity_uncertainty,
     fit,
     twoq_rb_acquisition,
 )
@@ -121,7 +119,7 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
         results.fit_parameters,
         results.fit_uncertainties,
         results.error_bars,
-        fidelity_cz,
+        fidelity_cz=fidelity_cz,
     )
 
 
@@ -135,15 +133,9 @@ def _plot(
 
     reference = _reference_decay(data.fidelity.get(target))
     cz = (fit.fidelity_cz or {}).get(target)
-    sigma_p_int = fit.fit_uncertainties[target][1]
 
     names = ["F_step (Clifford + CZ)"]
-    values = [
-        (
-            fit.fidelity[target],
-            fidelity_uncertainty(sigma_p_int, TWO_QUBIT_DIMENSION),
-        )
-    ]
+    values = [(fit.fidelity[target], fit.fidelity_uncertainty[target])]
     if reference is not None:
         names.append("Reference decay p_ref")
         values.append(reference)
