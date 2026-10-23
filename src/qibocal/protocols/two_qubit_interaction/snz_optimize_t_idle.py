@@ -9,6 +9,7 @@ from qibolab._core.pulses.envelope import Snz
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
 
 from ..utils import table_dict, table_html
 from .snz_optimize import (
@@ -243,11 +244,7 @@ def _fit(
         best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
         best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
     else:
-        closest = np.unravel_index(np.abs(angles_ - np.pi).argmin(), angles_.shape)
-        best_amplitude[_pair] = x[closest]
-        best_t_idle[_pair] = y[closest]
-        best_angle[_pair] = angles_[closest]
-        best_leakage[_pair] = leakages_[closest]
+        log.warning(f"No CZ angle within 10% of pi for pair {_pair}.")
     return SNZIdlingResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
@@ -319,18 +316,19 @@ def _plot(
         )
 
         for i in range(2):
-            fig.add_trace(
-                go.Scatter(
-                    x=[fit.best_amplitude[target]],
-                    y=[fit.best_t_idle[target]],
-                    name="Best CZ",
-                    legendgroup="Best CZ",
-                    showlegend=i == 0,
-                    line={"color": "yellow", "width": 1},
-                ),
-                row=1,
-                col=i + 1,
-            )
+            if target in fit.best_amplitude:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.best_amplitude[target]],
+                        y=[fit.best_t_idle[target]],
+                        name="Best CZ",
+                        legendgroup="Best CZ",
+                        showlegend=i == 0,
+                        line={"color": "yellow", "width": 1},
+                    ),
+                    row=1,
+                    col=i + 1,
+                )
             fig.add_trace(
                 go.Contour(
                     z=angles,
@@ -362,32 +360,35 @@ def _plot(
             yaxis2={"matches": "y"},
         )
 
-        fitting_report = table_html(
-            table_dict(
-                [target, target, target, target],
-                [
-                    "Amplitude",
-                    "T idle [ns]",
-                    "Angle [rad]",
-                    "Leakage [a.u.]",
-                ],
-                [
-                    np.round(fit.best_amplitude[target], 4),
-                    np.round(
-                        fit.best_t_idle[target],
-                        4,
-                    ),
-                    np.round(fit.best_angle[target], 4),
-                    np.round(fit.best_leakage[target], 4),
-                ],
+        if target in fit.best_amplitude:
+            fitting_report = table_html(
+                table_dict(
+                    [target, target, target, target],
+                    [
+                        "Amplitude",
+                        "T idle [ns]",
+                        "Angle [rad]",
+                        "Leakage [a.u.]",
+                    ],
+                    [
+                        np.round(fit.best_amplitude[target], 4),
+                        np.round(
+                            fit.best_t_idle[target],
+                            4,
+                        ),
+                        np.round(fit.best_angle[target], 4),
+                        np.round(fit.best_leakage[target], 4),
+                    ],
+                )
             )
-        )
     return [fig], fitting_report
 
 
 def _update(
     results: SNZIdlingResults, platform: CalibrationPlatform, target: QubitPairId
 ):
+    if target not in results.best_amplitude:
+        return
     platform.update(
         {
             f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
