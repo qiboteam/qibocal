@@ -35,7 +35,8 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from .mixture import GaussianMixture, fit_mixture, project
+from .mixture import GaussianMixture, fit_mixture
+from .outliers import MAX_EXCLUDED, CoreRegion, core_region, rotate
 from .plot import plot_results
 
 ROC_LENGHT = 800
@@ -149,12 +150,16 @@ class SingleShotClassificationResults(Results):
         default_factory=dict
     )
     """Qubit effective temperature from the spurious excited population."""
+    outliers: dict[QubitId, dict] = field(default_factory=dict)
+    """Region of the shots used in the Gaussian mixture fit, cf.
+    :class:`~qibocal.protocols.classification.outliers.CoreRegion`."""
 
     OPTIONAL = (
         "classifiers_hpars",
         "confusion",
         "mixture",
         "mixture_effective_temperature",
+        "outliers",
     )
     """Fields possibly missing for some qubits: absent when running only the default
     classifier, in results produced by previous versions, or for failed mixture fits."""
@@ -184,6 +189,11 @@ class SingleShotClassificationResults(Results):
             return None
         mixture = GaussianMixture(**parameters)
         return mixture if mixture.consistent or not consistent else None
+
+    def core_region(self, qubit: QubitId) -> CoreRegion | None:
+        """Region of the shots used in the Gaussian mixture fit, if any."""
+        parameters = self.outliers.get(qubit)
+        return CoreRegion(**parameters) if parameters is not None else None
 
     def save(self, path):
         classifiers = run.import_classifiers(self.names)
@@ -315,6 +325,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     confusion = {}
     mixtures = {}
     mixture_temperature = {}
+    regions = {}
     for qubit in qubits:
         qubit_data = data.data[qubit]
         state0_data = qubit_data[qubit_data.state == 0]
@@ -353,14 +364,19 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 effective_temperature[qubit] = models[i].effective_temperature(
                     predictions_state0, data.qubit_frequencies[qubit]
                 )
-                ground = project(data.state_zero(qubit), models[i].angle)
-                excited = project(data.state_one(qubit), models[i].angle)
+                ground = rotate(data.state_zero(qubit), models[i].angle)
+                excited = rotate(data.state_one(qubit), models[i].angle)
                 confusion[qubit] = [
-                    float(np.mean(ground > models[i].threshold)),
-                    float(np.mean(excited <= models[i].threshold)),
+                    float(np.mean(ground[:, 0] > models[i].threshold)),
+                    float(np.mean(excited[:, 0] <= models[i].threshold)),
                 ]
+                region = core_region(ground, excited)
+                regions[qubit] = region.dump()
+                if region.excluded:
+                    ground = ground[region.inside(ground)]
+                    excited = excited[region.inside(excited)]
                 try:
-                    mixture = fit_mixture(ground, excited)
+                    mixture = fit_mixture(ground[:, 0], excited[:, 0])
                 except ValueError as error:
                     log.warning(
                         f"Gaussian mixture fit failed for qubit {qubit}: {error}"
@@ -402,6 +418,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         confusion=confusion,
         mixture=mixtures,
         mixture_effective_temperature=mixture_temperature,
+        outliers=regions,
     )
 
 
@@ -491,6 +508,7 @@ def _report_rows(
                     ),
                 )
             )
+            rows.append(_excluded_row(fit.core_region(target)))
         rows += [
             ("Threshold", np.round(fit.threshold[target], 6)),
             ("Readout Fidelity", np.round(fit.fidelity[target], 3)),
@@ -521,6 +539,7 @@ def _report_rows(
             "Assignment Fidelity (naive / Gaussian)",
             compare(1 - sum(naive) / 2, 1 - sum(gaussian) / 2),
         ),
+        _excluded_row(fit.core_region(target)),
         ("Excited Population, Ground Preparation", f"{mixture.spurious[0]:.4g}"),
         ("Ground Population, Excited Preparation", f"{mixture.spurious[1]:.4g}"),
         (
@@ -535,6 +554,17 @@ def _report_rows(
         ),
     ]
     return [name for name, _ in rows], [value for _, value in rows]
+
+
+def _excluded_row(region: CoreRegion | None) -> tuple[str, str]:
+    """Report the shots excluded from the Gaussian mixture fit."""
+    name = "Excluded Shots (ground / excited preparation)"
+    if region is None:
+        return name, "-"
+    counts = " / ".join(str(outside) for outside in region.outside)
+    if region.excluded:
+        return name, counts
+    return name, f"none ({counts} outside, above the {MAX_EXCLUDED:.0%} limit)"
 
 
 def _update(
