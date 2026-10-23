@@ -397,8 +397,6 @@ def _plot(
 def _update(
     results: SNZIdlingResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if target not in results.best_amplitude:
-        return
     platform.update(
         {
             f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",

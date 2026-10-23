@@ -330,27 +330,6 @@ def _plot(
                     row=1,
                     col=i + 1,
                 )
-            fig.add_trace(
-                go.Contour(
-                    z=angles,
-                    x=data.durations,
-                    y=data.t_idles,
-                    contours={
-                        "start": np.pi,
-                        "end": np.pi,
-                        "coloring": "none",
-                        "showlines": True,
-                        "showlabels": True,
-                    },
-                    line={"color": "yellow", "width": 1},
-                    name="Pi contour",
-                    legendgroup="Pi contour",
-                    showlegend=i == 0,
-                    hoverinfo="skip",
-                ),
-                row=1,
-                col=i + 1,
-            )
 
         fig.update_layout(
             xaxis1_title="Pulse duration [ns]",
@@ -386,8 +365,6 @@ def _plot(
 def _update(
     results: SNZDurationResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if target not in results.best_duration:
-        return
     platform.update(
         {
             f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
