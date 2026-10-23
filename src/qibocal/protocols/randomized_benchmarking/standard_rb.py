@@ -41,13 +41,6 @@ class StandardRBParameters(Parameters):
     """
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: float | None = None
-    """Method of computing the error bars of the signal and uncertainties of
-    the fit.
-
-    If ``None``,
-    it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`.
-    """
     seed: int | None = None
     """A fixed seed to initialize ``np.random.Generator``.
 
