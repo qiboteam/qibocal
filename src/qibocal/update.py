@@ -177,6 +177,20 @@ def cz_flux_path(platform: Platform, pair: QubitPairId) -> str:
     return f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1"
 
 
+def CZ_duration(duration: float, platform: Platform, pair: QubitPairId):
+    """Update CZ duration for specific pair."""
+    platform.update(
+        {f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1.duration": duration}
+    )
+
+
+def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
+    """Update CZ amplitude for specific pair."""
+    platform.update(
+        {f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1.amplitude": amp}
+    )
+
+
 def iSWAP_duration(duration: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration duration for specific pair."""
     platform.update(
