@@ -11,6 +11,11 @@ from qibocal.protocols.classification.classification import (
     _update,
 )
 from qibocal.protocols.classification.mixture import fit_mixture
+from qibocal.protocols.classification.outliers import (
+    MAX_DISTANCE,
+    MAX_EXCLUDED,
+    core_region,
+)
 
 CENTERS = [(0.2, 0.5), (0.6, 0.1)]
 
@@ -144,3 +149,68 @@ def test_results_without_mixture(platform):
     assert "naive / Gaussian" not in table
     _update(fit, platform, 0)
     assert platform.calibration.single_qubits[0].readout.fidelity == fit.fidelity[0]
+
+
+def shots_2d(nshots, spurious=(0.02, 0.05), extra=None, bridge=0, seed=0):
+    """Shots along and across the states axis, with an optional further cluster
+    and shots between the states, as from decays during the readout."""
+    rng = np.random.default_rng(seed)
+    centers = np.array([[-1.0, 0.0], [1.0, 0.0]])
+
+    def prepared(state):
+        wrong = rng.binomial(nshots, spurious[state])
+        points = [
+            rng.normal(centers[state], 0.3, (nshots - wrong, 2)),
+            rng.normal(centers[1 - state], 0.3, (wrong, 2)),
+        ]
+        if extra is not None:
+            points.append(rng.normal(extra[0], 0.3, (int(extra[1] * nshots), 2)))
+        if bridge and state == 1:
+            along = rng.uniform(-1, 1, bridge)
+            points.append(np.column_stack([along, rng.normal(0, 0.3, bridge)]))
+        return np.concatenate(points)
+
+    return prepared(0), prepared(1)
+
+
+def test_core_region_clean():
+    ground, excited = shots_2d(20_000)
+    region = core_region(ground, excited)
+
+    assert region.excluded
+    assert sum(region.outside) <= 2
+
+
+def test_core_region_excludes_further_cluster():
+    ground, excited = shots_2d(10_000, extra=([0.0, 4.0], 0.08))
+    region = core_region(ground, excited)
+
+    assert region.excluded
+    assert region.outside == pytest.approx([800, 800], abs=20)
+    ground, excited = ground[region.inside(ground)], excited[region.inside(excited)]
+    mixture = fit_mixture(ground[:, 0], excited[:, 0])
+    assert mixture.consistent
+    assert mixture.spurious == pytest.approx([0.02, 0.05], abs=0.01)
+
+
+def test_core_region_keeps_decays_along_the_axis():
+    ground, excited = shots_2d(10_000, bridge=500)
+    region = core_region(ground, excited)
+
+    assert region.excluded
+    assert region.outside[1] <= 2
+
+
+def test_core_region_refrains_when_unsure():
+    ground, excited = shots_2d(10_000, extra=([0.0, 4.0], 0.5))
+    region = core_region(ground, excited)
+
+    assert not region.excluded
+    assert min(region.outside) > MAX_EXCLUDED * 10_000
+
+
+def test_region_outline_on_boundary():
+    ground, excited = shots_2d(5_000)
+    region = core_region(ground, excited)
+
+    assert region.distance(region.outline()) == pytest.approx(MAX_DISTANCE)
