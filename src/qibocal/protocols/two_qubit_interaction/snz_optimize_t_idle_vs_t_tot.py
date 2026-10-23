@@ -10,6 +10,7 @@ from qibolab._core.pulses.envelope import Snz
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 
+from ..utils import table_dict, table_html
 from .snz_optimize_t_idle import SNZIdlingResults
 from .utils import best_cz_point, fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
@@ -315,6 +316,42 @@ def _plot(
             col=2,
         )
 
+        for i in range(2):
+            if target in fit.best_duration:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.best_duration[target]],
+                        y=[fit.best_t_idle[target]],
+                        name="Best CZ",
+                        legendgroup="Best CZ",
+                        showlegend=i == 0,
+                        line={"color": "yellow", "width": 1},
+                    ),
+                    row=1,
+                    col=i + 1,
+                )
+            fig.add_trace(
+                go.Contour(
+                    z=angles,
+                    x=data.durations,
+                    y=data.t_idles,
+                    contours={
+                        "start": np.pi,
+                        "end": np.pi,
+                        "coloring": "none",
+                        "showlines": True,
+                        "showlabels": True,
+                    },
+                    line={"color": "yellow", "width": 1},
+                    name="Pi contour",
+                    legendgroup="Pi contour",
+                    showlegend=i == 0,
+                    hoverinfo="skip",
+                ),
+                row=1,
+                col=i + 1,
+            )
+
         fig.update_layout(
             xaxis1_title="Pulse duration [ns]",
             xaxis2_title="Pulse duration [ns]",
@@ -323,6 +360,25 @@ def _plot(
             xaxis2={"matches": "x"},
             yaxis2={"matches": "y"},
         )
+
+        if target in fit.best_duration:
+            fitting_report = table_html(
+                table_dict(
+                    [target, target, target, target],
+                    [
+                        "Duration [ns]",
+                        "T idle [ns]",
+                        "Angle [rad]",
+                        "Leakage [a.u.]",
+                    ],
+                    [
+                        np.round(fit.best_duration[target], 4),
+                        np.round(fit.best_t_idle[target], 4),
+                        np.round(fit.best_angle[target], 4),
+                        np.round(fit.best_leakage[target], 4),
+                    ],
+                )
+            )
 
     return [fig], fitting_report
 
