@@ -9,13 +9,12 @@ from qibolab._core.pulses.envelope import Snz
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 
 from ..utils import table_dict, table_html
 from .snz_optimize import (
     SNZFinetuningResults,
 )
-from .utils import fit_virtualz, order_pair
+from .utils import best_cz_point, fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
 
@@ -235,16 +234,15 @@ def _fit(
         np.array(leakages[_pair]).reshape(len(data.amplitudes), len(data.t_idles)).T
     )
 
-    angle_mask = (angles_ > np.pi * 0.9) & (angles_ < np.pi * 1.1)
     x, y = np.meshgrid(data.amplitudes, data.t_idles)
-    if angle_mask.any():
-        leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
-        best_amplitude[_pair] = x[angle_mask][leakage_mask].item()
-        best_t_idle[_pair] = y[angle_mask][leakage_mask].item()
-        best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
-        best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
-    else:
-        log.warning(f"No CZ angle within 10% of pi for pair {_pair}.")
+    best = best_cz_point(angles_, leakages_, x, y, _pair)
+    if best is not None:
+        (
+            best_amplitude[_pair],
+            best_t_idle[_pair],
+            best_angle[_pair],
+            best_leakage[_pair],
+        ) = best
     return SNZIdlingResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
