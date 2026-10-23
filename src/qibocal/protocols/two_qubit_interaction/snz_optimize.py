@@ -277,7 +277,7 @@ def _fit(
         )
 
         x, y = np.meshgrid(data.amplitudes, data.rel_amplitudes)
-        best = best_cz_point(angles_, leakages_, x, y, _pair)
+        best = best_cz_point(angles_, leakages_, x, y)
         if best is not None:
             (
                 best_amplitude[_pair],
