@@ -199,18 +199,17 @@ def survival_figure(
 
 
 def _plot(
-    data: RBData, fit: StandardRBResult, target: QubitId
+    data: RBData, fit: StandardRBResult | None, target: QubitId
 ) -> tuple[list[go.Figure], str]:
-    """Builds the table for the qq pipe, calls the plot function of the result
-    object and returns the figure es list.
+    """Survival probability figure and fidelity report of a standard RB experiment.
 
     Args:
-        data (RBData): Data object used for the table.
-        fit (StandardRBResult): Is called for the plot.
-        target (_type_): Not used yet.
+        data (RBData): Data object with the survival probabilities.
+        fit (StandardRBResult, optional): Fit results, ``None`` if not available.
+        target (QubitId): Qubit to plot.
 
     Returns:
-        tuple[list[go.Figure], str]:
+        tuple[list[go.Figure], str]: The survival figure and the HTML report.
     """
     target = tuple(target) if isinstance(target, list) else target
     qubit = target
@@ -221,7 +220,8 @@ def _plot(
 
     model_note = (
         "<p>(d = 2): F_Cl = 1 - (d - 1) / d * (1 - p) = (1 + p) / 2 <br>"
-        "F_avg,gate = 1 - (1 - F_Cl) / N, with N = {npulses} gates per Clifford</p>"
+        "F_avg,gate ≈ 1 - (1 - F_Cl) / N (first order), with N = {npulses} gates per "
+        "Clifford</p>"
     ).format(npulses=f"{data.npulses_per_clifford:g}")
 
     fitting_report = ""
