@@ -27,6 +27,14 @@ def _dump_pair(pair: QubitPairId) -> str:
     return _QPAIR_DUMPER.dump_python(pair)
 
 
+def cz_flux_path(platform: Platform, pair: QubitPairId) -> str:
+    """Parameters path of the CZ flux pulse of ``pair``, in whichever order the
+    platform stores the pair."""
+    if pair not in platform.natives.two_qubit:
+        pair = (pair[1], pair[0])
+    return f"native_gates.two_qubit.{_dump_pair(pair)}.CZ.0.1"
+
+
 M = TypeVar("M", bound=BaseModel)
 
 
