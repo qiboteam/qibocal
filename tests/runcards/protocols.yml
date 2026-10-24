@@ -55,6 +55,15 @@ actions:
       freq_step: 200_000
       nshots: 10
 
+  - id: qubit spectroscopy wide
+    operation: qubit_spectroscopy
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000_000
+      freq_step: 5_000_000
+      nshots: 10
+
   - id: qubit power spectroscopy
     operation: qubit_power_spectroscopy
     parameters:
