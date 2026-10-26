@@ -12,7 +12,7 @@ from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Resu
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
-from .utils import best_cz_point, fit_virtualz, order_pair
+from .utils import best_snz_point, fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
 
@@ -143,7 +143,6 @@ def _aquisition(
     )
 
     for ordered_pair in data.sorted_pairs:
-        flux_channel = platform.qubits[ordered_pair[1]].flux
         target_vz = ordered_pair[0]
         other_qubit_vz = ordered_pair[1]
         # Find CZ flux pulse
@@ -278,7 +277,7 @@ def _fit(
         )
 
         x, y = np.meshgrid(data.amplitudes, data.rel_amplitudes)
-        best = best_cz_point(angles_, leakages_, x, y)
+        best = best_snz_point(angles_, leakages_, x, y)
         if best is not None:
             (
                 best_amplitude[_pair],
@@ -363,8 +362,8 @@ def _plot(
                     go.Scatter(
                         x=[fit.best_amplitude[target]],
                         y=[fit.best_rel_amplitude[target]],
-                        name="Best CZ",
-                        legendgroup="Best CZ",
+                        name="Best SNZ",
+                        legendgroup="Best SNZ",
                         showlegend=i == 0,
                         mode="markers",
                         marker={"color": "yellow", "size": 8},

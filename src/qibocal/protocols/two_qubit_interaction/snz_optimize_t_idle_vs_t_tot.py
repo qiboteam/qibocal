@@ -13,7 +13,7 @@ from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
 from .snz_optimize_t_idle import SNZIdlingResults
-from .utils import best_cz_point, fit_virtualz, order_pair
+from .utils import best_snz_point, fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
 
@@ -109,10 +109,9 @@ def _aquisition(
         t_idles=(params.t_idle_range / platform.sampling_rate).tolist(),
     )
     for ordered_pair in data.sorted_pairs:
-        flux_channel = platform.qubits[ordered_pair[1]].flux
         target_vz = ordered_pair[0]
         other_qubit_vz = ordered_pair[1]
-        # Find CZ flux pulse
+        # Find SNZ flux pulse
 
         cz_sequence = platform.natives.two_qubit[ordered_pair].CZ()
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -240,7 +239,7 @@ def _fit(
         )
 
         x, y = np.meshgrid(data.durations, data.t_idles)
-        best = best_cz_point(angles_, leakages_, x, y)
+        best = best_snz_point(angles_, leakages_, x, y)
         if best is not None:
             (
                 best_duration[_pair],
@@ -323,8 +322,8 @@ def _plot(
                     go.Scatter(
                         x=[fit.best_duration[target]],
                         y=[fit.best_t_idle[target]],
-                        name="Best CZ",
-                        legendgroup="Best CZ",
+                        name="Best SNZ",
+                        legendgroup="Best SNZ",
                         showlegend=i == 0,
                         mode="markers",
                         marker={"color": "yellow", "size": 8},
