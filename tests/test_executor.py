@@ -1,15 +1,18 @@
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from shutil import copy2
 
+import numpy as np
 import pytest
+import yaml
+from qibo import Circuit
 from qibolab import Platform
 
 import qibocal
 import qibocal.protocols
 from qibocal import Executor
-from qibocal.auto.execute import check_overlap_in_input_qubits
+from qibocal.auto.execute import _action_parameters, check_overlap_in_input_qubits
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.operation import (
     Data,
@@ -20,12 +23,13 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.output import PLATFORM, Output
 from qibocal.auto.runcard import Action, Runcard
-from qibocal.auto.task import Completed, Task
+from qibocal.auto.task import SINGLE_ACTION, Completed, Task
 from qibocal.calibration.platform import (
     CalibrationPlatform,
     create_calibration_platform,
 )
 from qibocal.cli.report import report
+from qibocal.protocols.utils import PowerLevel
 
 PARAMETERS = {
     "id": "flipping",
@@ -475,6 +479,45 @@ def test_open_records_executions(tmp_path, platform):
     assert loaded.task.targets == [0]
     assert loaded.results.amplitude == recorded.results.amplitude
     assert e.history["standard_rb_2q"][0].task.targets == [(0, 1)]
+
+
+def test_open_records_normalized_parameters(tmp_path, platform):
+    path = tmp_path / "report"
+    frequency = ("lincenter", np.float64(1e6), np.int64(5))
+    with Executor.open(path, platform=platform, targets=[0], force=True) as e:
+        e(
+            qibocal.protocols.resonator_spectroscopy(
+                frequency=frequency, power_level="low", nshots=10
+            )
+        )
+
+    action = yaml.safe_load(
+        (path / "data" / "resonator_spectroscopy-0" / SINGLE_ACTION).read_text()
+    )
+    assert action["parameters"]["power_level"] == "low"
+    assert action["parameters"]["frequency"] == ["lincenter", 1e6, 5]
+    loaded = Output.load(path).history["resonator_spectroscopy"][0]
+    assert loaded.task.parameters.power_level is PowerLevel.low
+
+
+def test_action_parameters_plain_types():
+    @dataclass
+    class NormalizedParameters(Parameters):
+        level: PowerLevel = PowerLevel.high
+        values: tuple = ((np.float64(0.5), PowerLevel.low), np.int64(2))
+        array: np.ndarray = field(default_factory=lambda: np.arange(3))
+        mapping: dict = field(default_factory=lambda: {"step": np.float32(0.25)})
+        circuit: Circuit = field(default_factory=lambda: Circuit(1))
+
+    parameters = _action_parameters(NormalizedParameters())
+    assert parameters["level"] == "high" and type(parameters["level"]) is str
+    assert parameters["values"] == [[0.5, "low"], 2]
+    assert parameters["array"] == [0, 1, 2]
+    assert parameters["mapping"] == {"step": 0.25}
+    # circuits are dumped to their own file by Action.dump
+    assert isinstance(parameters["circuit"], Circuit)
+    del parameters["circuit"]
+    assert yaml.safe_load(yaml.safe_dump(parameters)) == parameters
 
 
 def test_records_only_initialized_executions(tmp_path, platform, bound_protocol):

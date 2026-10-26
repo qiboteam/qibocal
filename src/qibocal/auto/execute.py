@@ -5,10 +5,11 @@ from __future__ import annotations
 import os
 import time
 import warnings
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from copy import copy
 from dataclasses import fields, is_dataclass, replace
+from enum import Enum
 from inspect import Parameter, signature
 from pathlib import Path
 from typing import Any
@@ -88,6 +89,24 @@ def _invoke(callback: Callable, argument: object, **context: Any) -> Any:
     return callback(*args, **kwargs)
 
 
+def _runcard_value(value: Any) -> Any:
+    """Convert a parameter value to the plain types found in runcards.
+
+    Parameters may hold values normalized after loading, e.g. enumerations, ranges
+    with NumPy scalars, or arrays computed during acquisition, which YAML cannot
+    represent.
+    """
+    if isinstance(value, Enum):
+        return _runcard_value(value.value)
+    if isinstance(value, np.ndarray | np.generic):
+        return value.tolist()
+    if isinstance(value, list | tuple):
+        return [_runcard_value(item) for item in value]
+    if isinstance(value, Mapping):
+        return {key: _runcard_value(item) for key, item in value.items()}
+    return value
+
+
 def _action_parameters(parameters: Any) -> dict[str, Any]:
     """Serializable parameters of a bound protocol, as found in runcards."""
     if not is_dataclass(parameters):
@@ -98,7 +117,7 @@ def _action_parameters(parameters: Any) -> dict[str, Any]:
     for name in DEFAULT_PARENT_PARAMETERS:
         if hasattr(parameters, name):
             values[name] = getattr(parameters, name)
-    return values
+    return {name: _runcard_value(value) for name, value in values.items()}
 
 
 class Executor:
