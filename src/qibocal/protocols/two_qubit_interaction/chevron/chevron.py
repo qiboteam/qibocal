@@ -263,20 +263,24 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
+    # Data is stored under the frequency-ordered pair, but the report may pass
+    # the target in the platform's pair order.
+    reversed_target = (target[1], target[0])
+    data_target = target if target in data.data else reversed_target
     fig = make_subplots(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {target[0]} - Low Frequency - Data",
-            f"Qubit {target[1]} - High Frequency - Data",
-            f"Qubit {target[0]} - Low Frequency - minmax scaled",
-            f"Qubit {target[1]} - High Frequency - minmax scaled",
+            f"Qubit {data_target[0]} - Low Frequency - Data",
+            f"Qubit {data_target[1]} - High Frequency - Data",
+            f"Qubit {data_target[0]} - Low Frequency - minmax scaled",
+            f"Qubit {data_target[1]} - High Frequency - minmax scaled",
         ),
         shared_xaxes="all",
         shared_yaxes="all",
     )
     fitting_report = ""
-    for i, _data in enumerate([data[target][0], data[target][1]]):
+    for i, _data in enumerate([data[data_target][0], data[data_target][1]]):
         fig.add_trace(
             go.Heatmap(
                 x=data.duration,
@@ -290,13 +294,13 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 
     if fit is not None:
         for i in range(2):
-            if len(fit.fitted_parameters[target][i]) > 0:
+            if len(fit.fitted_parameters[data_target][i]) > 0:
                 fig.add_trace(
                     go.Heatmap(
                         x=data.duration,
                         y=data.amplitude,
                         z=chevron_fit(
-                            data.grid, *fit.fitted_parameters[target][i]
+                            data.grid, *fit.fitted_parameters[data_target][i]
                         ).reshape(
                             len(data.amplitude),
                             len(data.duration),
@@ -309,7 +313,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 
                 for j in range(2):
                     fig.add_hline(
-                        y=fit.amplitude[target][i],
+                        y=fit.amplitude[data_target][i],
                         line_dash="dot",
                         row=j + 1,
                         col=i + 1,
@@ -317,7 +321,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                     )
 
                     fig.add_vline(
-                        x=fit.duration[target][i],
+                        x=fit.duration[data_target][i],
                         line_dash="dot",
                         row=j + 1,
                         col=i + 1,
@@ -325,7 +329,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                     )
 
                     fig.add_vline(
-                        x=fit.half_duration[target][i],
+                        x=fit.half_duration[data_target][i],
                         line_dash="dot",
                         row=j + 1,
                         col=i + 1,
@@ -359,13 +363,13 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                target[1],
+                data_target[1],
                 [f"{fit.native} amplitude", f"{fit.native} duration"],
                 [
-                    np.mean(fit.amplitude[target]),
-                    np.round(np.mean(fit.duration[target]))
+                    np.mean(fit.amplitude[data_target]),
+                    np.round(np.mean(fit.duration[data_target]))
                     if data.native == "CZ"
-                    else np.round(np.mean(fit.half_duration[target])),
+                    else np.round(np.mean(fit.half_duration[data_target])),
                 ],
             )
         )
