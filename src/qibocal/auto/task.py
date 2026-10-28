@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, NewType, Union
 
 import yaml
+from pydantic import TypeAdapter
 from qibo import Circuit
 from qibolab import Platform
 
@@ -229,7 +230,8 @@ class Completed:
         if self._targets is not None:
             return list(self._targets)
         if self.task is not None and self.task.targets is not None:
-            return self.task.targets
+            # as at acquisition: e.g. pairs recorded as lists back to tuples
+            return TypeAdapter(Targets).validate_python(self.task.targets)
         raise ValueError("Completed execution has no target metadata")
 
     @property

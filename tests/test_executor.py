@@ -520,6 +520,16 @@ def test_action_parameters_plain_types():
     assert yaml.safe_load(yaml.safe_dump(parameters)) == parameters
 
 
+def test_report_reloaded_pair_targets(tmp_path, platform):
+    path = tmp_path / "report"
+    with Executor.open(path, platform=platform, targets=[[0, 1]], force=True) as e:
+        e(qibocal.protocols.standard_rb_2q(depths=[1, 2], niter=2, nshots=10))
+
+    loaded = Completed.load(path / "data" / "standard_rb_2q-0")
+    assert loaded.targets == [(0, 1)]
+    assert set(e.report(loaded).reports) == {(0, 1)}
+
+
 def test_records_only_initialized_executions(tmp_path, platform, bound_protocol):
     bound = qibocal.protocols.rabi_amplitude(min_amp=0, max_amp=1, step_amp=0.1)
     executor = Executor.create(tmp_path / "out", platform=platform, targets=[0])
