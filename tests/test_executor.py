@@ -530,6 +530,16 @@ def test_report_reloaded_pair_targets(tmp_path, platform):
     assert set(e.report(loaded).reports) == {(0, 1)}
 
 
+def test_report_serialized_pair_targets(platform):
+    executor = Executor(platform, targets=[[0, 1]])
+    bound = qibocal.protocols.standard_rb_2q(depths=[1, 2], niter=2, nshots=10)
+    acquired = executor.acquire(bound)
+    # e.g. targets transferred as JSON
+    completed = Completed(bound=bound, _data=acquired.data, _targets=[[0, 1]])
+    assert completed.targets == [(0, 1)]
+    assert set(executor.report(executor.fit(completed)).reports) == {(0, 1)}
+
+
 def test_records_only_initialized_executions(tmp_path, platform, bound_protocol):
     bound = qibocal.protocols.rabi_amplitude(min_amp=0, max_amp=1, step_amp=0.1)
     executor = Executor.create(tmp_path / "out", platform=platform, targets=[0])

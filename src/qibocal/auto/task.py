@@ -228,11 +228,13 @@ class Completed:
     def targets(self) -> Targets:
         """Targets recorded at acquisition."""
         if self._targets is not None:
-            return list(self._targets)
-        if self.task is not None and self.task.targets is not None:
-            # as at acquisition: e.g. pairs recorded as lists back to tuples
-            return TypeAdapter(Targets).validate_python(self.task.targets)
-        raise ValueError("Completed execution has no target metadata")
+            targets = self._targets
+        elif self.task is not None and self.task.targets is not None:
+            targets = self.task.targets
+        else:
+            raise ValueError("Completed execution has no target metadata")
+        # as at acquisition: e.g. pairs serialized as lists back to tuples
+        return TypeAdapter(Targets).validate_python(list(targets))
 
     @property
     def data(self) -> Data:
