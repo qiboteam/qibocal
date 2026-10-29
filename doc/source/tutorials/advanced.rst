@@ -6,6 +6,74 @@ How to use Qibocal as a library
 
 Qibocal also allows executing protocols without the standard :ref:`interface <interface>`.
 
+A :class:`~qibocal.Protocol` is executed by binding its parameters and passing
+the result to an :class:`~qibocal.Executor`:
+
+.. code-block:: python
+
+    from qibocal import Executor, Protocol, create_calibration_platform
+
+    protocol = Protocol(
+        acquisition=lambda samples: samples,
+        fit=lambda data, fitpars: sum(data) / len(data),
+    )
+    bound = protocol(pars=[1.0, 2.0, 3.0])
+    executor = Executor(create_calibration_platform("mock"))
+    completed = executor(bound, targets=[])
+    print(completed.results)  # 2.0
+
+The execution follows a few rules:
+
+- Only ``acquisition`` is required; ``fit``, ``report`` and ``update`` run when
+  defined. ``executor(bound)`` runs all of them, ``skip_fit=True`` stops after
+  acquisition, and ``Executor(platform, update=False)`` disables the update.
+  Single phases are available as ``acquire(bound)``, ``fit(completed)``,
+  ``report(completed)`` and ``update(completed)``.
+- Each phase returns a new :class:`~qibocal.auto.task.Completed`, leaving its
+  input untouched. It retains the bound protocol, the acquisition targets,
+  ``data``, ``results`` and ``reports``. Re-fitting clears previous reports.
+- Parameters are bound with ``protocol(pars=..., fit=..., report=...)``, or
+  directly from keywords, e.g. ``rabi_amplitude(min_amp=0, max_amp=1,
+  step_amp=0.02)``. Unspecified ``nshots`` and ``relaxation_time`` default to
+  the platform settings, and can be overridden per call, e.g.
+  ``executor(bound, nshots=1024)``.
+- Targets come from ``Executor(platform, targets=...)`` or from ``targets=...``
+  in the call; downstream phases reuse those recorded at acquisition. An empty
+  list is valid for protocols not using targets.
+- Callbacks receive only the arguments they declare: ``platform``, ``targets``,
+  ``fitpars``, ``reportpars``, and ``fit`` or ``results`` for reports. Report and
+  update callbacks declaring a singular ``target`` (or ``qubit``, for updates)
+  are called once per target, and ``completed.reports`` maps each target to its
+  output. Callback exceptions propagate.
+- A plain executor neither connects the platform nor writes files: the caller
+  owns the connection, and saves data, results or figures when needed.
+
+.. code-block:: python
+
+    from qibocal import Executor, create_calibration_platform
+    from qibocal.protocols import rabi_amplitude
+
+    platform = create_calibration_platform("my_platform")
+    executor = Executor(platform, targets=[0, 1], update=False)
+    bound = rabi_amplitude(min_amp=0, max_amp=1, step_amp=0.02, nshots=4096)
+    try:
+        platform.connect()
+        acquired = executor.acquire(bound)
+    finally:
+        platform.disconnect()
+
+    fitted = executor.fit(acquired)
+    figures, table = executor.report(fitted).reports[0]
+    executor.update(fitted, targets=[0])
+
+``Executor.open`` and ``Executor.create`` additionally manage an output
+directory and the platform connection: entering the context creates the
+directory, saves the platform snapshot and connects; leaving it disconnects and
+saves metadata and the updated platform. ``force=True`` overwrites an existing
+directory. Within the context, each complete execution of a built-in protocol,
+``e(bound)``, is recorded in ``e.history`` and dumped in the directory as soon
+as executed, while single phases (``e.acquire(bound)``, ...) are not recorded.
+
 In the following tutorial we show how to run a single protocol using Qibocal as a library.
 For this particular example we will focus on the `t1_signal protocol
 <https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/coherence/t1_signal.py>`_ (see also :ref:`t1`).
@@ -14,7 +82,7 @@ The fastest way consists in using the `Executor` class in the following way
 .. code-block:: python
 
     from qibocal.auto.execute import Executor
-    from qibocal.auto.mode import ExecutionMode
+    from qibocal.protocols import t1_signal
 
     with Executor.open(
         path="test_t1_signal", # path where the data will be stored
@@ -24,38 +92,50 @@ The fastest way consists in using the `Executor` class in the following way
 
         # your experiments go here
 
-The executor is responsible of running the routines on a platform and eventually store the history of multiple experiments.
-The context manager `with` provides an easy way to connect and disconnect from the platform.
+The executor runs protocols on a platform. The context manager ``with`` provides
+an easy way to connect and disconnect from the platform, including on exceptions.
 
 In order to run an experiment the user needs to specify its parameters.
 The user can check which parameters need to be provided either by checking the
 documentation of the specific protocol or by simply inspecting ``protocol.parameters_type``.
-To run a `t1_signal` experiment is necessary to use invoke the protocol inside the `with` statement
+To run a ``t1_signal`` experiment, pass the imported protocol to the executor
+inside the ``with`` statement:
 
 .. code-block:: python
 
-    output = e.t1_signal(delay_before_readout_start=0,
-                         delay_before_readout_end=20_000,
-                         delay_before_readout_step=50)
+    output = e(
+        t1_signal(
+            delay_before_readout_start=0,
+            delay_before_readout_end=20_000,
+            delay_before_readout_step=50,
+        )
+    )
 
 
-By default acquisition and fitting are performed.
+By default all the phases are performed: acquisition, fit, report and update.
 
 The user can now use the raw data acquired by the quantum processor to perform
 an arbitrary post-processing analysis. This is one of the main advantages of this API
 compared to the cli execution.
 
-Both the raw data and the fit data can be accessed from the history attribute of the `Executor`.
+Both the raw data and the fit results are available on the returned
+:class:`qibocal.auto.task.Completed` object:
 
 .. code-block:: python
 
-    history = e.history
-    t1_res = history["t1_signal"][0]
+    data = output.data  # raw data
+    results = output.results  # fit results
+    figures, table = output.reports[0]  # report for target 0
 
-    data = t1_res.data  # raw data
-    results = t1_res.results  # fit data
+Use ``e(t1_signal(...), skip_fit=True)`` to acquire without fitting. The
+execution is also recorded in ``e.history``, and dumped in the output folder.
+After the ``with`` block, the HTML report can be generated with:
 
-In particular, the history object returns a dictionary that links the id of the experiments with the :class:`qibocal.auto.task.Completed` object
+.. code-block:: python
+
+    from qibocal.cli.report import report
+
+    report(e.path, e.history)
 
 How to add a new protocol
 -------------------------
@@ -368,19 +448,22 @@ Here is the plotting function for the protocol that we are coding:
 
 
 Create ``Protocol`` object
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
+
+    from qibocal import Protocol
 
     rotation = Protocol(acquisition, fit, plot)
     """Rotation Protocol  object."""
 
 
-Add routine to `Operation` Enum
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Export the protocol for runcards
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The last step is to add the routine that we just created
-to the available protocols in `src/qibocal/protocols/__init__.py <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/__init__.py>`_:
+To make the protocol available by name to runcards, export it in
+`src/qibocal/protocols/__init__.py <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/__init__.py>`_.
+This export is not required for direct execution with an executor:
 
 .. code-block:: python
 
@@ -425,42 +508,25 @@ Here is the expected output:
 Extend experiments' library
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Qibocal built-in protocols' collection can be extended with bundles provided at runtime.
+Custom protocols do not need to be registered with the executor. Import the
+:class:`~qibocal.Protocol` object from your own module and execute it like a
+built-in one:
 
-In order to consume these extensions, the only requirement is to register them in the
-:class:`~qibocal.Executor` being used::
+.. code-block:: python
 
+    from qibocal import Executor
+    from my_protocols.rotate import rotation
 
     with Executor.open(
         path="test_with_extension",
-        sources=[my_collection]
+        platform="my_platform",
+        targets=[0, 1],
+        update=False,
     ) as e:
-        ...
+        completed = e(
+            rotation(theta_start=0, theta_end=7, theta_step=0.2, nshots=1024)
+        )
 
-The chosen source (in this case ``my_collection``) will be additional to the internal
-library, but it will take priority on it.
-
-.. admonition:: Priority
-
-   Collections appearing later in the specified sources are shadowing the names in the
-   former ones.
-
-   At the moment, no scope mechanism is provided.
-
-:attr:`~qibocal.Executor.sources` is just a list of collections, of type
-:obj:`~qibocal.ProtocolsCollection`, which just consists of a mapping of protocols'
-names to :class:`~qibocal.Protocol` objects.
-
-E.g., the collection used in the previous example could consist of the protocol defined
-in the former section, and it could be defined as::
-
-    from qibocal import ProtocolsCollection  # just for typing, not required
-
-    my_collection: ProtocolsCollection = {"my_rotation": rotation}
-
-Once registered, the new protocols can be accessed through the :class:`~qibocal.Executor`::
-
-    result = e.my_rotation(...)
-
-Notice that the name used is the one specified as the dictionary key. For this reason,
-the names are constrained to be valid Python identifiers.
+    data = completed.data
+    results = completed.results
+    figures, table = completed.reports[0]

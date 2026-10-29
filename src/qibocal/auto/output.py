@@ -278,7 +278,7 @@ class Output:
                 mode=mode,
                 folder=self.history.task_path(task_id, output),
             )
-            if update and completed.task.update:
+            if completed.should_update(mode, update):
                 completed.update_platform(platform=self.platform)
 
         # dump protocols order
