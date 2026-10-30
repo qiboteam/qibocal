@@ -20,7 +20,15 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
+from qibocal.protocols.utils import (
+    HZ_TO_GHZ,
+    Range,
+    RangeLike,
+    minmax_scaling,
+    table_dict,
+    table_html,
+    to_range,
+)
 
 from .... import update
 from ..utils import order_pair
@@ -33,24 +41,62 @@ __all__ = ["chevron"]
 class ChevronParameters(Parameters):
     """CzFluxTime runcard inputs."""
 
-    amplitude_min: float
-    """Amplitude minimum."""
-    amplitude_max: float
-    """Amplitude maximum."""
-    amplitude_step: float
-    """Amplitude step."""
-    duration_min: float
-    """Duration minimum."""
-    duration_max: float
-    """Duration maximum."""
-    duration_step: float
-    """Duration step."""
-    dt: int | None = 0
+    amplitude: RangeLike | None = None
+    """Amplitude range."""
+    duration: RangeLike | None = None
+    """Duration range."""
+    amplitude_min: float | None = None
+    """Amplitude minimum. Deprecated, use :ref:`amplitude` instead."""
+    amplitude_max: float | None = None
+    """Amplitude maximum. Deprecated, use :ref:`amplitude` instead."""
+    amplitude_step: float | None = None
+    """Amplitude step. Deprecated, use :ref:`amplitude` instead."""
+    duration_min: float | None = None
+    """Duration minimum. Deprecated, use :ref:`duration` instead."""
+    duration_max: float | None = None
+    """Duration maximum. Deprecated, use :ref:`duration` instead."""
+    duration_step: float | None = None
+    """Duration step. Deprecated, use :ref:`duration` instead."""
+    dt: int = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Whether to park non interacting qubits or not."""
     native: Literal["CZ", "iSWAP"] = "CZ"
     """Two qubit interaction to be calibrated."""
+
+    @property
+    def amplitude_range(self) -> Range:
+        if self.amplitude is not None:
+            return to_range(self.amplitude)
+
+        if any(
+            a is None
+            for a in (self.amplitude_min, self.amplitude_max, self.amplitude_step)
+        ):
+            raise ValueError("Amplitude range is not properly defined.")
+
+        return (self.amplitude_min, self.amplitude_max, self.amplitude_step)
+
+    @property
+    def amplitude_values(self) -> np.ndarray:
+        return np.arange(*self.amplitude_range)
+
+    @property
+    def duration_range(self) -> Range:
+        if self.duration is not None:
+            return to_range(self.duration)
+
+        if any(
+            d is None
+            for d in (self.duration_min, self.duration_max, self.duration_step)
+        ):
+            raise ValueError("Duration range is not properly defined.")
+
+        return (self.duration_min, self.duration_max, self.duration_step)
+
+    @property
+    def duration_values(self) -> np.ndarray:
+        return np.arange(*self.duration_range)
 
 
 @dataclass
@@ -149,12 +195,8 @@ def _aquisition(
 
     data = ChevronData(
         native=params.native,
-        amplitude=np.arange(
-            params.amplitude_min, params.amplitude_max, params.amplitude_step
-        ).tolist(),
-        duration=np.arange(
-            params.duration_min, params.duration_max, params.duration_step
-        ).tolist(),
+        amplitude=params.amplitude_values.tolist(),
+        duration=params.duration_values.tolist(),
     )
 
     data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
@@ -180,19 +222,19 @@ def _aquisition(
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
             ordered_pair=pair,
-            duration_max=params.duration_max,
+            duration_max=params.duration_range[1],
             parking=params.parking,
             dt=params.dt,
             native=params.native,
         )
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
-            range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
+            range=params.amplitude_range,
             pulses=[flux_pulse],
         )
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
-            range=(params.duration_min, params.duration_max, params.duration_step),
+            range=params.duration_range,
             pulses=[flux_pulse] + delays + parking_pulses,
         )
 
