@@ -1,1 +1,0 @@
-../tests/calibration_scripts/single_shot.py

@@ -1,1 +1,0 @@
-../tests/calibration_scripts/rx_calibration.py
