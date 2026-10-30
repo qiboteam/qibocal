@@ -22,6 +22,7 @@ from qibolab import Platform
 from .. import protocols
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
+from .notes import Note
 from .operation import (
     DEFAULT_PARENT_PARAMETERS,
     BoundProtocol,
@@ -165,6 +166,7 @@ class Executor:
         self._update_enabled = update
         self.path = Path(path) if path is not None else None
         self.meta = meta
+        self.notes: list[Note] = []
         self._initialized = False
         if self.targets is not None:
             check_overlap_in_input_qubits(self.targets)
@@ -215,7 +217,7 @@ class Executor:
             path = Output.mkdir(self.path, force)
 
             # generate meta
-            output = Output(History(), self.meta, self.platform)
+            output = Output(History(), self.meta, self.platform, notes=self.notes)
             output.dump(path)
 
             # start timer
@@ -238,7 +240,7 @@ class Executor:
         self.meta.end()
 
         # dump history, metadata, and updated platform
-        output = Output(self.history, self.meta, self.platform)
+        output = Output(self.history, self.meta, self.platform, notes=self.notes)
         output.dump(self.path)
 
     @classmethod
