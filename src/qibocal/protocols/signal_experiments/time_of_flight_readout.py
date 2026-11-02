@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Pulse, PulseSequence, Rectangular
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -23,11 +23,13 @@ MINIMUM_TOF = 28
 class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
-    detuning: float = 10e6
+    detuning: float = 20e6
     """Detuning with respect to corresponding LO frequency [Hz]."""
-    readout_amplitude: int | None = None
+    duration: float = 1e3
+    """Duration of the readout pulse."""
+    readout_amplitude: float = 0.5
     """Amplitude of the readout pulse."""
-    window_size: int | None = 10
+    window_size: int = 10
     """Window size for the moving average."""
 
 
@@ -46,7 +48,7 @@ class TimeOfFlightReadoutData(Data):
     windows_size: int
     sampling_rate: int
     intermediate_frequency: float
-    amplitude: dict[QubitId, float] = field(default_factory=dict)
+    amplitude: float
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -61,9 +63,12 @@ def _acquisition(
     native = platform.natives.single_qubit
     for qubit in targets:
         ro_channel, ro_pulse = native[qubit].MZ()[0]
-        if params.readout_amplitude is not None:
-            probe = replace(ro_pulse.probe, amplitude=params.readout_amplitude)
-            ro_pulse = replace(ro_pulse, probe=probe)
+        probe = Pulse(
+            duration=params.duration,
+            amplitude=params.readout_amplitude,
+            envelope=Rectangular(),
+        )
+        ro_pulse = replace(ro_pulse, probe=probe)
         sequence.append((ro_channel, ro_pulse))
 
     results = platform.execute(
@@ -87,12 +92,7 @@ def _acquisition(
         windows_size=params.window_size,
         sampling_rate=platform.sampling_rate,
         intermediate_frequency=params.detuning,
-        amplitude={
-            qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[
-                -1
-            ].probe.amplitude
-            for qubit in targets
-        },
+        amplitude=params.readout_amplitude,
     )
     # retrieve and store the results for every qubit
     for qubit in targets:
@@ -152,7 +152,7 @@ def _plot(
             textposition="bottom center",
             name="I",
             showlegend=True,
-            legendgroup="group1",
+            legendgroup="groupI",
             mode="markers",
         ),
     )
@@ -163,7 +163,7 @@ def _plot(
             textposition="bottom center",
             name="Q",
             showlegend=True,
-            legendgroup="group1",
+            legendgroup="groupQ",
             mode="markers",
         ),
     )
@@ -190,7 +190,7 @@ def _plot(
                 ],
                 [
                     data.intermediate_frequency,
-                    data.amplitude[target],
+                    data.amplitude,
                     fit.time_of_flights[target],
                 ],
             )
