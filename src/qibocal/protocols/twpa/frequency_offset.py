@@ -10,7 +10,9 @@ from qibolab import (
     Acquisition,
     AcquisitionType,
     AveragingMode,
+    Channel,
     ChannelId,
+    IqConfig,
     OscillatorConfig,
     Parameter,
     Pulse,
@@ -149,6 +151,7 @@ def _acquisition(
 
     twpa_channels = {}
     twpa_configs = {}
+    twpa_powers = {}
     for qubit in targets:
         pump = platform.channels[platform.qubits[qubit].acquisition].twpa_pump
         if pump is None:
@@ -156,7 +159,8 @@ def _acquisition(
                 f"Qubit {qubit} does not have a TWPA pump channel configured."
             )
         twpa_channels[qubit] = pump
-        twpa_configs[qubit] = cast(OscillatorConfig, platform.config(pump))
+        twpa_configs[qubit] = cast(OscillatorConfig | IqConfig, platform.config(pump))
+        twpa_powers[qubit] = _pump_power(platform, pump)
 
     # Deduplicate TWPA channels preserving association to a target qubit
     unique_twpa_channels: dict[str, QubitId] = {}
@@ -214,19 +218,26 @@ def _acquisition(
     raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
 
     # 1. Reference measurements with TWPA off
+    # The pump is turned off through a single-point offset sweep: pump configurations
+    # have no offset to update, since their amplitude is controlled by the power.
+    # An explicit range is set, as some backends do not infer it from a single value.
+    off_sweeps = [
+        Sweeper(parameter=Parameter.offset, range=(0.0, 1.0, 1.0), channels=[ch])
+        for ch in unique_twpa_channels
+    ]
     for probe_updates in probe_updates_list:
-        updates = [{ch: {"offset": 0.0} for ch in unique_twpa_channels} | probe_updates]
         ref_results = platform.execute(
             [sequence],
+            [off_sweeps],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
-            updates=updates,
+            updates=[probe_updates],
         )
         for qubit in targets:
             reference_data[qubit].append(
-                ref_results[acquisition_handles[qubit]].tolist()
+                ref_results[acquisition_handles[qubit]][0].tolist()
             )
 
     # 2. 2D TWPA sweeps (amplitude and frequency)
@@ -249,12 +260,42 @@ def _acquisition(
         frequency={q: np.arange(*freq_ranges[q]).tolist() for q in targets},
         reference_value=reference_data,
         probes=params.probes,
-        power={q: twpa_configs[q].power for q in targets},
+        power=twpa_powers,
     )
     for qubit in targets:
         data.data[qubit] = np.stack(raw_data[qubit], axis=2)
 
     return data
+
+
+def _connected_channel(platform: CalibrationPlatform, name: ChannelId) -> Channel:
+    """Retrieve a channel from any controller, including the ones not declared.
+
+    Controllers may hold channels beyond :attr:`Platform.channels`, e.g. Qblox TWPA pumps,
+    exposed as ``connected_channels``.
+    """
+    for instrument in platform.instruments.values():
+        channels = getattr(
+            instrument, "connected_channels", getattr(instrument, "channels", {})
+        )
+        if name in channels:
+            return channels[name]
+    raise ValueError(f"TWPA pump channel {name} not found in any controller.")
+
+
+def _pump_power(platform: CalibrationPlatform, pump: ChannelId) -> float:
+    """Configured pump power.
+
+    The pump is either a standalone oscillator, whose configuration holds the power,
+    or an IQ channel of a controller, whose power is set by its LO.
+    """
+    config = platform.config(pump)
+    if isinstance(config, OscillatorConfig):
+        return config.power
+    lo = getattr(_connected_channel(platform, pump), "lo", None)
+    if lo is None:
+        raise ValueError(f"TWPA pump channel {pump} has no LO, holding its power.")
+    return cast(OscillatorConfig, platform.config(lo)).power
 
 
 def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:

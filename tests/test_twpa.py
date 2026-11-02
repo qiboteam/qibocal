@@ -1,7 +1,10 @@
 """Tests for TWPA frequency and offset sweeper protocol."""
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
+from qibolab import IqChannel, IqConfig, OscillatorConfig
 
 from qibocal.protocols import PROTOCOLS
 from qibocal.protocols.twpa.frequency_offset import (
@@ -11,6 +14,7 @@ from qibocal.protocols.twpa.frequency_offset import (
     _acquisition,
     _fit,
     _plot,
+    _pump_power,
     twpa_frequency_offset,
     twpa_sweep,
 )
@@ -227,3 +231,50 @@ def test_acquisition_default_probes(platform, mocker):
     assert len(sweepers) == 2
     assert all(sw.range is not None for sw in sweepers[0])
     assert all(sw.range is not None for sw in sweepers[1])
+
+
+def test_reference_pump_off(platform, mocker):
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.1, 0.3, 0.1],
+            "frequency": ["center", 10_000_000, 5_000_000],
+            "nshots": 50,
+        }
+    )
+    spy = mocker.spy(platform, "execute")
+    _acquisition(params, platform, [0])
+    reference_call = spy.call_args_list[0]
+    (sweepers,) = reference_call.args[1]
+    assert all(sw.values.tolist() == [0.0] for sw in sweepers)
+    assert all(
+        "offset" not in up for up in reference_call.kwargs["updates"][0].values()
+    )
+
+
+def _pump_platform(channels: dict, configs: dict) -> SimpleNamespace:
+    controller = SimpleNamespace(channels={}, connected_channels=channels)
+    return SimpleNamespace(instruments={"ctrl": controller}, config=configs.__getitem__)
+
+
+def test_pump_power():
+    oscillator = _pump_platform({}, {"pump": OscillatorConfig(frequency=6e9, power=-5)})
+    assert _pump_power(oscillator, "pump") == -5
+
+    channel = _pump_platform(
+        {"pump": IqChannel(path="8/o2", lo="pump/lo")},
+        {
+            "pump": IqConfig(frequency=6e9),
+            "pump/lo": OscillatorConfig(frequency=6e9, power=-21.4),
+        },
+    )
+    assert _pump_power(channel, "pump") == -21.4
+
+
+@pytest.mark.parametrize(
+    "channels, match",
+    [({}, "not found"), ({"pump": IqChannel(path="8/o2")}, "has no LO")],
+)
+def test_pump_power_invalid(channels, match):
+    platform = _pump_platform(channels, {"pump": IqConfig(frequency=6e9)})
+    with pytest.raises(ValueError, match=match):
+        _pump_power(platform, "pump")
