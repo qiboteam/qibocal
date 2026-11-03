@@ -103,6 +103,14 @@ class TwpaFrequencyOffsetData(Data):
         return 20 * np.log10(np.mean(magnitude(self[qubit]), axis=2) / reference)
 
 
+PUMP_OFF_POWER = -60.0
+"""Pump power [dB] of the TWPA-off reference.
+
+Low enough to leave the TWPA unpumped, while within the range of both standalone
+oscillators and controllers' ports.
+"""
+
+
 def _acquisition(
     params: TwpaFrequencyOffsetParameters,
     platform: CalibrationPlatform,
@@ -219,27 +227,24 @@ def _acquisition(
     raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
 
     # 1. Reference measurements with TWPA off
-    # The pump is turned off through a single-point offset sweep: pump configurations
-    # have no offset to update, since their amplitude is controlled by the power.
-    # An explicit range is set, as some backends do not infer it from a single value.
-    # Its stop and step stay within the offset bounds, after scaling by the pump power.
-    off_sweeps = [
-        Sweeper(parameter=Parameter.offset, range=(0.0, 0.5, 0.5), channels=[ch])
+    # The pump is turned off by lowering its power, which also suppresses the LO
+    # leakage, unlike a null offset.
+    off_updates = {
+        _power_config(platform, ch): {"power": PUMP_OFF_POWER}
         for ch in unique_twpa_channels
-    ]
+    }
     for probe_updates in probe_updates_list:
         ref_results = platform.execute(
             [sequence],
-            [off_sweeps],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
-            updates=[probe_updates],
+            updates=[probe_updates, off_updates],
         )
         for qubit in targets:
             reference_data[qubit].append(
-                ref_results[acquisition_handles[qubit]][0].tolist()
+                ref_results[acquisition_handles[qubit]].tolist()
             )
 
     # 2. 2D TWPA sweeps (amplitude and frequency)
@@ -270,16 +275,20 @@ def _acquisition(
     return data
 
 
-def _pump_power(platform: CalibrationPlatform, pump: ChannelId) -> float:
-    """Configured pump power.
+def _power_config(platform: CalibrationPlatform, pump: ChannelId) -> str:
+    """Configuration holding the pump power.
 
     The pump is either a standalone oscillator, whose configuration holds the power,
     or an IQ channel of a controller, whose power is set by its LO.
     """
-    config = platform.config(pump)
-    if isinstance(config, OscillatorConfig):
-        return config.power
-    return cast(OscillatorConfig, platform.config(_pump_lo(platform, pump))).power
+    if isinstance(platform.config(pump), OscillatorConfig):
+        return pump
+    return _pump_lo(platform, pump)
+
+
+def _pump_power(platform: CalibrationPlatform, pump: ChannelId) -> float:
+    """Configured pump power."""
+    return cast(OscillatorConfig, platform.config(_power_config(platform, pump))).power
 
 
 def _pump_lo(platform: CalibrationPlatform, pump: ChannelId) -> str:
