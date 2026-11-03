@@ -8,6 +8,7 @@ from qibolab import IqChannel, IqConfig, OscillatorConfig
 
 from qibocal.protocols import PROTOCOLS
 from qibocal.protocols.twpa.frequency_offset import (
+    PUMP_OFF_POWER,
     TwpaFrequencyOffsetData,
     TwpaFrequencyOffsetParameters,
     TwpaFrequencyOffsetResults,
@@ -248,11 +249,11 @@ def test_reference_pump_off(platform, mocker):
     spy = mocker.spy(platform, "execute")
     _acquisition(params, platform, [0])
     reference_call = spy.call_args_list[0]
-    (sweepers,) = reference_call.args[1]
-    assert all(sw.values.tolist() == [0.0] for sw in sweepers)
-    assert all(
-        "offset" not in up for up in reference_call.kwargs["updates"][0].values()
-    )
+    assert len(reference_call.args) == 1
+    pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
+    probe_updates, off_updates = reference_call.kwargs["updates"]
+    assert all("offset" not in up for up in probe_updates.values())
+    assert off_updates == {pump: {"power": PUMP_OFF_POWER}}
 
 
 def _pump_platform(channels: dict, configs: dict) -> SimpleNamespace:
