@@ -310,6 +310,5 @@ def test_update_iq_pump():
     _update(results, platform, 0)
     assert updates == {
         "configs.pump.frequency": 6.1e9,
-        "configs.pump/lo.frequency": 6.1e9,
         "configs.pump/lo.power": -27.4,
     }
