@@ -138,9 +138,11 @@ def _acquisition(
 def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscriminationResults:
     """Post-Processing for Calibrate State Discrimination.
 
-    The raw traces for 0 and 1 are demodulated with the IF stored during acquisition.
-    Moreover, fast oscillating terms (:math:`\\exp(-2\\pi \\omega_{\text{IF} t)`) are removed by applying a lowpass filter.
-    Finally, the optimal kernel is calculated as the difference between the two traces.
+    The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. Residual
+    fast oscillating terms (:math:`\\exp(-2\\pi \\omega_{\text{IF} t)`) are removed by
+    applying a lowpass filter. The optimal kernel is calculated as the conjugate of the
+    difference between the two traces, and it is normalized to a maximum absolute
+    weight of 1.
     """
     qubits = data.qubits
 
@@ -158,26 +160,14 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
         for i in range(2):
             trace = data[qubit, i].i + 1.0j * data[qubit, i].q
-            t = np.arange(0, len(trace), 1)
-
-            # demodulation (we assume that RAW doesn't demodulate)
-            trace = np.array(
-                [
-                    np.exp(-2 * np.pi * t[i] * 1.0j * freq * 1e-9) * trace[i]
-                    for i in range(len(t))
-                ]
-            )
-            # apply lowpass filter to remove fast rotating terms
-            trace = lowpass_filter(trace, 2 * np.abs(freq))
+            # apply lowpass filter to remove fast rotating terms (none without IF)
+            if freq != 0:
+                trace = lowpass_filter(trace, 2 * np.abs(freq))
             traces.append(trace)
 
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
-
-        # Normalize the kernel
-        norm = np.sqrt(np.sum(np.abs(kernel) ** 2))
-        max_abs_weight = np.max(np.abs(kernel / norm))
-        kernel /= norm * max_abs_weight
+        kernel /= np.max(np.abs(kernel))
         kernel_state_zero[qubit] = kernel
 
     return CalibrateStateDiscriminationResults(data=kernel_state_zero)
