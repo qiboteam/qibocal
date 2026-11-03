@@ -26,6 +26,8 @@ from qibocal.protocols.twpa.frequency_offset import (
 )
 from qibocal.protocols.twpa.twpa import (
     TwpaCalibrationParameters,
+    _reference_scan,
+    _sweep,
     _twpa_scan,
 )
 from qibocal.protocols.twpa.twpa import (
@@ -306,8 +308,8 @@ def test_twpa_scan_pump_mapping(mocker, pumps, legacy):
         == set(qubits)
     )
     for qubit, pump, sweeper in zip(qubits, pumps, sweepers):
-        expected_power = np.arange(*params.power_range(configs[pump].power))
-        expected_frequency = np.arange(*params.frequency_range(configs[pump].frequency))
+        expected_power = _sweep(params.power_range(configs[pump].power))
+        expected_frequency = _sweep(params.frequency_range(configs[pump].frequency))
         np.testing.assert_array_equal(data.twpa_power[qubit], expected_power)
         np.testing.assert_array_equal(data.twpa_frequency[qubit], expected_frequency)
         assert data[qubit].shape == (
@@ -327,14 +329,11 @@ def test_twpa_scan_pump_mapping(mocker, pumps, legacy):
             for pump, power, frequency in zip(unique_pumps, powers, frequencies)
         ]
         for powers in zip(
-            *(
-                np.arange(*params.power_range(configs[pump].power))
-                for pump in unique_pumps
-            )
+            *(_sweep(params.power_range(configs[pump].power)) for pump in unique_pumps)
         )
         for frequencies in zip(
             *(
-                np.arange(*params.frequency_range(configs[pump].frequency))
+                _sweep(params.frequency_range(configs[pump].frequency))
                 for pump in unique_pumps
             )
         )
@@ -349,3 +348,78 @@ def test_twpa_scan_pump_mapping(mocker, pumps, legacy):
         assert fit.twpa_frequency[qubit] == data.twpa_frequency[qubit][0]
         assert len(calibration_plot(data, None, qubit)[0]) == 1
         assert len(calibration_plot(data, fit, qubit)[0]) == 1
+
+
+def test_sweep_size_independent_of_center():
+    """Ranges of equal width and step have the same size, unlike numpy.arange."""
+    assert np.arange(3.0 - 0.4, 3.0 + 0.4, 0.1).size == 8
+    assert np.arange(5.0 - 0.4, 5.0 + 0.4, 0.1).size == 9
+    for center in (3.0, 5.0, 6.1e9):
+        values = _sweep((center - 0.4, center + 0.4, 0.1))
+        assert len(values) == 8
+        assert values[0] == center - 0.4
+
+
+@pytest.mark.parametrize(
+    "missing, match",
+    [
+        ("freq_step", "'probe_frequency'"),
+        ("twpa_freq_step", "'frequency'"),
+        ("twpa_pow_step", "'power'"),
+    ],
+)
+def test_missing_ranges(missing, match):
+    parameters = {
+        "freq_width": 10e6,
+        "freq_step": 1e6,
+        "twpa_freq_width": 10e6,
+        "twpa_freq_step": 2e6,
+        "twpa_pow_width": 0.8,
+        "twpa_pow_step": 0.1,
+    }
+    del parameters[missing]
+    params = TwpaCalibrationParameters.load(parameters)
+    ranges = {
+        "freq_step": params.probe_frequency_range,
+        "twpa_freq_step": params.frequency_range,
+        "twpa_pow_step": params.power_range,
+    }
+    with pytest.raises(ValueError, match=match):
+        ranges[missing]()
+
+
+def test_reference_scan_turns_pumps_back_on(mocker):
+    twpa = mocker.Mock()
+    platform = mocker.Mock()
+    platform.execute.side_effect = RuntimeError("acquisition failed")
+
+    with pytest.raises(RuntimeError, match="acquisition failed"):
+        _reference_scan(platform, PulseSequence(), [], 10, 0, [], [twpa])
+    twpa.device.off.assert_called_once_with()
+    twpa.device.on.assert_called_once_with()
+
+
+def test_shared_pump_switched_once(platform, mocker):
+    from qibocal.protocols.twpa.twpa import _acquisition as calibration_acquisition
+
+    pump = platform.instruments["twpa_pump"]
+    platform.connect()
+    off = mocker.spy(pump.device, "off")
+    on = mocker.spy(pump.device, "on")
+    params = TwpaCalibrationParameters.load(
+        {
+            "nshots": 10,
+            "freq_width": 2e6,
+            "freq_step": 1e6,
+            "twpa_freq_width": 2e6,
+            "twpa_freq_step": 1e6,
+            "twpa_pow_width": 0.2,
+            "twpa_pow_step": 0.1,
+        }
+    )
+    try:
+        calibration_acquisition(params, platform, [0, 1])
+        off.assert_called_once_with()
+        on.assert_called_once_with()
+    finally:
+        platform.disconnect()

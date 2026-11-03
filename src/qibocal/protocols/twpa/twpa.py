@@ -49,7 +49,9 @@ class TwpaCalibrationParameters(Parameters):
     probe_frequency: RangeLike | None = None
     """Frequency [Hz] range for sweep."""
     probe_duration: float = 8e3
+    """Duration [ns] of the rectangular probe, and of its acquisition."""
     probe_amplitude: float = 0.1
+    """Amplitude of the rectangular probe."""
     twpa_freq_width: float | None = None
     """Width for TPWA frequency sweep (Hz)."""
     twpa_freq_step: float | None = None
@@ -83,7 +85,10 @@ class TwpaCalibrationParameters(Parameters):
 
     def frequency_range(self, center: float = 0.0) -> Range:
         def legacy_range() -> Range:
-            assert self.twpa_freq_width is not None and self.twpa_freq_step is not None
+            if self.twpa_freq_width is None or self.twpa_freq_step is None:
+                raise ValueError(
+                    "Provide 'frequency' or both 'twpa_freq_width' and 'twpa_freq_step'."
+                )
             return (
                 center - self.twpa_freq_width / 2,
                 center + self.twpa_freq_width / 2,
@@ -98,7 +103,10 @@ class TwpaCalibrationParameters(Parameters):
 
     def power_range(self, center: float = 0.0) -> Range:
         def legacy_range() -> Range:
-            assert self.twpa_pow_width is not None and self.twpa_pow_step is not None
+            if self.twpa_pow_width is None or self.twpa_pow_step is None:
+                raise ValueError(
+                    "Provide 'power' or both 'twpa_pow_width' and 'twpa_pow_step'."
+                )
             return (
                 center - self.twpa_pow_width / 2,
                 center + self.twpa_pow_width / 2,
@@ -142,6 +150,20 @@ class TwpaCalibrationData(Data):
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
 
+def _sweep(range_: Range) -> list[float]:
+    """Values of a range, as a list.
+
+    The number of values only depends on the width of the range, and not on its
+    center, unlike :func:`numpy.arange`, which suffers of floating point errors on the
+    end points. Thus, ranges with the same width and step, but different centers, have
+    the same number of values.
+    """
+    start, stop, step = range_
+    # the tolerance absorbs floating point errors in the width
+    count = max(int(np.ceil((stop - start) / step - 1e-9)), 0)
+    return (start + step * np.arange(count)).tolist()
+
+
 def _reference_scan(
     platform: CalibrationPlatform,
     sequence: PulseSequence,
@@ -153,26 +175,28 @@ def _reference_scan(
 ) -> list[list[float]]:
     """Reference scan with TWPA off to compute the gain later on."""
     reference_value: list[list[float]] = []
-    # reference value without twpas
-    for twpa in twpas:
-        assert twpa.device is not None
-        twpa.device.off()
+    # reference value without twpas, turning them back on even in case of errors
+    try:
+        for twpa in twpas:
+            assert twpa.device is not None
+            twpa.device.off()
 
-    results = platform.execute(
-        [sequence],
-        [sweepers],
-        nshots=nshots,
-        relaxation_time=relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+        results = platform.execute(
+            [sequence],
+            [sweepers],
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        )
+    finally:
+        for twpa in twpas:
+            assert twpa.device is not None
+            twpa.device.on()
+
     for ch in acquisition_channels:
         acq_handle = list(sequence.channel(ch))[-1].id
         reference_value.append(results[acq_handle].tolist())
-
-    for twpa in twpas:
-        assert twpa.device is not None
-        twpa.device.on()
     return reference_value
 
 
@@ -189,14 +213,21 @@ def _twpa_scan(
     twpa_configs = {
         pump: cast(OscillatorConfig, platform.config(pump)) for pump in pumps
     }
+    # pumps are scanned simultaneously, thus their ranges must have the same size
     power_ranges = {
-        pump: np.arange(*params.power_range(twpa.power)).tolist()
+        pump: _sweep(params.power_range(twpa.power))
         for pump, twpa in twpa_configs.items()
     }
     frequency_ranges = {
-        pump: np.arange(*params.frequency_range(twpa.frequency)).tolist()
+        pump: _sweep(params.frequency_range(twpa.frequency))
         for pump, twpa in twpa_configs.items()
     }
+    for name, ranges in (("power", power_ranges), ("frequency", frequency_ranges)):
+        if len({len(values) for values in ranges.values()}) > 1:
+            raise ValueError(
+                f"TWPA pumps' {name} ranges must have the same size, "
+                f"found {[len(values) for values in ranges.values()]}."
+            )
 
     data = TwpaCalibrationData(
         twpa_power={q: power_ranges[pump] for q, pump in zip(qubits, pumps)},
@@ -249,11 +280,15 @@ def _acquisition(
     qubits: list[Qubit] = [platform.qubits[qubit] for qubit in targets]
     acquisition_channels: list[str] = []
     pumps: list[str] = []
-    for qubit in qubits:
-        assert qubit.acquisition is not None
+    for target, qubit in zip(targets, qubits):
+        if qubit.acquisition is None:
+            raise ValueError(f"Acquisition channel for qubit {target} not defined.")
         acquisition_channels.append(qubit.acquisition)
         pump = cast(AcquisitionChannel, platform.channels[qubit.acquisition]).twpa_pump
-        assert pump is not None
+        if pump is None:
+            raise ValueError(
+                f"Qubit {target} does not have a TWPA pump channel configured."
+            )
         pumps.append(pump)
 
     sequence = PulseSequence()
@@ -287,7 +322,11 @@ def _acquisition(
         params.nshots,
         params.relaxation_time,
         acquisition_channels,
-        [cast(LocalOscillator, platform.instruments[pump]) for pump in pumps],
+        # multiplexed qubits may share a pump: each one is turned off only once
+        [
+            cast(LocalOscillator, platform.instruments[pump])
+            for pump in dict.fromkeys(pumps)
+        ],
     )
 
     data = _twpa_scan(
