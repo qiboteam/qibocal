@@ -5,7 +5,7 @@ This experiment is quite similar to the :ref:`Time Of Flight` experiment but has
 
 In the time-of-flight experiment, we were only interested in the timing of the pulse, regardless of the current qubit state. Here, on the other hand, we want to build a "vector of weights," with a value for each point in the measurement,
 to maximize the differences between :math:`\ket{0}` and :math:`\ket{1}`. Points that are further away, considering the two states, are given a higher weight since they are "more interesting" for discrimination purposes.
-The trace are acquired assuming that the samples are not demodulated, and the demodulation is done in the fitting procedure.
+The traces are acquired in ``RAW`` mode, which Qibolab already demodulates to baseband.
 
 Parameters
 ^^^^^^^^^^
@@ -27,8 +27,12 @@ Example
 
 .. image:: kernels.png
 
-In the fitting procedure the traces acquired for the ground and the excited are demodulated and with a low-pass filter we remove fast oscillating terms.
-The optimal kernel is then calculated by taking the conjugate of the differences of the two demodulated traces. The kernel is also updated in the platform runcard after successful fitting.
+In the fitting procedure a low-pass filter removes residual fast oscillating terms from
+the traces acquired for the ground and the excited state. The optimal kernel is then
+calculated by taking the conjugate of the differences of the two traces. It is
+normalized to a maximum absolute weight of 1. Since the kernel changes the integrated IQ
+plane, the readout discrimination (e.g. ``single_shot_classification``) has to be
+calibrated again afterwards.
 
 Requirements
 ^^^^^^^^^^^^
