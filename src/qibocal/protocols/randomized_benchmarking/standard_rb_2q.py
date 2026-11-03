@@ -76,8 +76,7 @@ def _plot(
             display_error=True,
         )
     )
-    model_note = "<p>F_Cl = (1 + 3p) / 4</p>"
-    return [fig], metadata_table(data, target) + fitting_report + model_note
+    return [fig], metadata_table(data, target) + fitting_report
 
 
 def _update(

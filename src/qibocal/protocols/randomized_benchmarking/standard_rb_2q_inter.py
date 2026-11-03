@@ -140,12 +140,7 @@ def _plot(
         table_dict(str(target), names, values, display_error=True)
     )
 
-    model_note = (
-        "<p>F_step = (1 + 3 p_int) / 4. <br> F_CZ = 1/4 + 3/4 p_int / p_ref <br>"
-        "with p_ref from the stored standard 2q RB calibration</p>"
-    )
-
-    return [fig], metadata_table(data, target) + fitting_report + model_note
+    return [fig], metadata_table(data, target) + fitting_report
 
 
 def _update(

@@ -5,7 +5,7 @@ from typing import TypedDict
 import numpy as np
 import plotly.graph_objects as go
 
-from qibocal.auto.operation import Parameters, Protocol, QubitId
+from qibocal.auto.operation import Parameters, Protocol, QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
@@ -94,7 +94,10 @@ def _fit(data: RBData) -> StandardRBResult:
 
 
 def survival_figure(
-    data: RBData, fit: StandardRBResult | None, target, single_qubit: bool
+    data: RBData,
+    fit: StandardRBResult | None,
+    target: QubitId | QubitPairId,
+    single_qubit: bool,
 ) -> go.Figure:
     """Builds the survival probability figure, with the fit when available.
 
@@ -211,12 +214,6 @@ def _plot(
         table_dict(str(qubit), ["niter", "nshots"], [data.niter, data.nshots])
     )
 
-    model_note = (
-        "<p>(d = 2): F_Cl = 1 - (d - 1) / d * (1 - p) = (1 + p) / 2 <br>"
-        "F_avg,gate ≈ 1 - (1 - F_Cl) / N (first order), with N = {npulses} gates per "
-        "Clifford</p>"
-    ).format(npulses=f"{data.npulses_per_clifford:g}")
-
     fitting_report = ""
     if fit is not None:
         fitting_report = table_html(
@@ -231,7 +228,7 @@ def _plot(
             )
         )
 
-    return [fig], metadata + fitting_report + model_note
+    return [fig], metadata + fitting_report
 
 
 def _update(results: StandardRBResult, platform: CalibrationPlatform, target: QubitId):
