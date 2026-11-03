@@ -517,9 +517,11 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
             log.warning("No resolved avoided crossing for pair %s.", pair)
             continue
 
-        mean_frequency = float(np.mean([c["frequency"] for c in estimates]))
+        median_frequency = float(np.median([c["frequency"] for c in estimates]))
+        median_coupling = float(np.median([c["coupling"] for c in estimates]))
         results.crossings[pair] = [
-            crossing | {"frequency": mean_frequency} for crossing in estimates
+            crossing | {"frequency": median_frequency, "coupling": median_coupling}
+            for crossing in estimates
         ]
         if len(estimates) == 1:
             try:
@@ -777,10 +779,12 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitPairId,
 ):
-    """Store the mean fitted pair coupling [Hz]; fit uncertainty is unavailable."""
-    couplings = [crossing["coupling"] for crossing in results.crossings.get(target, [])]
-    if couplings:
-        update.pair_coupling([float(np.mean(couplings)), 0.0], platform, target)
+    """Store the pair coupling [Hz] already aggregated by the fit."""
+    crossings = results.crossings.get(target, [])
+    if crossings:
+        # if multiple avioded crossing they are the same because we save the median and skip RANSAC fit,
+        # if just one avoided crossing (RANSAC fit if applied) it is used directly.
+        update.pair_coupling([crossings[0]["coupling"], 0.0], platform, target)
 
 
 avoided_crossing = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
