@@ -152,3 +152,52 @@ when crossing estimates are available, it is their median coupling, which is
 shared by all reported estimates. A failed RANSAC fit can therefore still update
 calibration from its retained estimate. Set ``update: false`` to prevent this.
 The protocol does not update drive frequencies, flux offsets or sweetspots.
+
+Two-photon transition
+---------------------
+
+In addition to the two hyperbolic branches, the spectroscopy map often shows a
+fainter curved line that crosses the avoided crossing. It is most intense close
+to the crossing, where the hybridization of the two qubits is maximal, and fades
+as the bias moves away and the eigenstates become more qubit-like.
+
+This feature is the two-photon transition
+:math:`|00\rangle \rightarrow |11\rangle`, in which the qubit pair absorbs two
+drive photons and both qubits are excited. Its transition frequency is
+approximately the sum of the two single-excitation frequencies, so the drive
+resonates with it at about half of that value:
+
+.. math::
+
+   f_{\mathrm{2ph}}(x) \simeq \frac{f_{11}(x)}{2}
+       \simeq \frac{f_{+}(x) + f_{-}(x)}{2} = f_0 + \frac{m(x-x_c)}{2}.
+
+Notes on its behavior:
+
+* Far from the crossing, a drive near :math:`f_{\mathrm{2ph}}` is off-resonant
+  with both single-photon transitions, so the process is only weakly allowed.
+  Close to the crossing, the dressed states share drive and flux-tuned
+  character, which increases the matrix elements and therefore the intensity.
+* The line is not expected to show an avoided crossing at :math:`x_c`: it lies
+  midway between the two branches, with half the slope of the flux-tuned qubit.
+  Deviations from a straight line, such as curvature, come from the
+  nonlinearity of the flux dependence and from interactions with higher levels
+  (for example :math:`|02\rangle` and :math:`|20\rangle`), which shift the
+  :math:`|11\rangle` energy by a ZZ-like term.
+* Being a two-photon process, its strength depends on the number of photons
+  pumped into the system, which scales with the drive power. Lowering
+  ``pulse_amplitude`` makes the transition, and its signal, fade and eventually
+  disappear, while the single-photon branches remain. Conversely, a larger
+  amplitude makes it more visible but also power-broadens the main branches.
+  This power dependence is a simple way to confirm that a feature is the
+  two-photon line.
+* It can be used as a consistency check: the line should pass through
+  :math:`(x_c, f_0)` and, together with the branch asymmetry, helps
+  distinguishing true hybridization from unrelated spectral features.
+
+.. note::
+
+    This feature is not part of the fitted model. Because at most two peaks per
+    bias sample are retained, a strong two-photon line can be extracted instead
+    of a true branch and bias the crossing estimate. If this happens, lower
+    ``pulse_amplitude`` or narrow the ``frequency`` window.
