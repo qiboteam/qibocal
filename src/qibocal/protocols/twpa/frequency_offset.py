@@ -445,9 +445,11 @@ def _update(
     """Set the pump to the optimal frequency and power.
 
     A standalone oscillator pump holds both in its configuration. Instead, an IQ pump
-    channel holds the frequency in its own configuration, and the power in its LO,
-    which is kept at the same frequency, such that the LO leakage coincides with the
-    pump tone.
+    channel holds the frequency in its own configuration, and the power in its LO.
+
+    The LO frequency is left unchanged, since the scan is performed at fixed LO: moving
+    it would also move the LO leakage and the sideband image, which alter the pumping
+    conditions, and thus the gain, of the selected point.
 
     Targets sharing the same pump overwrite each other's update, thus the last one
     prevails.
@@ -455,18 +457,9 @@ def _update(
     pump = platform.channels[platform.qubits[target].acquisition].twpa_pump
     assert pump is not None
     frequency, power = results.frequency[target], results.power[target]
-    if isinstance(platform.config(pump), OscillatorConfig):
-        platform.update(
-            {f"configs.{pump}.frequency": frequency, f"configs.{pump}.power": power}
-        )
-        return
-    lo = _pump_lo(platform, pump)
+    power_config = _power_config(platform, pump)
     platform.update(
-        {
-            f"configs.{pump}.frequency": frequency,
-            f"configs.{lo}.frequency": frequency,
-            f"configs.{lo}.power": power,
-        }
+        {f"configs.{pump}.frequency": frequency, f"configs.{power_config}.power": power}
     )
 
 
