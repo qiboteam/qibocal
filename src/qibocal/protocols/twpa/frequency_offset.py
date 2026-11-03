@@ -222,8 +222,9 @@ def _acquisition(
     # The pump is turned off through a single-point offset sweep: pump configurations
     # have no offset to update, since their amplitude is controlled by the power.
     # An explicit range is set, as some backends do not infer it from a single value.
+    # Its stop and step stay within the offset bounds, after scaling by the pump power.
     off_sweeps = [
-        Sweeper(parameter=Parameter.offset, range=(0.0, 1.0, 1.0), channels=[ch])
+        Sweeper(parameter=Parameter.offset, range=(0.0, 0.5, 0.5), channels=[ch])
         for ch in unique_twpa_channels
     ]
     for probe_updates in probe_updates_list:
