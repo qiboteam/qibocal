@@ -15,7 +15,7 @@ import numpy as np
 import numpy.typing as npt
 from scipy.stats import norm
 
-__all__ = ["GaussianMixture", "fit_mixture", "project"]
+__all__ = ["GaussianMixture", "fit_mixture"]
 
 MAX_ITERATIONS = 1000
 TOLERANCE = 1e-10
@@ -25,15 +25,6 @@ INITIAL_SPURIOUS = 0.05
 DISTANCE_SCALE = 1.5
 DISTANCE_FLOOR = 0.02
 """Acceptance of the fit, cf. :attr:`GaussianMixture.tolerance`."""
-
-
-def project(points: npt.NDArray, angle: float) -> npt.NDArray:
-    """Project IQ points on the states axis.
-
-    The `angle` is the classifier rotation angle, rotating the states axis to the I
-    axis, cf. :meth:`qibocal.fitting.classifier.qubit_fit.QubitFit.rotate`.
-    """
-    return points @ np.array([np.cos(angle), -np.sin(angle)])
 
 
 def _robust_std(values: npt.NDArray) -> float:

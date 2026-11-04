@@ -17,7 +17,7 @@ from ..utils import (
     evaluate_grid,
     get_color_state1,
 )
-from .mixture import project
+from .outliers import rotate
 
 __all__ = ["plot_results"]
 
@@ -156,6 +156,21 @@ def _iq_plane(
     if fit is not None:
         for boundary in _boundaries(data, qubit, fit):
             fig.add_trace(boundary)
+        region = fit.core_region(qubit) if hasattr(fit, "core_region") else None
+        if region is not None and region.excluded:
+            # back to the IQ plane, inverting the orthogonal rotation
+            c, s = np.cos(fit.rotation_angle[qubit]), np.sin(fit.rotation_angle[qubit])
+            outline = region.outline() @ np.array([[c, s], [-s, c]]).T
+            fig.add_trace(
+                go.Scatter(
+                    x=outline[:, 0],
+                    y=outline[:, 1],
+                    mode="lines",
+                    line={"width": 1, "dash": "dot", "color": "black"},
+                    name="fitted shots",
+                    hoverinfo="skip",
+                )
+            )
 
     # same units on both axes, since each state distribution is expected to be
     # approximately round: the plot ranges are extended to fill the available width
@@ -194,9 +209,10 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
     """
     threshold = fit.threshold[qubit]
     projections = [
-        project(points, fit.rotation_angle[qubit]) - threshold for points in states
+        rotate(points, fit.rotation_angle[qubit])[:, 0] - threshold for points in states
     ]
     mixture = fit.gaussian_mixture(qubit) if hasattr(fit, "gaussian_mixture") else None
+    region = fit.core_region(qubit) if hasattr(fit, "core_region") else None
     edges = np.histogram_bin_edges(np.concatenate(projections), bins=HISTOGRAM_BINS)
     centers = (edges[:-1] + edges[1:]) / 2
 
@@ -216,7 +232,11 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
             )
         )
         if mixture is not None:
-            density = mixture.pdf(centers + threshold, state)
+            # the mixture is normalized on the fitted shots only
+            fitted = 1.0
+            if region is not None and region.excluded:
+                fitted -= region.outside[state] / len(projection)
+            density = fitted * mixture.pdf(centers + threshold, state)
         else:
             density = scipy_norm.pdf(centers, *scipy_norm.fit(projection))
         fig.add_trace(
