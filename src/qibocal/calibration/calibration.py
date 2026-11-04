@@ -199,6 +199,7 @@ class Calibration(Model):
 
         return (
             self.single_qubits == other.single_qubits
+            and self.couplers == other.couplers
             and self.two_qubits == other.two_qubits
             and rm_equal
             and fc_equal
