@@ -23,9 +23,10 @@ Physics
 Analysis
     Extract peaks once from the mean of the sign-aligned readout PCA maps.
     Estimate crossings from minima of the branch separation or bright-branch
-    jumps, and align their frequencies to their mean. If exactly one crossing
-    is detected, RANSAC-fit its eigenbranches using the full extracted peak set.
-    Otherwise, report and plot the estimates without fitting.
+    jumps, and seed them with their median frequency and coupling. Split the
+    extracted peaks halfway between adjacent crossings, the outer crossings also
+    taking the extreme bias intervals, and RANSAC-fit each crossing's
+    eigenbranches on its own peaks.
 
 Units: frequencies in Hz, biases in a.u., slopes in Hz/a.u.
 """
@@ -145,20 +146,21 @@ class AvoidedCrossingData(Data):
 
 @dataclass
 class AvoidedCrossingResults(Results):
-    """Estimated crossings, refined by RANSAC only for a single detected crossing."""
+    """Estimated crossings, each refined by RANSAC on its own bias interval."""
 
     crossings: dict[QubitPairId, list[dict]] = field(default_factory=dict)
     """Each crossing stores ``bias`` [a.u.], ``frequency`` [Hz], sloped-asymptote
-    ``slope`` [Hz/a.u.], ``coupling`` [Hz], full ``bias_range``, estimation
-    ``method`` and contributing ``readouts``. Estimates share their mean frequency.
+    ``slope`` [Hz/a.u.], ``coupling`` [Hz], the ``bias_range`` [a.u.] of the peaks
+    assigned to it, and whether RANSAC ``fitted`` it. Unfitted crossings keep their
+    estimate, with the median frequency and coupling of all estimates.
     The two asymptotes are f = frequency and f = frequency + slope*(x - bias)."""
     peak_biases: dict[QubitPairId, list[float]] = field(default_factory=dict)
     """All extracted peak biases [a.u.] for each pair's mean readout map."""
     peak_frequencies: dict[QubitPairId, list[float]] = field(default_factory=dict)
     """All extracted peak frequencies [Hz] for each pair's mean readout map."""
     inliers: dict[QubitPairId, list] = field(default_factory=dict)
-    """Successful RANSAC fits: ``bias``, ``frequency``, ``slope``, ``coupling`` [Hz],
-    and the boolean ``inliers`` mask over the full extracted peak set."""
+    """Boolean RANSAC inlier mask over the full extracted peak set, combining the
+    fits of all crossings. Present only if at least one crossing was fitted."""
     coupler: dict[QubitPairId, dict] = field(default_factory=dict)
     """Parabola ``coefficients`` ``[c2, c1, c0]`` with their ``errors``, the vertex
     ``sweetspot`` [a.u.] and ``frequency`` [Hz], and ``dof``.
@@ -492,7 +494,7 @@ def _fit_crossing(x, y, seed, frequencies):
 
 
 def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
-    """Extract once, estimate crossings, and fit only a single detected crossing."""
+    """Extract once, estimate crossings, and fit each on its own bias interval."""
     results = AvoidedCrossingResults()
     for pair in data.data:
         bias, frequencies = data.bias, data.pair_frequency(pair)
@@ -519,34 +521,45 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
 
         median_frequency = float(np.median([c["frequency"] for c in estimates]))
         median_coupling = float(np.median([c["coupling"] for c in estimates]))
-        results.crossings[pair] = [
+        seeds = [
             crossing | {"frequency": median_frequency, "coupling": median_coupling}
             for crossing in estimates
         ]
-        if len(estimates) == 1:
+
+        # Split the bias axis halfway between adjacent crossings; the outer
+        # crossings also take the extreme bias intervals. Peaks exactly on a
+        # boundary go to the left crossing.
+        seed_biases = np.array([seed["bias"] for seed in seeds])
+        boundaries = (seed_biases[1:] + seed_biases[:-1]) / 2
+        edges = np.concatenate(([bias[0]], boundaries, [bias[-1]]))
+        owner = np.searchsorted(boundaries, peaks_biases, side="left")
+
+        crossings, inliers = [], np.zeros(len(peaks_biases), dtype=bool)
+        for index, seed in enumerate(seeds):
+            bias_range = [float(edges[index]), float(edges[index + 1])]
+            selected = np.flatnonzero(owner == index)
+            crossing = seed | {"bias_range": bias_range, "fitted": False}
             try:
                 fit_hyperbola = _fit_crossing(
-                    peaks_biases,
-                    peaks_freqs,
-                    results.crossings[pair][0],
+                    peaks_biases[selected],
+                    peaks_freqs[selected],
+                    seed,
                     frequencies,
                 )
-                if fit_hyperbola is not None:
-                    results.crossings[pair] = [
-                        {
-                            key: value
-                            for key, value in fit_hyperbola.items()
-                            if key != "inliers"
-                        }
-                    ]
-                    results.inliers[pair] = fit_hyperbola["inliers"]
+                inliers[selected] = fit_hyperbola.pop("inliers")
+                crossing |= fit_hyperbola | {"fitted": True}
             except (ValueError, RuntimeError, np.linalg.LinAlgError) as error:
                 log.warning(
                     "RANSAC failed for pair %s near bias %.6g: %s",
                     pair,
-                    estimates[0]["bias"],
+                    seed["bias"],
                     error,
                 )
+            crossings.append(crossing)
+
+        results.crossings[pair] = crossings
+        if any(crossing["fitted"] for crossing in crossings):
+            results.inliers[pair] = inliers.tolist()
     return results
 
 
@@ -592,14 +605,21 @@ def _plot_hyperbolas(
     bias_points: npt.NDArray[np.float64],
     inliers: npt.NDArray[np.bool],
     freq_limit: tuple[float, float],
+    number: int = 0,
 ) -> list[go.Scatter]:
+    """Inliers and fitted eigenbranches over the crossing's own bias interval."""
 
-    color = qualitative.Plotly[0]
+    color = qualitative.Plotly[(number - 1) % len(qualitative.Plotly)]
+    low, high = crossing["bias_range"]
+    # Peaks on a boundary belong to the left crossing, matching the fit.
+    lower = signal_bias > low if number > 1 else signal_bias >= low
+    owned = inliers & lower & (signal_bias <= high)
+    bias_points = bias_points[(bias_points >= low) & (bias_points <= high)]
     scatters_list: list[go.Scatter] = []
     scatters_list.append(
         go.Scatter(
-            x=signal_bias[inliers],
-            y=signal_freq[inliers] * scipy.constants.nano,
+            x=signal_bias[owned],
+            y=signal_freq[owned] * scipy.constants.nano,
             mode="markers",
             marker={
                 "color": color,
@@ -608,6 +628,7 @@ def _plot_hyperbolas(
             },
             name="RANSAC inliers",
             legendgroup="RANSAC inliers",
+            showlegend=number == 1,
         )
     )
     for label, branch in (("Lower", -1), ("Upper", 1)):
@@ -630,7 +651,7 @@ def _plot_hyperbolas(
                     "Fitted hyperbolas" if branch == -1 else f"{label} fitted branch"
                 ),
                 legendgroup="Fitted hyperbolas",
-                showlegend=branch == -1,
+                showlegend=branch == -1 and number == 1,
             )
         )
     return scatters_list
@@ -716,20 +737,28 @@ def _plot(
                     rows=row,
                     cols=column,
                 )
-
-            if len(fit.crossings[target]) == 1 and target in fit.inliers:
-                figure.add_traces(
-                    _plot_hyperbolas(
-                        crossing=fit.crossings[target][0],
-                        signal_bias=np.asarray(fit.peak_biases[target]),
-                        signal_freq=np.asarray(fit.peak_frequencies[target]),
-                        bias_points=bias_plot,
-                        inliers=np.asarray(fit.inliers[target], dtype=bool),
-                        freq_limit=(q_freqs[0], q_freqs[-1]),
-                    ),
-                    rows=row,
-                    cols=column,
-                )
+                if crossing["fitted"]:
+                    figure.add_traces(
+                        _plot_hyperbolas(
+                            crossing=crossing,
+                            signal_bias=np.asarray(fit.peak_biases[target]),
+                            signal_freq=np.asarray(fit.peak_frequencies[target]),
+                            bias_points=bias_plot,
+                            inliers=np.asarray(fit.inliers[target], dtype=bool),
+                            freq_limit=(q_freqs[0], q_freqs[-1]),
+                            number=number,
+                        ),
+                        rows=row,
+                        cols=column,
+                    )
+                if number > 1:
+                    # Interval boundary shared with the previous crossing.
+                    figure.add_vline(
+                        x=crossing["bias_range"][0],
+                        line={"dash": "dot", "color": "white", "width": 1},
+                        row=row,
+                        col=column,
+                    )
 
     figure.update_xaxes(
         title_text="High freq qubit bias [a.u.]",
@@ -769,6 +798,11 @@ def _plot(
                 "Coupling [MHz]": [
                     c.get("coupling", np.nan) * scipy.constants.micro for c in crossings
                 ],
+                "Bias range [a.u.]": [
+                    f"[{c['bias_range'][0]:.4g}, {c['bias_range'][1]:.4g}]"
+                    for c in crossings
+                ],
+                "RANSAC fitted": [c["fitted"] for c in crossings],
             }
         )
     return [figure], report
@@ -779,12 +813,12 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitPairId,
 ):
-    """Store the pair coupling [Hz] already aggregated by the fit."""
+    """Store the median pair coupling [Hz], preferring RANSAC-fitted crossings."""
     crossings = results.crossings.get(target, [])
+    fitted = [crossing for crossing in crossings if crossing["fitted"]]
     if crossings:
-        # if multiple avioded crossing they are the same because we save the median and skip RANSAC fit,
-        # if just one avoided crossing (RANSAC fit if applied) it is used directly.
-        update.pair_coupling([crossings[0]["coupling"], 0.0], platform, target)
+        coupling = float(np.median([c["coupling"] for c in fitted or crossings]))
+        update.pair_coupling([coupling, 0.0], platform, target)
 
 
 avoided_crossing = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
