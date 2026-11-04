@@ -16,6 +16,7 @@ from qibocal.protocols.twpa.frequency_offset import (
     _fit,
     _plot,
     _pump_power,
+    _select,
     _update,
     twpa_frequency_offset,
     twpa_sweep,
@@ -175,14 +176,21 @@ def test_acquisition_and_fit(platform, tmp_path):
     assert fig.layout.showlegend is True
     assert fig.layout.legend.orientation == "h"
     assert any(trace.yaxis == "y2" for trace in fig.data)
+    # mock data are noise: the point may lie at the edge of the small scan
+    point = (
+        "Candidate Point (scan edge)" if fit_res.is_candidate(0) else "Optimal Point"
+    )
     assert any(
-        getattr(trace, "name", None) == "Optimal Point" and trace.showlegend is True
+        getattr(trace, "name", None) == point and trace.showlegend is True
         for trace in fig.data
     )
-    assert "Pump Frequency [Hz]" in report
-    assert "Pump Amplitude" in report
-    assert "Pump power [dB]" in report
-    assert "TWPA Gain [dB]" in report
+    if fit_res.is_candidate(0):
+        assert "Fit failed" in report
+    else:
+        assert "Pump Frequency [Hz]" in report
+        assert "Pump Amplitude" in report
+        assert "Pump power [dB]" in report
+        assert "TWPA Gain [dB]" in report
 
     figs_no_fit, report_no_fit = _plot(data, None, targets[0])
     assert len(figs_no_fit) == 1
@@ -312,3 +320,86 @@ def test_update_iq_pump():
         "configs.pump.frequency": 6.1e9,
         "configs.pump/lo.power": -27.4,
     }
+
+
+def landscape(offsets, frequencies, cliff=0.8, center=6.0e9):
+    """Gain growing with the pump power up to an over-pumping cliff at `cliff`.
+
+    The gain also decreases away from a central pump frequency.
+    """
+    offsets, frequencies = np.asarray(offsets), np.asarray(frequencies)
+    power = 20 * np.log10(np.abs(offsets))[:, np.newaxis]
+    detuning = ((frequencies - center) / 20e6)[np.newaxis, :] ** 2
+    gain = 20 + 1.5 * power - 2 * detuning
+    return np.where(np.abs(offsets)[:, np.newaxis] > cliff, -5.0, gain)
+
+
+def landscape_data(offsets, frequencies, **kwargs):
+    gain = landscape(offsets, frequencies)
+    magnitude = 10 ** (gain / 20)
+    return TwpaFrequencyOffsetData(
+        data={0: np.stack([magnitude, np.zeros_like(magnitude)], axis=-1)[:, :, None]},
+        reference_value={0: [[1.0, 0.0]]},
+        offset={0: list(offsets)},
+        frequency={0: list(frequencies)},
+        power={0: 0.0},
+        **kwargs,
+    )
+
+
+OFFSETS = np.round(np.arange(0.1, 1.0, 0.05), 2)
+FREQUENCIES = 6.0e9 + np.arange(-30e6, 31e6, 5e6)
+
+
+def test_select_away_from_overpumping():
+    gain = landscape(OFFSETS, FREQUENCIES)
+    plain = _select(gain, OFFSETS, 0, 0.0)
+    robust = _select(gain, OFFSETS, 1, 0.0)
+
+    # the plain maximum is just below the cliff, the robust one a step further
+    assert OFFSETS[plain[0]] == 0.8
+    assert OFFSETS[robust[0]] == 0.75
+    assert FREQUENCIES[robust[1]] == 6.0e9
+    assert not plain[2] and not robust[2]
+
+
+def test_select_backoff():
+    gain = landscape(OFFSETS, FREQUENCIES)
+    i, _, candidate = _select(gain, OFFSETS, 1, 2.0)
+
+    # about 2 dB below 0.75, i.e. 0.6
+    assert OFFSETS[i] == 0.6
+    assert not candidate
+
+
+def test_candidate_at_scan_edge(platform):
+    pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
+    before = platform.config(pump)
+    # the scan stops before the cliff: the optimum is at the largest amplitude
+    data = landscape_data(OFFSETS[OFFSETS < 0.6], FREQUENCIES, power_backoff=2.0)
+    fit = _fit(data)
+
+    assert 0 in fit
+    assert fit.is_candidate(0)
+    assert fit.offset[0] == 0.55
+    figures, report = _plot(data, fit, 0)
+    assert "Fit failed" in report
+    assert "pump amplitude range" in report
+    assert "Pump Amplitude" not in report
+    names = [trace.name for trace in figures[0].data]
+    assert "Candidate Point (scan edge)" in names
+    assert "Optimal Point" not in names
+    _update(fit, platform, 0)
+    assert platform.config(pump) == before
+
+
+def test_results_without_candidate(platform):
+    """Results of previous versions, without candidates, are still applied."""
+    results = TwpaFrequencyOffsetResults(
+        frequency={0: 6.1e9}, offset={0: 0.5}, gain={0: 20.0}, power={0: -12.0}
+    )
+    assert 0 in results
+    assert not results.is_candidate(0)
+    _update(results, platform, 0)
+    pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
+    assert platform.config(pump).frequency == 6.1e9
