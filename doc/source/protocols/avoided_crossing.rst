@@ -103,19 +103,23 @@ crossing estimation and, when applicable, fitting:
   frequency are estimated from the midpoint of the adjacent samples, and the
   coupling from half the jump.
 
-All estimated crossings for a pair are assigned the median estimated frequency
-and the median estimated coupling, while their individual biases and slopes are
-retained.
+All estimated crossings for a pair are seeded with the median estimated
+frequency and the median estimated coupling, while their individual biases and
+slopes are retained.
 
-If **exactly one crossing** is detected, a RANSAC fit refines the eigenbranch
-model using the **entire extracted peak set across the bias sweep**, without
-cropping to a local window. RANSAC generates candidate fits from random samples,
-evaluates them against the full peak set, and refines the selected inliers.
-If the fit fails, the initial estimate is retained.
+The extracted peaks are then split among the crossings. The boundary between
+two adjacent crossings is placed halfway between their estimated biases: peaks
+on the left of it are assigned to the left crossing, peaks on the right to the
+right one, and peaks exactly on it to the left one. The first and last crossings
+also take the extreme bias intervals, down to the start and up to the end of
+the sweep. With a single crossing, it therefore takes the whole peak set.
 
-If several crossings are detected, RANSAC is skipped and the estimates are
-reported instead. If no crossing is detected, no crossing result or calibration
-update is produced.
+Each crossing is refined independently by a RANSAC fit of the eigenbranch model
+on its own peaks. RANSAC generates candidate fits from random samples, evaluates
+them against the crossing's peaks, and refines the selected inliers. If a fit
+fails, that crossing keeps its initial estimate while the others are still
+fitted. If no crossing is detected, no crossing result or calibration update is
+produced.
 
 .. note::
 
@@ -129,15 +133,18 @@ Report
 
 The report contains one figure with the mean signal across the full-width top
 panel and the two individual qubit signals side by side below it. The mean panel
-shows the extracted peaks, estimated crossing points and asymptotes. When RANSAC
-succeeds, it also shows the inlier peaks and fitted eigenbranches.
+shows the extracted peaks, estimated crossing points and asymptotes. For each
+crossing successfully fitted by RANSAC, it also shows its inlier peaks and
+fitted eigenbranches over its own bias interval, in the crossing's color. With
+several crossings, dotted vertical lines mark the interval boundaries.
 
 .. image:: avoided_crossing.png
     :alt: Avoided-crossing spectroscopy report with the mean and individual qubit signals.
 
 Legend entries independently toggle the extracted signal, each crossing with its
 asymptotes, the RANSAC inliers, and the fitted hyperbolas. A table lists crossing
-biases, frequencies in GHz, and couplings in MHz.
+biases, frequencies in GHz, couplings in MHz, bias intervals, and whether each
+crossing was fitted by RANSAC.
 
 Calibration update
 ------------------
@@ -147,10 +154,10 @@ pair coupling in ``platform.calibration.two_qubits[pair].coupling`` as
 ``[coupling_in_hz, 0.0]``. The second entry is a placeholder because no coupling
 uncertainty is estimated.
 
-For a successful single-crossing fit, this is the fitted coupling. Otherwise,
-when crossing estimates are available, it is their median coupling, which is
-shared by all reported estimates. A failed RANSAC fit can therefore still update
-calibration from its retained estimate. Set ``update: false`` to prevent this.
+This is the median coupling of the crossings fitted by RANSAC. If no fit
+succeeds, it is the median estimated coupling, which is shared by all retained
+estimates. Failed RANSAC fits can therefore still update calibration from their
+retained estimates. Set ``update: false`` to prevent this.
 The protocol does not update drive frequencies, flux offsets or sweetspots.
 
 Two-photon transition
