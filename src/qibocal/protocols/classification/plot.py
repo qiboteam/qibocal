@@ -17,6 +17,7 @@ from ..utils import (
     evaluate_grid,
     get_color_state1,
 )
+from .mixture import project
 
 __all__ = ["plot_results"]
 
@@ -186,11 +187,16 @@ def _iq_plane(
 def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Figure:
     """Histogram of the shots projected on the axis connecting the two centroids.
 
-    The projection is centered on the classification threshold.
+    The projection is centered on the threshold of the naive linear classifier. With a
+    Gaussian mixture fit, its densities are shown as well, together with its threshold
+    if the fit is consistent with the data. Otherwise, each state is fitted with a
+    single Gaussian.
     """
-    angle, threshold = fit.rotation_angle[qubit], fit.threshold[qubit]
-    c, s = np.cos(angle), np.sin(angle)
-    projections = [points @ np.array([c, -s]) - threshold for points in states]
+    threshold = fit.threshold[qubit]
+    projections = [
+        project(points, fit.rotation_angle[qubit]) - threshold for points in states
+    ]
+    mixture = fit.gaussian_mixture(qubit) if hasattr(fit, "gaussian_mixture") else None
     edges = np.histogram_bin_edges(np.concatenate(projections), bins=HISTOGRAM_BINS)
     centers = (edges[:-1] + edges[1:]) / 2
 
@@ -209,11 +215,14 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
                 marker={"color": _rgba(color, 0.5)},
             )
         )
-        mu, std = scipy_norm.fit(projection)
+        if mixture is not None:
+            density = mixture.pdf(centers + threshold, state)
+        else:
+            density = scipy_norm.pdf(centers, *scipy_norm.fit(projection))
         fig.add_trace(
             go.Scatter(
                 x=centers,
-                y=scipy_norm.pdf(centers, mu, std),
+                y=density,
                 name=f"{name} fit",
                 legendgroup=name,
                 showlegend=False,
@@ -221,7 +230,18 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
                 line={"width": 2, "color": color},
             )
         )
-    fig.add_vline(x=0, line={"color": "black", "width": 2, "dash": "dot"})
+    fig.add_vline(
+        x=0,
+        line={"color": "black", "width": 2, "dash": "dot"},
+        annotation_text="naive" if mixture is not None else None,
+    )
+    if mixture is not None and mixture.consistent:
+        fig.add_vline(
+            x=mixture.threshold - threshold,
+            line={"color": "black", "width": 2},
+            annotation_text="Gaussian",
+            annotation_position="top left",
+        )
     fig.update_xaxes(title_text="projection on the states axis [a.u.]")
     fig.update_yaxes(title_text="density")
     fig.update_layout(
