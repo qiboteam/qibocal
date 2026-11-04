@@ -28,11 +28,12 @@ from qibocal.protocols.utils import (
     evaluate_grid,
     format_error_single_cell,
     get_color_state0,
-    plot_results,
     round_report,
     table_dict,
     table_html,
 )
+
+from .plot import plot_results
 
 ROC_LENGHT = 800
 ROC_WIDTH = 800
