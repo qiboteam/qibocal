@@ -538,7 +538,7 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         for index, seed in enumerate(seeds):
             bias_range = [float(edges[index]), float(edges[index + 1])]
             selected = np.flatnonzero(owner == index)
-            crossing = seed | {"bias_range": bias_range, "fitted": False}
+            crossing = seed | {"bias_range": bias_range}
             try:
                 fit_hyperbola = _fit_crossing(
                     peaks_biases[selected],
@@ -547,7 +547,7 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
                     frequencies,
                 )
                 inliers[selected] = fit_hyperbola.pop("inliers")
-                crossing |= fit_hyperbola | {"fitted": True}
+                crossing |= fit_hyperbola
             except (ValueError, RuntimeError, np.linalg.LinAlgError) as error:
                 log.warning(
                     "RANSAC failed for pair %s near bias %.6g: %s",
@@ -557,21 +557,25 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
                 )
             crossings.append(crossing)
 
+        # if the fit fails we save the first estimation of the crossing without the fitted hyperbola
         results.crossings[pair] = crossings
-        if any(crossing["fitted"] for crossing in crossings):
+        # if the fit succeeds at least for one crossing, we save the inliers
+        if inliers.any():
             results.inliers[pair] = inliers.tolist()
+
     return results
 
 
 def _plot_crossings(
     crossing: dict,
-    bias_points: npt.NDArray,
     freq_limit: tuple[float, float],
     number: int = 0,
 ) -> list[go.Scatter]:
 
     scatters: list[go.Scatter] = []
     color = qualitative.Plotly[(number - 1) % len(qualitative.Plotly)]
+    low, high = crossing["bias_range"]
+    bias_points = np.linspace(low, high, 100)
     for slope in (0, crossing["slope"]):
         asymptote = crossing["frequency"] + slope * (bias_points - crossing["bias"])
         asymptote_mask = (asymptote >= freq_limit[0]) & (asymptote <= freq_limit[1])
@@ -602,7 +606,6 @@ def _plot_hyperbolas(
     crossing: dict,
     signal_bias: npt.NDArray[np.float64],
     signal_freq: npt.NDArray[np.float64],
-    bias_points: npt.NDArray[np.float64],
     inliers: npt.NDArray[np.bool],
     freq_limit: tuple[float, float],
     number: int = 0,
@@ -611,10 +614,8 @@ def _plot_hyperbolas(
 
     color = qualitative.Plotly[(number - 1) % len(qualitative.Plotly)]
     low, high = crossing["bias_range"]
-    # Peaks on a boundary belong to the left crossing, matching the fit.
-    lower = signal_bias > low if number > 1 else signal_bias >= low
-    owned = inliers & lower & (signal_bias <= high)
-    bias_points = bias_points[(bias_points >= low) & (bias_points <= high)]
+    owned = inliers & (signal_bias >= low) & (signal_bias <= high)
+    bias_points = np.linspace(low, high, 100)
     scatters_list: list[go.Scatter] = []
     scatters_list.append(
         go.Scatter(
@@ -666,10 +667,6 @@ def _plot(
     bias = data.bias
     q_freqs = data.pair_frequency(target)
     bias_limits = (bias[0], bias[-1])
-    frequency_limits = (
-        q_freqs[0] * scipy.constants.nano,
-        q_freqs[-1] * scipy.constants.nano,
-    )
     low, high = data.pair_signal(target)
     figure = make_subplots(
         rows=2,
@@ -725,39 +722,28 @@ def _plot(
                 col=column,
             )
 
-            bias_plot = np.linspace(bias[0], bias[-1], 200)
             for number, crossing in enumerate(fit.crossings[target], start=1):
                 figure.add_traces(
                     _plot_crossings(
                         crossing=crossing,
-                        bias_points=bias_plot,
                         freq_limit=(q_freqs[0], q_freqs[-1]),
                         number=number,
                     ),
                     rows=row,
                     cols=column,
                 )
-                if crossing["fitted"]:
+                if target in fit.inliers:
                     figure.add_traces(
                         _plot_hyperbolas(
                             crossing=crossing,
                             signal_bias=np.asarray(fit.peak_biases[target]),
                             signal_freq=np.asarray(fit.peak_frequencies[target]),
-                            bias_points=bias_plot,
                             inliers=np.asarray(fit.inliers[target], dtype=bool),
                             freq_limit=(q_freqs[0], q_freqs[-1]),
                             number=number,
                         ),
                         rows=row,
                         cols=column,
-                    )
-                if number > 1:
-                    # Interval boundary shared with the previous crossing.
-                    figure.add_vline(
-                        x=crossing["bias_range"][0],
-                        line={"dash": "dot", "color": "white", "width": 1},
-                        row=row,
-                        col=column,
                     )
 
     figure.update_xaxes(
@@ -767,7 +753,7 @@ def _plot(
     )
     figure.update_yaxes(
         title_text="Low freq qubit drive frequency [GHz]",
-        range=frequency_limits,
+        range=(q_freqs[0] * scipy.constants.nano, q_freqs[-1] * scipy.constants.nano),
         autorange=False,
     )
     figure.update_layout(
@@ -802,7 +788,6 @@ def _plot(
                     f"[{c['bias_range'][0]:.4g}, {c['bias_range'][1]:.4g}]"
                     for c in crossings
                 ],
-                "RANSAC fitted": [c["fitted"] for c in crossings],
             }
         )
     return [figure], report
@@ -815,9 +800,8 @@ def _update(
 ):
     """Store the median pair coupling [Hz], preferring RANSAC-fitted crossings."""
     crossings = results.crossings.get(target, [])
-    fitted = [crossing for crossing in crossings if crossing["fitted"]]
     if crossings:
-        coupling = float(np.median([c["coupling"] for c in fitted or crossings]))
+        coupling = float(np.median([c["coupling"] for c in crossings]))
         update.pair_coupling([coupling, 0.0], platform, target)
 
 
