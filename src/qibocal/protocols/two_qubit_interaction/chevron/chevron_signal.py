@@ -58,12 +58,8 @@ def _aquisition(
 
     data = ChevronSignalData(
         native=params.native,
-        amplitude=np.arange(
-            params.amplitude_min, params.amplitude_max, params.amplitude_step
-        ).tolist(),
-        duration=np.arange(
-            params.duration_min, params.duration_max, params.duration_step
-        ).tolist(),
+        amplitude=params.amplitude_values.tolist(),
+        duration=params.duration_values.tolist(),
     )
     data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
     data.flux_coefficient = {
@@ -83,19 +79,19 @@ def _aquisition(
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
             ordered_pair=pair,
-            duration_max=params.duration_max,
+            duration_max=params.duration_range[1],
             parking=params.parking,
             dt=params.dt,
             native=params.native,
         )
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
-            range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
+            range=params.amplitude_range,
             pulses=[flux_pulse],
         )
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
-            range=(params.duration_min, params.duration_max, params.duration_step),
+            range=params.duration_range,
             pulses=[flux_pulse] + delays + parking_pulses,
         )
 
