@@ -358,6 +358,14 @@ def test_sweep_size_independent_of_center():
         values = _sweep((center - 0.4, center + 0.4, 0.1))
         assert len(values) == 8
         assert values[0] == center - 0.4
+    # otherwise, as numpy.arange
+    for range_ in [
+        (0.0, 1.0, 0.3),
+        (0.0, 10.0, 3.0),
+        (1.0, 0.0, -0.25),
+        (0.0, 1.0, -0.1),
+    ]:
+        assert len(_sweep(range_)) == np.arange(*range_).size
 
 
 @pytest.mark.parametrize(
