@@ -27,12 +27,13 @@ Example
 
 .. image:: kernels.png
 
-In the fitting procedure a low-pass filter removes residual fast oscillating terms from
-the traces acquired for the ground and the excited state. The optimal kernel is then
-calculated by taking the conjugate of the differences of the two traces. It is
-normalized to a maximum absolute weight of 1. Since the kernel changes the integrated IQ
-plane, the readout discrimination (e.g. ``single_shot_classification``) has to be
-calibrated again afterwards.
+In the fitting procedure a low-pass filter with cutoff at the intermediate frequency
+attenuates the residual image at twice the intermediate frequency from the traces
+acquired for the ground and the excited state. The optimal kernel is then calculated by
+taking the conjugate of the differences of the two traces. It is normalized to a maximum
+absolute weight of 1. Since the kernel changes the integrated IQ plane, the readout
+discrimination (e.g. ``single_shot_classification``) has to be calibrated again
+afterwards.
 
 Requirements
 ^^^^^^^^^^^^
