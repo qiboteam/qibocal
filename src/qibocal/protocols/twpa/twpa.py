@@ -159,8 +159,9 @@ def _sweep(range_: Range) -> list[float]:
     the same number of values.
     """
     start, stop, step = range_
-    # the tolerance absorbs floating point errors in the width
-    count = max(int(np.ceil((stop - start) / step - 1e-9)), 0)
+    # as in numpy.arange, the stop is excluded, while rounding the number of steps
+    # discards floating point errors in the width
+    count = max(int(np.ceil(np.round((stop - start) / step, 9))), 0)
     return (start + step * np.arange(count)).tolist()
 
 
