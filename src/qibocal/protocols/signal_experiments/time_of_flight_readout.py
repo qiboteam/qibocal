@@ -35,8 +35,8 @@ class TimeOfFlightReadoutParameters(Parameters):
 class TimeOfFlightReadoutResults(Results):
     """TimeOfFlightReadout outputs."""
 
-    time_of_flights: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
+    time_of_flights: dict[QubitId, float]
+    """Time of flight of each qubit [ns]."""
 
 
 @dataclass
@@ -130,12 +130,11 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    sampling_rate = data.sampling_rate
-    y = magnitude(data.data[target])
+    time = np.arange(len(data.data[target])) / data.sampling_rate + MINIMUM_TOF
 
     fig.add_trace(
         go.Scatter(
-            x=np.arange(0, len(y)) / sampling_rate + MINIMUM_TOF,
+            x=time,
             y=data.data[target][:, 0],
             textposition="bottom center",
             name="I",
@@ -146,7 +145,7 @@ def _plot(
     )
     fig.add_trace(
         go.Scatter(
-            x=np.arange(0, len(y)) / sampling_rate + MINIMUM_TOF,
+            x=time,
             y=data.data[target][:, 1],
             textposition="bottom center",
             name="Q",
