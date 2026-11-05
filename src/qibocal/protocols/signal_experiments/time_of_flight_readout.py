@@ -116,7 +116,7 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
         # take a threshold halfway between the baseline (first window) and the signal
         # (last window)
         th = (samples[:window_size].mean() + samples[-window_size:].mean()) / 2
-        delay = np.sum(samples <= th)
+        delay = np.argmax(samples > th)
         time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
         time_of_flights[qubit] = time_of_flight_readout
     return TimeOfFlightReadoutResults(time_of_flights)
