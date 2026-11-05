@@ -471,6 +471,31 @@ def _fit_unit_sum_fir(
 
 
 # TODO: refactor into sub-functions with smaller scopes
+def _invert_arc(poly: np.poly1d, detuning: float, reference: float) -> float:
+    """Flux amplitude producing a detuning from the drive frequency.
+
+    The detuning is measured with respect to the drive frequency, i.e. it vanishes
+    without flux pulse, while the fitted arc may carry a constant offset: that is
+    removed, so that ``poly(0)`` maps to a zero detuning.
+
+    Among the real solutions, the one with the same sign as the ``reference`` pulse
+    amplitude and the smallest magnitude is selected, i.e. the one connected with
+    the zero-flux point. If the detuning is out of the range spanned by the arc (no
+    real solution), the extremum of the arc is returned.
+    """
+    shifted = poly - poly(0.0)
+    roots = shifted - detuning
+    roots = roots.roots
+    real = roots[np.abs(roots.imag) < 1e-9 * max(1.0, np.max(np.abs(roots)))].real
+    candidates = real[np.sign(real) == np.sign(reference)]
+    if len(candidates) > 0:
+        return float(candidates[np.argmin(np.abs(candidates))])
+    if len(real) == 0 and shifted.order > 1:
+        # extremum of the arc
+        return float(shifted.deriv().roots[0].real)
+    return float(real[np.argmin(np.abs(real))]) if len(real) > 0 else 0.0
+
+
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
 
@@ -553,7 +578,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
         detuning[qubit] = detuning_wrt_drive_freq.tolist()
         amplitude[qubit] = [
-            max((detuning_poly - freq).roots).real for freq in detuning_wrt_drive_freq
+            _invert_arc(detuning_poly, freq, data.flux_pulse_amplitude)
+            for freq in detuning_wrt_drive_freq
         ]
 
         step_response[qubit] = (
