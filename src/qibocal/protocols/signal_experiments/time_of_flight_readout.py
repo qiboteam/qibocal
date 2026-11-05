@@ -135,7 +135,7 @@ def _plot(
 
     fig.add_trace(
         go.Scatter(
-            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
+            x=np.arange(0, len(y)) / sampling_rate + MINIMUM_TOF,
             y=data.data[target][:, 0],
             textposition="bottom center",
             name="I",
@@ -146,7 +146,7 @@ def _plot(
     )
     fig.add_trace(
         go.Scatter(
-            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
+            x=np.arange(0, len(y)) / sampling_rate + MINIMUM_TOF,
             y=data.data[target][:, 1],
             textposition="bottom center",
             name="Q",
