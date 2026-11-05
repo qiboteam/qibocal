@@ -19,16 +19,35 @@ MINIMUM_TOF = 28
 """Minimum value for time of flight"""
 
 
+def _window_size(intermediate_frequency: float, sampling_rate: float) -> int:
+    """Number of samples spanning one period of the intermediate frequency.
+
+    The baseline and signal levels are estimated by averaging over this window, so that
+    any residual oscillation at the intermediate frequency (from imperfect I/Q balance)
+    averages out.
+    """
+    period = 1e9 / abs(intermediate_frequency)  # [ns]
+    return max(1, round(period * sampling_rate))
+
+
 @dataclass
 class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
     detuning: float = 20e6
-    """Detuning with respect to corresponding LO frequency [Hz]."""
+    """Detuning with respect to corresponding LO frequency [Hz].
+
+    Must be non-zero: the returned pulse is identified by its oscillation at this
+    frequency, which also separates it from DC offsets and LO leakage.
+    """
     duration: float = 1e3
     """Duration of the readout pulse and of the acquired trace [ns]."""
     readout_amplitude: float = 0.5
     """Amplitude of the readout pulse."""
+
+    def __post_init__(self):
+        if self.detuning == 0:
+            raise ValueError("`detuning` must be non-zero.")
 
 
 @dataclass
@@ -43,9 +62,12 @@ class TimeOfFlightReadoutResults(Results):
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
-    sampling_rate: int
+    sampling_rate: float
+    """ADC sampling rate [GSps]."""
     intermediate_frequency: float
+    """Detuning of the probe with respect to the LO [Hz]."""
     amplitude: float
+    """Amplitude of the readout pulse."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -90,6 +112,7 @@ def _acquisition(
         ],
     )
 
+    assert platform.sampling_rate is not None
     data = TimeOfFlightReadoutData(
         sampling_rate=platform.sampling_rate,
         intermediate_frequency=params.detuning,
@@ -104,21 +127,29 @@ def _acquisition(
 
 
 def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
-    """Post-processing function for TimeOfFlightReadout."""
+    """Post-processing function for TimeOfFlightReadout.
+
+    The magnitude of the raw trace is compared against a threshold halfway between the
+    baseline level (mean of the first window, before the pulse arrives) and the signal
+    level (mean of the last window, after it has arrived). The time of flight is the
+    time of the first sample above the threshold.
+    """
 
     qubits = data.qubits
     time_of_flights = {}
 
     sampling_rate = data.sampling_rate
+    window = _window_size(data.intermediate_frequency, sampling_rate)
     for qubit in qubits:
         samples = magnitude(data.data[qubit])
-        window_size = len(samples) // 10
-        # take a threshold halfway between the baseline (first window) and the signal
-        # (last window)
-        th = (samples[:window_size].mean() + samples[-window_size:].mean()) / 2
+        if len(samples) < 2 * window:
+            raise ValueError(
+                f"Trace of {len(samples)} samples is too short for a window of "
+                f"{window} samples: increase `duration` or `detuning`."
+            )
+        th = (samples[:window].mean() + samples[-window:].mean()) / 2
         delay = np.argmax(samples > th)
-        time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
-        time_of_flights[qubit] = time_of_flight_readout
+        time_of_flights[qubit] = float(delay / sampling_rate + MINIMUM_TOF)
     return TimeOfFlightReadoutResults(time_of_flights)
 
 
