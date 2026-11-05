@@ -119,17 +119,14 @@ class CryoscopeParameters(Parameters):
     their effect is assessed from the reconstructed waveform. New filters are therefore
     not determined and the platform is not updated.
     """
-    padding_duration: float = 12
+    padding_duration: float = 0
     """Duration in ns of the leading zeros in the flux pulse.
 
     Padding is fixed during the duration sweep and added before the pulse. The waveform
     consists of `padding_duration` ns of zeros followed by `duration` ns of rectangular
     samples, for a total length of `padding_duration + duration`.
 
-    Useful when hardware enforces a minimum pulse length. On Qblox, flux pulses with a
-    total length below about 8 ns were observed to give a wrong response (the `MY`
-    signal stays flat, the contrast drops, and the step response shows spurious
-    structure up to that length), hence the default.
+    Useful when hardware enforces a minimum pulse length.
     """
 
 
