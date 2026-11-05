@@ -29,8 +29,6 @@ class TimeOfFlightReadoutParameters(Parameters):
     """Duration of the readout pulse and of the acquired trace [ns]."""
     readout_amplitude: float = 0.5
     """Amplitude of the readout pulse."""
-    window_size: int = 10
-    """Window size for the moving average."""
 
 
 @dataclass
@@ -45,7 +43,6 @@ class TimeOfFlightReadoutResults(Results):
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
-    windows_size: int
     sampling_rate: int
     intermediate_frequency: float
     amplitude: float
@@ -94,7 +91,6 @@ def _acquisition(
     )
 
     data = TimeOfFlightReadoutData(
-        windows_size=params.window_size,
         sampling_rate=platform.sampling_rate,
         intermediate_frequency=params.detuning,
         amplitude=params.readout_amplitude,
@@ -113,7 +109,6 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     qubits = data.qubits
     time_of_flights = {}
 
-    window_size = data.windows_size
     sampling_rate = data.sampling_rate
     for qubit in qubits:
         samples = magnitude(data.data[qubit])
