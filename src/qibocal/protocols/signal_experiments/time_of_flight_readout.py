@@ -116,25 +116,13 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     window_size = data.windows_size
     sampling_rate = data.sampling_rate
     for qubit in qubits:
-        delays = []
-        for i in range(2):
-            samples = data.data[qubit][:, i]
-            window_size = int(len(samples) / 10)
-
-            for feat in ["min", "max"]:
-                th = (
-                    getattr(np, feat)(samples[:window_size])
-                    + getattr(np, feat)(samples[:-window_size])
-                ) / 2
-                # try-expect in order to handle sporadic failing with mock
-                try:
-                    delay = np.where(samples < th if feat == "min" else samples > th)[
-                        0
-                    ][0]
-                except IndexError:
-                    delay = 0
-                delays.append(delay)
-        time_of_flight_readout = float(min(delays) / sampling_rate + MINIMUM_TOF)
+        samples = magnitude(data.data[qubit])
+        window_size = len(samples) // 10
+        # take a threshold halfway between the baseline (first window) and the signal
+        # (last window)
+        th = (samples[:window_size].mean() + samples[-window_size:].mean()) / 2
+        delay = np.sum(samples <= th)
+        time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
         time_of_flights[qubit] = time_of_flight_readout
     return TimeOfFlightReadoutResults(time_of_flights)
 
