@@ -9,6 +9,7 @@ from qibocal.protocols.flux_dependence.cryoscope import (
     CryoscopeResults,
     _fit,
     _invert_arc,
+    _valid_exponential_params,
 )
 
 
@@ -48,3 +49,18 @@ def test_invert_arc_out_of_range():
     """A detuning beyond the arc extremum returns the extremum."""
     arc = np.poly1d([-6.0, 0.0, 0.0])
     assert _invert_arc(arc, 1.0, 0.2) == pytest.approx(0.0)
+
+
+def test_valid_exponential_params():
+    durations = np.arange(1.0, 47.0)
+    response = 1.0 + 0.1 * np.exp(-durations / 8.0)
+    popt = _valid_exponential_params(response, durations, 1.0, 0)
+    assert popt is not None
+    assert popt[0] == pytest.approx(8.0, rel=1e-3)
+
+
+def test_exponential_faster_than_a_sample():
+    """A time constant below one sample cannot be a filter, so no IIR is returned."""
+    durations = np.arange(1.0, 47.0)
+    response = 1.0 + 0.5 * np.exp(-durations / 0.2)
+    assert _valid_exponential_params(response, durations, 1.0, 0) is None
