@@ -1,7 +1,17 @@
-"""Tests for TWPA frequency and offset sweeper protocol."""
+"""Tests for TWPA calibration and frequency and offset sweeper protocols."""
 
 import numpy as np
 import pytest
+from qibolab import (
+    Acquisition,
+    OscillatorConfig,
+    Parameter,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    Sweeper,
+)
 
 from qibocal.protocols import PROTOCOLS
 from qibocal.protocols.twpa.frequency_offset import (
@@ -13,6 +23,18 @@ from qibocal.protocols.twpa.frequency_offset import (
     _plot,
     twpa_frequency_offset,
     twpa_sweep,
+)
+from qibocal.protocols.twpa.twpa import (
+    TwpaCalibrationParameters,
+    _reference_scan,
+    _sweep,
+    _twpa_scan,
+)
+from qibocal.protocols.twpa.twpa import (
+    _fit as calibration_fit,
+)
+from qibocal.protocols.twpa.twpa import (
+    _plot as calibration_plot,
 )
 from qibocal.protocols.utils import readout_frequency, to_range
 
@@ -227,3 +249,193 @@ def test_acquisition_default_probes(platform, mocker):
     assert len(sweepers) == 2
     assert all(sw.range is not None for sw in sweepers[0])
     assert all(sw.range is not None for sw in sweepers[1])
+
+
+@pytest.mark.parametrize("pumps", [("a",), ("a", "a"), ("a", "b", "a")])
+@pytest.mark.parametrize("legacy", [True, False])
+def test_twpa_scan_pump_mapping(mocker, pumps, legacy):
+    qubits = list(reversed(range(len(pumps))))
+    configs = {
+        "a": OscillatorConfig(frequency=6e9, power=0.1),
+        "b": OscillatorConfig(frequency=7e9, power=0.2),
+    }
+    params = TwpaCalibrationParameters.load(
+        {
+            "nshots": 10,
+            "relaxation_time": 0,
+            "freq_width": 10e6,
+            "freq_step": 1e6,
+            "twpa_freq_width": 10e6,
+            "twpa_freq_step": 2e6,
+            "twpa_pow_width": 0.8,
+            "twpa_pow_step": 0.1,
+        }
+    )
+    if not legacy:
+        params.probe_frequency = ("asym", (5e6, 5e6), 1e6)
+        params.frequency = ("asym", (5e6, 5e6), 2e6)
+        params.power = ("asym", (0.4, 0.4), 0.1)
+
+    sequence = PulseSequence()
+    sweepers = []
+    channels = []
+    results = {}
+    for qubit in qubits:
+        channel = f"{qubit}/acquisition"
+        channels.append(channel)
+        readout = Readout(
+            acquisition=Acquisition(duration=100),
+            probe=Pulse(duration=100, amplitude=0.1, envelope=Rectangular()),
+        )
+        sequence.append((channel, readout))
+        sweeper = Sweeper(
+            parameter=Parameter.frequency,
+            range=params.probe_frequency_range(5e9),
+            channels=[f"{qubit}/probe"],
+        )
+        sweepers.append(sweeper)
+        results[readout.id] = np.ones((len(sweeper.values), 2))
+
+    platform = mocker.Mock()
+    platform.config.side_effect = configs.__getitem__
+    platform.execute.return_value = results
+    data = _twpa_scan(platform, sequence, sweepers, qubits, pumps, channels, params)
+
+    assert (
+        set(data.data)
+        == set(data.twpa_frequency)
+        == set(data.twpa_power)
+        == set(qubits)
+    )
+    for qubit, pump, sweeper in zip(qubits, pumps, sweepers):
+        expected_power = _sweep(params.power_range(configs[pump].power))
+        expected_frequency = _sweep(params.frequency_range(configs[pump].frequency))
+        np.testing.assert_array_equal(data.twpa_power[qubit], expected_power)
+        np.testing.assert_array_equal(data.twpa_frequency[qubit], expected_frequency)
+        assert data[qubit].shape == (
+            len(expected_power),
+            len(expected_frequency),
+            len(sweeper.values),
+            2,
+        )
+        data.reference_value[qubit] = results[
+            list(sequence.channel(f"{qubit}/acquisition"))[-1].id
+        ].tolist()
+
+    unique_pumps = list(dict.fromkeys(pumps))
+    expected_updates = [
+        [
+            {pump: {"power": power, "frequency": frequency}}
+            for pump, power, frequency in zip(unique_pumps, powers, frequencies)
+        ]
+        for powers in zip(
+            *(_sweep(params.power_range(configs[pump].power)) for pump in unique_pumps)
+        )
+        for frequencies in zip(
+            *(
+                _sweep(params.frequency_range(configs[pump].frequency))
+                for pump in unique_pumps
+            )
+        )
+    ]
+    assert [
+        call.kwargs["updates"] for call in platform.execute.call_args_list
+    ] == expected_updates
+
+    fit = calibration_fit(data)
+    for qubit in qubits:
+        assert fit.twpa_power[qubit] == data.twpa_power[qubit][0]
+        assert fit.twpa_frequency[qubit] == data.twpa_frequency[qubit][0]
+        assert len(calibration_plot(data, None, qubit)[0]) == 1
+        assert len(calibration_plot(data, fit, qubit)[0]) == 1
+
+
+def test_sweep_size_independent_of_center():
+    """Ranges of equal width and step have the same size, unlike numpy.arange."""
+    assert np.arange(3.0 - 0.4, 3.0 + 0.4, 0.1).size == 8
+    assert np.arange(5.0 - 0.4, 5.0 + 0.4, 0.1).size == 9
+    for center in (3.0, 5.0, 6.1e9):
+        values = _sweep((center - 0.4, center + 0.4, 0.1))
+        assert len(values) == 8
+        assert values[0] == center - 0.4
+    # otherwise, as numpy.arange
+    for range_ in [
+        (0.0, 1.0, 0.3),
+        (0.0, 10.0, 3.0),
+        (1.0, 0.0, -0.25),
+        (0.0, 1.0, -0.1),
+    ]:
+        assert len(_sweep(range_)) == np.arange(*range_).size
+
+
+@pytest.mark.parametrize(
+    "missing, match",
+    [
+        ("freq_step", "'probe_frequency'"),
+        ("twpa_freq_step", "'frequency'"),
+        ("twpa_pow_step", "'power'"),
+    ],
+)
+def test_missing_ranges(missing, match):
+    parameters = {
+        "freq_width": 10e6,
+        "freq_step": 1e6,
+        "twpa_freq_width": 10e6,
+        "twpa_freq_step": 2e6,
+        "twpa_pow_width": 0.8,
+        "twpa_pow_step": 0.1,
+    }
+    del parameters[missing]
+    params = TwpaCalibrationParameters.load(parameters)
+    ranges = {
+        "freq_step": params.probe_frequency_range,
+        "twpa_freq_step": params.frequency_range,
+        "twpa_pow_step": params.power_range,
+    }
+    with pytest.raises(ValueError, match=match):
+        ranges[missing]()
+
+
+def test_reference_scan_turns_pumps_back_on(mocker):
+    twpa = mocker.Mock()
+    platform = mocker.Mock()
+    platform.execute.side_effect = RuntimeError("acquisition failed")
+
+    with pytest.raises(RuntimeError, match="acquisition failed"):
+        _reference_scan(platform, PulseSequence(), [], 10, 0, [], [twpa])
+    twpa.device.off.assert_called_once_with()
+    twpa.device.on.assert_called_once_with()
+
+
+def test_shared_pump_switched_once(platform, mocker):
+    from qibocal.protocols.twpa.twpa import _acquisition as calibration_acquisition
+
+    pump = platform.instruments["twpa_pump"]
+    platform.connect()
+    off = mocker.spy(pump.device, "off")
+    on = mocker.spy(pump.device, "on")
+    params = TwpaCalibrationParameters.load(
+        {
+            "nshots": 10,
+            "freq_width": 2e6,
+            "freq_step": 1e6,
+            "twpa_freq_width": 2e6,
+            "twpa_freq_step": 1e6,
+            "twpa_pow_width": 0.2,
+            "twpa_pow_step": 0.1,
+        }
+    )
+    execute = mocker.spy(platform, "execute")
+    try:
+        calibration_acquisition(params, platform, [0, 1])
+        off.assert_called_once_with()
+        on.assert_called_once_with()
+    finally:
+        platform.disconnect()
+
+    # parallel probe sweeps, of the same size whatever their centers
+    sweepers = execute.call_args_list[0].args[1][0]
+    assert len({len(sweeper.values) for sweeper in sweepers}) == 1
+    for sweeper, qubit in zip(sweepers, [0, 1]):
+        center = readout_frequency(qubit, platform)
+        assert sweeper.values.tolist() == _sweep(params.probe_frequency_range(center))
