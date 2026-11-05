@@ -25,7 +25,6 @@ How to execute the experiment
       operation: time_of_flight_readout  # unique name of the routine
       parameters:
         readout_amplitude: 0.5
-        window_size: 10
         detuning: 50_000_000
         nshots: 1024
         relaxation_time: 20_000
