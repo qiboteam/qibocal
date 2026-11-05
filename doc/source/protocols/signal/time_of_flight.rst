@@ -35,14 +35,28 @@ Although it is possible to avoid setting a specific readout amplitude, it is gen
 Acquisition
 ^^^^^^^^^^^
 
+A rectangular readout pulse of the given ``duration`` and ``readout_amplitude`` is
+played at the LO frequency shifted by ``detuning``, and the raw ADC trace is acquired
+for the same ``duration``. The returned pulse shows up as an oscillation at the detuning
+frequency in the I and Q traces, which separates it from DC offsets and LO leakage and
+makes its arrival easy to identify.
+
 .. image:: time_of_flight.png
 
 Fit
 ^^^
 
-The fit procedure computes the expected time at which the signal should appear.
-To estimate the time of flight in the fitting a threshold is estimated to distinguish the noise from the signal, then
-the first point where the signal exceed this value is selected as the time of flight.
+The fit works on the magnitude of the acquired trace, :math:`\sqrt{I^2 + Q^2}`, which is
+flat before the pulse arrives and jumps to a higher level once it does.
+
+The baseline level is estimated as the mean of the first window of the trace (before the
+pulse arrives), and the signal level as the mean of the last window (after the pulse has
+arrived). The window spans one period of the detuning frequency, so that any residual
+oscillation at that frequency (due to imperfect I/Q balance) averages out. With the
+default detuning of 20 MHz this corresponds to 50 ns.
+
+A threshold is then set halfway between the baseline and signal levels, and the time of
+flight is the time of the first sample whose magnitude exceeds this threshold.
 
 
 Requirements
