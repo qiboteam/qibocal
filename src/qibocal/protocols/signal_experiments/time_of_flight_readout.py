@@ -26,7 +26,7 @@ class TimeOfFlightReadoutParameters(Parameters):
     detuning: float = 20e6
     """Detuning with respect to corresponding LO frequency [Hz]."""
     duration: float = 1e3
-    """Duration of the readout pulse."""
+    """Duration of the readout pulse and of the acquired trace [ns]."""
     readout_amplitude: float = 0.5
     """Amplitude of the readout pulse."""
     window_size: int = 10
@@ -68,7 +68,12 @@ def _acquisition(
             amplitude=params.readout_amplitude,
             envelope=Rectangular(),
         )
-        ro_pulse = replace(ro_pulse, probe=probe)
+        # the RAW trace length is set by the acquisition, so it has to span the probe
+        ro_pulse = replace(
+            ro_pulse,
+            probe=probe,
+            acquisition=replace(ro_pulse.acquisition, duration=params.duration),
+        )
         sequence.append((ro_channel, ro_pulse))
 
     results = platform.execute(
