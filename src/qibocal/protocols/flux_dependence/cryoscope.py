@@ -421,6 +421,34 @@ def exponential_params(
     return popt
 
 
+def _valid_exponential_params(
+    step_response: npt.ArrayLike,
+    durations: npt.ArrayLike,
+    sampling_rate: float,
+    qubit: QubitId,
+) -> npt.NDArray[np.float64] | None:
+    """Fit an exponential distortion, if it is realizable as a filter.
+
+    The filter time constant is expressed in samples: a fit that does not converge,
+    or that gives a time constant below one sample (e.g. when it is absorbed by the
+    FIR taps), cannot be implemented. In that case no IIR filter is determined and
+    `None` is returned.
+    """
+    try:
+        popt = exponential_params(step_response, durations)
+    except RuntimeError:
+        log.warning(f"Exponential fit did not converge for qubit {qubit}: no IIR.")
+        return None
+    tau = popt[0]
+    if not np.isfinite(popt).all() or round(tau * sampling_rate) < 1:
+        log.warning(
+            f"Exponential fit for qubit {qubit} gives tau={tau} ns, below one sample: "
+            "no IIR."
+        )
+        return None
+    return popt
+
+
 def _fit_unit_sum_fir(
     response: npt.ArrayLike,
     target: npt.ArrayLike,
@@ -590,8 +618,14 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         # determine and the filters are instead assessed in _plot
         if not data.platform_filters_applied[qubit]:
             # Derive IIR
-            if data.iir:
-                exp_params = exponential_params(step_response[qubit], durations)
+            exp_params = (
+                _valid_exponential_params(
+                    step_response[qubit], durations, sampling_rate, qubit
+                )
+                if data.iir
+                else None
+            )
+            if exp_params is not None:
                 tau, exp_amplitude, _ = exp_params
                 iir_filter = ExponentialFilter(
                     amplitude=exp_amplitude, tau=round(tau * sampling_rate)
