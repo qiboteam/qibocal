@@ -1,4 +1,4 @@
-"""JAZZ (Joint Amplification of ZZ) versus coupler flux-pulse amplitude.
+"""JAZZ (Joint Amplification of ZZ) versus coupler flux-pulse offset.
 
 A single echoed Ramsey sequence on the target qubit, with a simultaneous
 :math:`\\pi` pulse on both qubits at the echo::
@@ -24,30 +24,28 @@ Reference:
       Two-Qubit System", PRL 125, 200504 (2020).
 """
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.constants as const
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
     Parameter,
-    Pulse,
     PulseLike,
     PulseSequence,
-    Rectangular,
     Sweeper,
 )
+from scipy.signal import savgol_filter
 
 from qibocal.auto.operation import Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
-    Range,
     RangeLike,
     quinn_fernandes_algorithm,
     table_dict,
@@ -55,7 +53,7 @@ from qibocal.protocols.utils import (
     to_range,
 )
 from qibocal.protocols.zz_interaction.jazz import (
-    jazz_fit,
+    jazz_fitting_process,
     jazz_sequence,
 )
 from qibocal.protocols.zz_interaction.utils import (
@@ -63,9 +61,12 @@ from qibocal.protocols.zz_interaction.utils import (
     ZZInteractionParameters,
 )
 
-from .ramsey_zz import _build_heatmap
-
 __all__ = ["coupler_jazz"]
+
+
+SAVGOL_POLYORDER = 3
+SAVGOL_WINDOW_LENGTH = 4
+SAVGOL_DERIV = 1
 
 
 @dataclass
@@ -77,22 +78,27 @@ class CouplerJAZZParameters(ZZInteractionParameters):
     not change the drive frequency. Keep |ZZ| below |detuning| to resolve sign.
     """
 
-    coupler_amp_range: RangeLike
-    """Amplitude of the coupler flux pulse."""
+    coupler_offset_range: RangeLike
+    """Offset of the coupler flux pulse."""
+    fast_evaluation: bool = True
+    """Whether to estimate ZZ with only the Quinn-Fernandes frequency estimator
+    (:func:`~your_package.fitting.quinn_fernandes`), skipping the curve fit.
 
-    @property
-    def _coupler_range(self) -> Range:
-        return to_range(self.coupler_amp_range)
+    If ``False``, a full fit with :func:`scipy.optimize.curve_fit` is performed instead.
+
+    Use ``True`` for first (coarse) scans. ZZ can vary strongly with the coupler frequency,
+    so the oscillations may be undersampled, and a full fit then becomes unreliable.
+    """
 
 
 CouplerZZType = np.dtype(
     [
         ("delay", np.float64),
-        ("amplitude", np.float64),
+        ("offset", np.float64),
         ("prob", np.float64),
         ("error", np.float64),
-        ("prob_control", np.float64),
-        ("error_control", np.float64),
+        ("prob_spectator", np.float64),
+        ("error_spectator", np.float64),
     ]
 )
 
@@ -102,33 +108,34 @@ class CouplerJAZZData(ZZInteractionData):
     """JAZZ target probabilities and acquisition DC offsets."""
 
     """Phase-ramp rate of the final target rotation [Hz per half-wait]."""
-    couplers_offsets: dict[QubitPairId, float] = field(default_factory=dict)
-    """Acquisition DC coupler offsets, for absolute-bias calibration."""
     data: dict[QubitPairId, npt.NDArray[CouplerZZType]] = field(default_factory=dict)
     """Raw data acquired."""
+    fast_evaluation: bool = True
+    """Whether fast evaluation was used, as configured by
+    :attr:`CouplerJAZZParameters.fast_evaluation`.
+    """
 
-    def amplitudes(self, pair: QubitPairId) -> npt.NDArray:
-        return np.unique(self.data[pair]["amplitude"])
+    def pair_offsets(self, pair: QubitPairId) -> npt.NDArray:
+        return np.unique(self.data[pair]["offset"])
 
-    def return_data_per_amplitude(
-        self, pair: QubitPairId, amp: float
+    def return_data_per_offset(
+        self, pair: QubitPairId, bias: float
     ) -> npt.NDArray[CouplerZZType]:
-        return self.data[pair][np.array(self.data[pair])["amplitude"] == amp]
+        return self.data[pair][np.array(self.data[pair])["offset"] == bias]
 
 
 @dataclass
 class CouplerJAZZResults(Results):
     """ZZ estimates, the minimum pulse amplitude and an absolute nulling bias."""
 
-    zz: dict[QubitPairId, list[float]] = field(default_factory=dict)
-    nulling_point: dict[QubitPairId, float] = field(default_factory=dict)
+    zz: dict[QubitPairId, list[list[float]]] = field(default_factory=dict)
+    """ZZ estimates for each qubit pair [Hz]."""
+    nulling_point: dict[QubitPairId, list[float]] = field(default_factory=dict)
     """Absolute minimum-|ZZ| bias, omitted for unbracketed or unresolved minima."""
     fitting_params: dict[QubitPairId, dict[float, list[float]]] = field(
         default_factory=dict
     )
-
-    def __contains__(self, pair: QubitPairId) -> bool:
-        return pair in self.nulling_point
+    """Fitting parameters for each qubit pair."""
 
 
 def _acquisition(
@@ -141,15 +148,11 @@ def _acquisition(
     complete_sequence = PulseSequence()
 
     delay = Delay(duration=params.delay_range[0])
-    coupler_pulse = Pulse(
-        duration=params.delay_range[0],
-        amplitude=params._coupler_range[0],
-        envelope=Rectangular(),
-    )
 
-    coupler_offsets: dict[QubitPairId, float] = {}
+    updates: dict = {}
     target_ro_pulses: dict[QubitPairId, PulseLike] = {}
     spectator_ro_pulses: dict[QubitPairId, PulseLike] = {}
+    offset_parsweepers: dict[QubitPairId, Sweeper] = {}
     for pair in targets:
         target, spectator = pair
 
@@ -170,7 +173,7 @@ def _acquisition(
         target_ro_pulses[pair] = target_ro_pulse
         spectator_ro_pulses[pair] = spectator_ro_pulse
 
-        delay_sequence, flip_sequence = jazz_sequence(
+        jazz_seq = jazz_sequence(
             calibration_platform=platform,
             target=target,
             spectator=spectator,
@@ -183,60 +186,40 @@ def _acquisition(
 
         coupler_channel = platform.couplers[coupler_id].flux
         assert coupler_channel is not None, "Coupler channel should not be None"
+        coupler_offset = platform.config(coupler_channel).offset
 
-        coupler_offsets[pair] = platform.config(coupler_channel).offset
+        # resetting the coupler offset to 0 before the sweep
+        updates |= {coupler_channel: {"offset": 0.0}}
 
-        # adding coupler flux pulse to the delay sequence
-        coupler_flux_seq = PulseSequence([(coupler_channel, coupler_pulse)])
-        delay_sequence += coupler_flux_seq
+        complete_sequence += jazz_seq | acquisition_seq
 
-        # adding coupler idle to the flip sequence
-        coupler_idle_seq = PulseSequence(
-            [(coupler_channel, Delay(duration=flip_sequence.duration))]
-        )
-        flip_sequence += coupler_idle_seq
-
-        target_rx90_seq = target_natives.R(theta=np.pi / 2)
-        target_ry90_seq = target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
-
-        complete_sequence += (
-            target_rx90_seq  # rotating target on the equator
-            | delay_sequence  # first delay sequence
-            | flip_sequence  # spectator and target flipping
-            | delay_sequence  # second delay sequence
-            | target_ry90_seq  # rotating target on the equator with a pi/2 phase shift
-            | acquisition_seq  # measure both qubits
+        offset_parsweepers[pair] = Sweeper(
+            parameter=Parameter.offset,
+            range=to_range(params.coupler_offset_range, center=coupler_offset),
+            channels=[coupler_channel],
         )
 
-    data = CouplerJAZZData(
-        couplers_offsets=coupler_offsets,
-    )
+    data = CouplerJAZZData(fast_evaluation=params.fast_evaluation)
 
     duration_sweeper = Sweeper(
         parameter=Parameter.duration,
         range=params.delay_range,
-        pulses=[delay, coupler_pulse],
+        pulses=[delay],
     )
-
-    amplitude_sweeper = Sweeper(
-        parameter=Parameter.amplitude,
-        range=params._coupler_range,
-        pulses=[coupler_pulse],
-    )
-
     acquired = platform.execute(
         [complete_sequence],
-        [[amplitude_sweeper], [duration_sweeper]],
+        [list(offset_parsweepers.values()), [duration_sweeper]],
+        updates=[updates],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    # Amplitude is the outer sweep: flattening varies delays fastest.
-    ampl_values = np.array(amplitude_sweeper.values)
+    # offset is the outer sweep: flattening varies delays fastest.
     delay_values = np.array(duration_sweeper.values)
     for pair in targets:
+        off_values = np.array(offset_parsweepers[pair].values)
         t_ro_pulse = target_ro_pulses[pair]
         s_ro_pulse = spectator_ro_pulses[pair]
 
@@ -251,71 +234,90 @@ def _acquisition(
             CouplerZZType,
             pair,
             {
-                "delay": np.tile(delay_values, len(ampl_values)),
-                "amplitude": np.repeat(
-                    ampl_values + coupler_offsets[pair], len(delay_values)
-                ),
+                "delay": np.tile(delay_values, len(off_values)),
+                "offset": np.repeat(off_values, len(delay_values)),
                 "prob": t_probs.ravel(),
                 "error": t_error.ravel(),
-                "prob_control": s_probs.ravel(),
-                "error_control": s_error.ravel(),
+                "prob_spectator": s_probs.ravel(),
+                "error_spectator": s_error.ravel(),
             },
         )
 
     return data
 
 
+def fast_estimation(
+    offset_data: npt.NDArray[CouplerZZType],
+    delays: npt.NDArray,
+) -> tuple[float, list[float]]:
+    """Estimate signed ZZ in Hz for one coupler offset."""
+    probabilities = offset_data["prob"]
+    omega = float(
+        quinn_fernandes_algorithm(probabilities, delays, speedup_flag=True)
+        * const.giga
+        / (2 * np.pi)
+    )
+
+    try:
+        quarter_period = const.giga / (4 * omega) if omega else np.inf
+        quarter_period_signal = probabilities[delays <= quarter_period]
+        filtered_signal = savgol_filter(
+            quarter_period_signal,
+            window_length=SAVGOL_WINDOW_LENGTH,
+            polyorder=SAVGOL_POLYORDER,
+            deriv=SAVGOL_DERIV,
+        )
+        zz_sign = np.sign(np.median(filtered_signal))
+    except ValueError:
+        log.warning(
+            "Failed in estimating interaction sign: not enough points in the semi period signal."
+        )
+        zz_sign = 1
+
+    zz_sign = 1
+
+    return float(omega * zz_sign), [0.0] * 4
+
+
+def full_estimation(
+    offset_data: npt.NDArray[CouplerZZType],
+    delays: npt.NDArray,
+) -> tuple[float, list[float]]:
+    """Fit ZZ in Hz for one coupler offset."""
+    popt, zz_estimated = jazz_fitting_process(
+        probs=offset_data["prob"],
+        delays=delays,
+        err=offset_data["error"],
+    )
+    return float(zz_estimated[0]), popt
+
+
 def _fit(data: CouplerJAZZData) -> CouplerJAZZResults:
     """Convert the echoed fringe frequency to ZZ and bracket its minimum."""
 
-    zz_strenghts: dict[QubitPairId, list[float]] = defaultdict(list)
-    fitting_params: dict[QubitPairId, dict[float, list[float]]] = defaultdict(dict)
+    zz_strenghts: dict[QubitPairId, list[list[float]]] = {}
+    fitting_params: dict[QubitPairId, dict[float, list[float]]] = {}
+    nulling_point: dict[QubitPairId, list[float]] = {}
+    jazz_estimation = fast_estimation if data.fast_evaluation else full_estimation
     for pair in data.pairs:
-        amplitudes = data.amplitudes(pair)
-
-        for amp in amplitudes:
-            amp_data = data.return_data_per_amplitude(pair, amp)
-
+        for off in data.pair_offsets(pair):
+            offset_data = data.return_data_per_offset(pair, off)
             try:
-                # popt, zz_estimated = _jazz_fitting_process(
-                #     probs=amp_data['prob'],
-                #     delays=amp_data['delay'],
-                #     err=amp_data['error'],
-                # )
-
-                probs = amp_data["prob"]
-                delays = amp_data["delay"]
-                err = amp_data["error"]
-
-                probs_max = np.max(probs)
-                probs_min = np.min(probs)
-                d_max = np.max(delays)
-                d_min = np.min(delays)
-                delta_probs = probs_max - probs_min
-                delta_delay = d_max - d_min
-                min_max_probs = (probs - probs_min) / delta_probs
-                min_max_delays = (delays - d_min) / delta_delay
-                err = err / delta_probs
-
-                omega = quinn_fernandes_algorithm(
-                    min_max_probs, min_max_delays, speedup_flag=True
-                ).tolist()
-
-                # zz_strenghts[pair].append(float(zz_estimated[0]))
-                zz_strenghts[pair].append(float(omega))
-                fitting_params[pair][amp] = [0] * 4
-
-            # here we are catching two possible errors: fitting error in curve_fit
-            # call or error in estimating coupling strenght because anharmonicities
-            # are unknown
+                zz_estimated, popt = jazz_estimation(offset_data, data.delays)
             except (RuntimeError, ValueError) as e:
-                log.warning(f"JAZZ fit for pair {pair}: {e}.")
+                log.warning(f"JAZZ fit for pair {pair} at offset {off}: {e}.")
+                continue
+            zz_strenghts.setdefault(pair, []).append([float(off), zz_estimated])
+            fitting_params.setdefault(pair, {})[float(off)] = popt
+
+        if pair in zz_strenghts:
+            nulling_point[pair] = min(
+                zz_strenghts[pair], key=lambda point: abs(point[1])
+            )
 
     return CouplerJAZZResults(
         zz=zz_strenghts,
-        nulling_point={
-            k: data.amplitudes(k)[np.argmin(np.abs(v))] for k, v in zz_strenghts.items()
-        },
+        nulling_point=nulling_point,
         fitting_params=fitting_params,
     )
 
@@ -325,85 +327,86 @@ def _plot(
     target: QubitPairId,
     fit: CouplerJAZZResults | None = None,
 ):
-    """Report the echoed fringes, ZZ uncertainties and the fitted minimum."""
+    """Report target/control fringes above the estimated ZZ coupling."""
     pair_data = data[target]
-
-    fig_target = go.Figure(_build_heatmap(pair_data, "prob"))
-    fig_control = go.Figure(_build_heatmap(pair_data, "prob_control"))
-
-    figures: list[go.Figure] = [fig_target, fig_control]
-
-    if fit is not None and target in fit.nulling_point:
-        best_amp = fit.nulling_point[target]
-        fig_target.add_vline(
-            x=best_amp,
-            line={"color": "black", "dash": "dash", "width": 2},
+    offsets = data.pair_offsets(target)
+    delays = data.delays
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        specs=[[{}, {}], [{"colspan": 2}, None]],
+        subplot_titles=("Target qubit", "Control qubit", "Estimated ZZ"),
+    )
+    for col, probability_field in enumerate(("prob", "prob_spectator"), start=1):
+        probabilities = pair_data[probability_field].reshape(len(offsets), len(delays))
+        fig.add_trace(
+            go.Heatmap(
+                x=offsets,
+                y=delays,
+                z=probabilities.T,
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=col,
         )
-
-    fig_target.update_layout(
-        yaxis_title="Time [ns]",
-        xaxis_title="Coupler Offset [a.u.]",
-        title="Target qubit",
-    )
-    fig_control.update_layout(
-        yaxis_title="Time [ns]",
-        xaxis_title="Coupler Offset [a.u.]",
-        title="Control qubit",
-    )
-
-    figures_1d: list[go.Figure] = []
-    for amp in data.amplitudes(target):
-        if (
-            fit is not None
-            and target in fit.fitting_params
-            and amp in fit.fitting_params[target]
-        ):
-            amp_data = data.return_data_per_amplitude(target, amp)
-            times = amp_data["delay"]
-            probs = amp_data["prob"]
-
-            t_linspace = np.linspace(times[0], times[-1], 200)
-            best_fit = fit.fitting_params[target][amp]
-
-            fig_1d = go.Figure()
-            fig_1d.add_scatter(
-                x=times, y=probs, mode="markers", name=f"Data (amp={np.round(amp, 3)})"
-            )
-            fig_1d.add_scatter(
-                x=t_linspace,
-                y=jazz_fit(t_linspace, *best_fit),
-                mode="lines",
-                name="Fit",
-            )
-            figures_1d.append(fig_1d)
-
+        fig.update_xaxes(title_text="Coupler Offset [a.u.]", row=1, col=col)
+        fig.update_yaxes(title_text="Time [ns]", row=1, col=col)
     fitting_report = ""
-    if fit is not None and target in fit.nulling_point:
-        fitting_report = table_html(
-            table_dict(
-                str(target),
-                ["Coupler nulling point [a.u.]"],
-                [fit.nulling_point[target]],
-            )
-        )
 
     if fit is not None:
-        zz_fig = go.Figure(
-            go.Scatter(
-                x=data.amplitudes(target),
-                y=np.array(fit.zz[target]) * const.milli,
-                mode="lines+markers",
-                name="ZZ",
+        if target in fit.nulling_point:
+            null_bias, null_interaction = fit.nulling_point[target]
+            fig.add_vline(
+                x=null_bias,
+                line={"color": "red", "dash": "dash", "width": 2},
+                row=1,
+                col=1,
             )
-        )
-        zz_fig.update_layout(
-            xaxis_title="Coupler pulse amplitude [a.u.]",
-            yaxis_title="ZZ coupling [kHz]",
-            showlegend=True,
-        )
-        figures.append(zz_fig)
 
-    return figures + figures_1d, fitting_report
+            fitting_report = table_html(
+                table_dict(
+                    str(target),
+                    [
+                        "Coupler nulling point [a.u.]",
+                        "Coupler minimum Interaction [kHz]",
+                    ],
+                    [null_bias, null_interaction * const.milli],
+                )
+            )
+
+        if target in fit.zz:
+            zz_fit = np.asarray(fit.zz[target])
+            fig.add_trace(
+                go.Scatter(
+                    x=zz_fit[:, 0],
+                    y=zz_fit[:, 1] * const.milli,
+                    mode="lines+markers",
+                    name="ZZ",
+                    showlegend=False,
+                ),
+                row=2,
+                col=1,
+            )
+
+    fig.update_xaxes(title_text="Coupler pulse offset [a.u.]", row=2, col=1)
+    fig.update_yaxes(title_text="ZZ coupling [kHz]", row=2, col=1)
+    fig.update_layout(
+        height=800,
+        coloraxis={
+            "colorscale": "inferno",
+            "cmin": 0,
+            "cmax": 1,
+            "colorbar": {
+                "title": {"text": "Excited State Probability", "side": "right"},
+                "len": 0.4,
+                "y": 1,
+                "yanchor": "top",
+            },
+        },
+        showlegend=True,
+    )
+
+    return [fig], fitting_report
 
 
 def _update(

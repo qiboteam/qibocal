@@ -65,7 +65,7 @@ def jazz_sequence(
     target: QubitId,
     spectator: QubitId,
     delay: Delay,
-) -> tuple[PulseSequence, PulseSequence]:
+) -> PulseSequence:
     """Create delay and refocusing sequences for a target-spectator pair.
 
     Returns the requested delay on both qubits and simultaneous X(π)
@@ -103,7 +103,14 @@ def jazz_sequence(
         ]
     )
 
-    return delay_sequence, flip_sequence
+    # rotating target on the equator
+    target_rx90_seq = target_natives.R(theta=np.pi / 2)
+    # rotating target on the equator with a pi/2 phase shift
+    target_ry90_seq = target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
+
+    delay_flip_seq = delay_sequence | (flip_sequence | delay_sequence)
+
+    return target_rx90_seq | (delay_flip_seq | target_ry90_seq)
 
 
 def _acquisition(
@@ -156,24 +163,14 @@ def _acquisition(
         targets_ro_pulses[target] = target_ro_pulse
         spectator_ro_pulses[spectator] = spectator_ro_pulse
 
-        delay_sequence, flip_sequence = jazz_sequence(
+        jazz_seq = jazz_sequence(
             calibration_platform=platform,
             target=target,
             spectator=spectator,
             delay=delay,
         )
 
-        target_rx90_seq = target_natives.R(theta=np.pi / 2)
-        target_ry90_seq = target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
-
-        complete_sequence += (
-            target_rx90_seq  # rotating target on the equator
-            | delay_sequence  # first delay sequence
-            | flip_sequence  # spectator and target flipping
-            | delay_sequence  # second delay sequence
-            | target_ry90_seq  # rotating target on the equator with a pi/2 phase shift
-            | acquisition_seq  # measure both qubits
-        )
+        complete_sequence += jazz_seq | acquisition_seq
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
@@ -211,7 +208,7 @@ def _acquisition(
     return data
 
 
-def _jazz_fitting_process(probs, delays, err):
+def jazz_fitting_process(probs, delays, err) -> tuple[list[float], list[float]]:
     """Fit the JAZZ probability curve using a damped sinusoidal model.
 
     This function prepares initial parameter guesses for fitting a
@@ -304,7 +301,7 @@ def _fit(data: JAZZData) -> JAZZResults:
         err = data.data[pair]["targ_error"]
 
         try:
-            popt, zz_estimated = _jazz_fitting_process(
+            popt, zz_estimated = jazz_fitting_process(
                 probs=probs,
                 delays=delays,
                 err=err,
