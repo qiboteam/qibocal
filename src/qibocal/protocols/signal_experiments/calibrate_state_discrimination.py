@@ -161,7 +161,8 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
         for i in range(2):
             trace = data[qubit, i].i + 1.0j * data[qubit, i].q
             # attenuate the 2 * IF image; the cutoff at IF lies between it and baseband
-            trace = lowpass_filter(trace, np.abs(freq))
+            if freq != 0:
+                trace = lowpass_filter(trace, np.abs(freq))
             traces.append(trace)
 
         # Calculate the optimal kernel
