@@ -155,11 +155,6 @@ def _plot(
         ),
     )
 
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
-        yaxis_title="Signal [a.u.]",
-    )
     if fit is not None:
         fig.add_vline(
             x=fit.time_of_flights[target],
