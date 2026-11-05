@@ -52,8 +52,8 @@ class Resonator(Model):
     # TODO: Add something related to resonator calibration
 
 
-class Qubit(Model):
-    """Representation of Qubit parameters"""
+class Transmon(Model):
+    """Representation of Transmon parameters"""
 
     frequency_01: float | None = None
     """"0->1 transition frequency [Hz]."""
@@ -64,7 +64,7 @@ class Qubit(Model):
     asymmetry: float | None = None
     """Junctions asymmetry."""
     sweetspot: float | None = None
-    """Qubit sweetspot [V]."""
+    """Transmon sweetspot [V]."""
     flux_coefficients: list[float] | None = None
     """Amplitude - frequency dispersion relation coefficients """
 
@@ -127,8 +127,8 @@ class QubitCalibration(Model):
 
     resonator: Resonator = Field(default_factory=Resonator)
     """Resonator calibration."""
-    qubit: Qubit = Field(default_factory=Qubit)
-    """Qubit calibration."""
+    qubit: Transmon = Field(default_factory=Transmon)
+    """Transmon calibration."""
     readout: Readout = Field(default_factory=Readout)
     """Readout information."""
     t1: Measure | None = None
@@ -139,6 +139,15 @@ class QubitCalibration(Model):
     """T2 hanh echo [ns]."""
     rb_fidelity: Measure | None = None
     """Standard rb pulse fidelity."""
+
+
+class CouplerCalibration(Model):
+    """Container for calibration of a coupler."""
+
+    coupler: Transmon = Field(default_factory=Transmon)
+    """Transmon calibration."""
+    idling_bias: float | None = None
+    """Idling bias [a.u.] for minimizing always-on ZZ-interaction between adjacent qubits."""
 
 
 class TwoQubitCalibration(Model):
@@ -159,7 +168,7 @@ class Calibration(Model):
 
     single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
-    couplers: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
+    couplers: dict[QubitId, CouplerCalibration] = Field(default_factory=dict)
     """Dict with couplers calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
