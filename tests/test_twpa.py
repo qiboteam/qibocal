@@ -425,9 +425,17 @@ def test_shared_pump_switched_once(platform, mocker):
             "twpa_pow_step": 0.1,
         }
     )
+    execute = mocker.spy(platform, "execute")
     try:
         calibration_acquisition(params, platform, [0, 1])
         off.assert_called_once_with()
         on.assert_called_once_with()
     finally:
         platform.disconnect()
+
+    # parallel probe sweeps, of the same size whatever their centers
+    sweepers = execute.call_args_list[0].args[1][0]
+    assert len({len(sweeper.values) for sweeper in sweepers}) == 1
+    for sweeper, qubit in zip(sweepers, [0, 1]):
+        center = readout_frequency(qubit, platform)
+        assert sweeper.values.tolist() == _sweep(params.probe_frequency_range(center))

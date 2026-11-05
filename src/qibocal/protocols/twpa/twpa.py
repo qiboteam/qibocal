@@ -127,7 +127,7 @@ class TwpaCalibrationResults(Results):
     data: dict[QubitId, npt.NDArray[np.float64]]
     """Array with average gain for each qubit."""
     twpa_frequency: dict[QubitId, float]
-    """TWPA frequency [GHz]."""
+    """TWPA frequency [Hz]."""
     twpa_power: dict[QubitId, float]
     """TWPA power [dBm]."""
 
@@ -308,10 +308,13 @@ def _acquisition(
             )
         ]
 
+    # probes are swept in parallel, thus their sweeps must have the same size
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            range=params.probe_frequency_range(readout_frequency(q, platform)),
+            values=np.array(
+                _sweep(params.probe_frequency_range(readout_frequency(q, platform)))
+            ),
             channels=[qubit.probe],
         )
         for q, qubit in zip(targets, qubits)
