@@ -243,7 +243,7 @@ def sweetspot(
     Qubit and coupler IDs may overlap; the namespace is selected explicitly.
     """
     if coupler:
-        platform.calibration.couplers[qubit].qubit.sweetspot = sweetspot
+        platform.calibration.couplers[qubit].coupler.sweetspot = sweetspot
     else:
         platform.calibration.single_qubits[qubit].qubit.sweetspot = sweetspot
 
