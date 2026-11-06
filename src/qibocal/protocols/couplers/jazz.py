@@ -41,6 +41,7 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -416,13 +417,14 @@ def _update(
     results: CouplerJAZZResults, platform: CalibrationPlatform, target: QubitPairId
 ):
     """Apply an absolute bias; repeated updates never accumulate the DC offset."""
-    # assert platform.calibration is not None
-    # coupler_id = platform.calibration.two_qubits[target].coupler
-    # if coupler_id is None:
-    #     raise ValueError("Coupler ID should not be None.")
-    # point = results.nulling_point[target]
-    # update.flux_offset(point, platform, coupler_id, coupler=True)
-    # update.sweetspot(point, platform, coupler_id, coupler=True)
+    assert platform.calibration is not None
+    coupler_id = platform.calibration.two_qubits[target].coupler
+    if coupler_id is None:
+        raise ValueError("Coupler ID should not be None.")
+    nulling_bias, nulling_coupling = results.nulling_point[target]
+    update.sweetspot(nulling_bias, platform, coupler_id, coupler=True)
+    update.pair_coupling([nulling_coupling], platform, target)
+    platform.calibration.couplers[coupler_id].idle_bias = nulling_bias
 
 
 coupler_jazz = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
