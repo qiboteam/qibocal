@@ -415,7 +415,7 @@ def _plot(
 
 def _update(
     results: CouplerJAZZResults, platform: CalibrationPlatform, target: QubitPairId
-):
+) -> None:
     """Apply an absolute bias; repeated updates never accumulate the DC offset."""
     assert platform.calibration is not None
     coupler_id = platform.calibration.two_qubits[target].coupler
