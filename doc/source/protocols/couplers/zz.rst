@@ -67,9 +67,9 @@ The report shows the target and control population heatmaps versus coupler
 offset and delay, with the nulling point marked by a red dashed line, together
 with the estimated ZZ coupling as a function of the coupler offset.
 
-If updates are enabled, the nulling point bias is stored as the coupler
-``sweetspot`` and ``idle_bias``, and the residual ZZ at that point is stored as
-the pair coupling.
+If updates are enabled, the nulling point bias is set as the coupler flux offset
+and stored as the coupler ``idle_bias``, and the residual ZZ at that point is
+stored as the pair coupling.
 
 Parameters
 ----------
