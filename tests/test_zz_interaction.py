@@ -5,7 +5,7 @@ from conftest import TEST_FILE_DIR
 
 from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
 from qibocal.protocols.utils import GHZ_TO_HZ
-from qibocal.protocols.zz_interaction.jazz import _jazz_fitting_process
+from qibocal.protocols.zz_interaction.jazz import jazz_fitting_process
 
 
 def test_zz_coupling_fit():
@@ -30,7 +30,7 @@ def test_zz_coupling_fit():
                 signal = np.asarray(signal)
                 error = np.asarray(error)
 
-                popt, zz = _jazz_fitting_process(
+                popt, zz = jazz_fitting_process(
                     probs=signal,
                     delays=times,
                     err=error,

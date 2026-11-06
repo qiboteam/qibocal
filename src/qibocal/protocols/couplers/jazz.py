@@ -422,8 +422,8 @@ def _update(
     if coupler_id is None:
         raise ValueError("Coupler ID should not be None.")
     nulling_bias, nulling_coupling = results.nulling_point[target]
-    update.sweetspot(nulling_bias, platform, coupler_id, coupler=True)
-    update.pair_coupling([nulling_coupling], platform, target)
+    update.flux_offset(nulling_bias, platform, coupler_id, coupler=True)
+    update.pair_coupling([nulling_coupling, 0.0], platform, target)
     platform.calibration.couplers[coupler_id].idle_bias = nulling_bias
 
 
