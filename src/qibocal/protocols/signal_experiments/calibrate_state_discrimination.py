@@ -158,8 +158,8 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
         traces = []
         freq = data.intermediate_frequency[qubit]
 
-        for i in range(2):
-            trace = data[qubit, i].i + 1.0j * data[qubit, i].q
+        for state in range(2):
+            trace = data[qubit, state].i + 1.0j * data[qubit, state].q
             # attenuate the 2 * IF image; the cutoff at IF lies between it and baseband
             if freq != 0:
                 trace = lowpass_filter(trace, np.abs(freq))
