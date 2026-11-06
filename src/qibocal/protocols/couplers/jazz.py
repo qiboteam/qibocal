@@ -40,14 +40,12 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
-from scipy.signal import savgol_filter
 
 from qibocal.auto.operation import Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
     RangeLike,
-    quinn_fernandes_algorithm,
     table_dict,
     table_html,
     to_range,
@@ -62,11 +60,6 @@ from qibocal.protocols.zz_interaction.utils import (
 )
 
 __all__ = ["coupler_jazz"]
-
-
-SAVGOL_POLYORDER = 3
-SAVGOL_WINDOW_LENGTH = 4
-SAVGOL_DERIV = 1
 
 
 @dataclass
@@ -89,6 +82,8 @@ class CouplerJAZZParameters(ZZInteractionParameters):
     Use ``True`` for first (coarse) scans. ZZ can vary strongly with the coupler frequency,
     so the oscillations may be undersampled, and a full fit then becomes unreliable.
     """
+    fit_weight: float = 0.5
+    """Weight used in the nulling point loss function."""
 
 
 CouplerZZType = np.dtype(
@@ -113,6 +108,10 @@ class CouplerJAZZData(ZZInteractionData):
     fast_evaluation: bool = True
     """Whether fast evaluation was used, as configured by
     :attr:`CouplerJAZZParameters.fast_evaluation`.
+    """
+    weight: float = 0.5
+    """Weight used in the nulling point loss function, as configured by
+    :attr:`CouplerJAZZParameters.fit_weight`.
     """
 
     def pair_offsets(self, pair: QubitPairId) -> npt.NDArray:
@@ -199,7 +198,9 @@ def _acquisition(
             channels=[coupler_channel],
         )
 
-    data = CouplerJAZZData(fast_evaluation=params.fast_evaluation)
+    data = CouplerJAZZData(
+        fast_evaluation=params.fast_evaluation, weight=params.fit_weight
+    )
 
     duration_sweeper = Sweeper(
         parameter=Parameter.duration,
@@ -246,50 +247,44 @@ def _acquisition(
     return data
 
 
-def fast_estimation(
-    offset_data: npt.NDArray[CouplerZZType],
-    delays: npt.NDArray,
-) -> tuple[float, list[float]]:
-    """Estimate signed ZZ in Hz for one coupler offset."""
-    probabilities = offset_data["prob"]
-    omega = float(
-        quinn_fernandes_algorithm(probabilities, delays, speedup_flag=True)
-        * const.giga
-        / (2 * np.pi)
+def find_nulling_point(
+    popts_dict: dict[float, list[float]], offsets: npt.NDArray, weight: float
+) -> np.intp:
+    """Return the index of the offset with the lowest nulling loss.
+
+    The fitted parameter vector for each offset is taken from ``popts_dict``.
+    The loss combines the min-max-normalized third parameter with a term that
+    favors a second parameter near zero and a first parameter near 0.5:
+
+    ``weight * normalized_third + (1 - weight) * 0.5 * (second + abs(first - 0.5))``
+
+    If the third parameter is constant across the offsets, its normalized
+    values are treated as zero. The returned index corresponds to the order
+    of ``offsets`` and can be used to select the chosen offset.
+
+    Args:
+        popts_dict: Mapping from each offset to its fitted parameter vector.
+            Vectors must contain at least three values.
+        offsets: Offset values to evaluate, in the desired selection order;
+            each must be present in ``popts_dict``.
+        weight: Relative contribution of the normalized third-parameter term
+            to the loss.
+
+    Returns:
+        The integer index of the offset with the minimum loss.
+    """
+    popts = np.asarray([popts_dict[off] for off in offsets], dtype=float)
+    third_param = popts[:, 2]
+    third_param_range = np.ptp(third_param)
+    scaled_third_param = (
+        (third_param - np.min(third_param)) / third_param_range
+        if third_param_range
+        else np.zeros_like(third_param)
     )
-
-    try:
-        quarter_period = const.giga / (4 * omega) if omega else np.inf
-        quarter_period_signal = probabilities[delays <= quarter_period]
-        filtered_signal = savgol_filter(
-            quarter_period_signal,
-            window_length=SAVGOL_WINDOW_LENGTH,
-            polyorder=SAVGOL_POLYORDER,
-            deriv=SAVGOL_DERIV,
-        )
-        zz_sign = np.sign(np.median(filtered_signal))
-    except ValueError:
-        log.warning(
-            "Failed in estimating interaction sign: not enough points in the semi period signal."
-        )
-        zz_sign = 1
-
-    zz_sign = 1
-
-    return float(omega * zz_sign), [0.0] * 4
-
-
-def full_estimation(
-    offset_data: npt.NDArray[CouplerZZType],
-    delays: npt.NDArray,
-) -> tuple[float, list[float]]:
-    """Fit ZZ in Hz for one coupler offset."""
-    popt, zz_estimated = jazz_fitting_process(
-        probs=offset_data["prob"],
-        delays=delays,
-        err=offset_data["error"],
+    loss_func = weight * scaled_third_param + (1 - weight) * 0.5 * (
+        popts[:, 1] + np.abs(popts[:, 0] - 0.5)
     )
-    return float(zz_estimated[0]), popt
+    return np.argmin(loss_func)
 
 
 def _fit(data: CouplerJAZZData) -> CouplerJAZZResults:
@@ -298,22 +293,30 @@ def _fit(data: CouplerJAZZData) -> CouplerJAZZResults:
     zz_strenghts: dict[QubitPairId, list[list[float]]] = {}
     fitting_params: dict[QubitPairId, dict[float, list[float]]] = {}
     nulling_point: dict[QubitPairId, list[float]] = {}
-    jazz_estimation = fast_estimation if data.fast_evaluation else full_estimation
     for pair in data.pairs:
-        for off in data.pair_offsets(pair):
+        pair_offsets = data.pair_offsets(pair)
+        for off in pair_offsets:
             offset_data = data.return_data_per_offset(pair, off)
             try:
-                zz_estimated, popt = jazz_estimation(offset_data, data.delays)
+                popt, zz_estimated = jazz_fitting_process(
+                    probs=offset_data["prob"],
+                    delays=data.delays,
+                    err=offset_data["error"],
+                    fast_evaluation=data.fast_evaluation,
+                )
+
             except (RuntimeError, ValueError) as e:
                 log.warning(f"JAZZ fit for pair {pair} at offset {off}: {e}.")
                 continue
-            zz_strenghts.setdefault(pair, []).append([float(off), zz_estimated])
+
+            zz_strenghts.setdefault(pair, []).append([float(off), zz_estimated[0]])
             fitting_params.setdefault(pair, {})[float(off)] = popt
 
         if pair in zz_strenghts:
-            nulling_point[pair] = min(
-                zz_strenghts[pair], key=lambda point: abs(point[1])
+            loss_min_idx = find_nulling_point(
+                fitting_params[pair], pair_offsets, weight=data.weight
             )
+            nulling_point[pair] = zz_strenghts[pair][loss_min_idx]
 
     return CouplerJAZZResults(
         zz=zz_strenghts,

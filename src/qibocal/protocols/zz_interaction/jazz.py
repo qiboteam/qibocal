@@ -208,25 +208,35 @@ def _acquisition(
     return data
 
 
-def jazz_fitting_process(probs, delays, err) -> tuple[list[float], list[float]]:
-    """Fit the JAZZ probability curve using a damped sinusoidal model.
+def jazz_fitting_process(
+    probs, delays, err, fast_evaluation: bool = False
+) -> tuple[list[float], list[float]]:
+    """Fit the JAZZ probability data with a damped sinusoid.
 
-    This function prepares initial parameter guesses for fitting a
-    damped sinusoidal model to JAZZ experiment data. It performs the
-    following steps:
+    The probability and delay data are min-max normalized to estimate
+    initial parameters. The angular-frequency guess is obtained with
+    :func:`quinn_fernandes_algorithm`; the offset and amplitude guesses
+    are based on the median and quantiles of the normalized probabilities.
+    Unless ``fast_evaluation`` is enabled, these guesses are refined using
+    ``curve_fit`` with the model
 
-    1. Min-max normalizes the input probability (probs) and delay
-       (delays) arrays to the range [0, 1]. Measurement errors (err) are
-       scaled consistently with the probability normalization.
-    2. Estimates an initial angular frequency (omega) using the
-       quinn_fernandes_algorithm on the normalized data.
-    3. Computes estimates for offset and amplitude from the data
-       quantiles and median, and assembles an initial parameter vector
-       p0 suitable for nonlinear least-squares fitting routines.
-    4. fits the data using ``curve_fit``; the assumed fitting model is
-    a damped sinusoid of the form:
+    .. math::
 
-        f(t) = offset + A * exp(-t / tau) * sin(omega * t + phi)
+        f(t) = c + A e^{-t/\\tau} \\sin(\\omega t + \\phi).
+
+    The fitted parameters are converted back to the original probability
+    and delay scales. With ``fast_evaluation=True``, fitting is skipped and
+    the initial parameters in normalized units are returned.
+
+    Args:
+        probs: Measured target probabilities.
+        delays: Delay values corresponding to ``probs``.
+        err: Measurement uncertainties corresponding to ``probs``.
+        fast_evaluation: If true, skip curve fitting and use initial guesses.
+
+    Returns:
+        A pair containing the fit parameters and the estimated ZZ coupling
+        frequency with its uncertainty, both represented as lists.
     """
 
     # performing a min-max scaling on x and y arrays
@@ -255,31 +265,35 @@ def jazz_fitting_process(probs, delays, err) -> tuple[list[float], list[float]]:
         1,
     ]
 
-    popt, perr = curve_fit(
-        jazz_fit,
-        min_max_delays,
-        min_max_probs,
-        p0=p0,
-        maxfev=5000,
-        bounds=(
-            [0, 0, -np.inf, 0],
-            [1, 1, np.inf, np.inf],
-        ),
-        sigma=err,
-    )
-
-    # inverting the scaling
-    popt = [
-        delta_probs * popt[0] + probs_min,
-        delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
-        popt[2] / delta_delay,
-        popt[3] / delta_delay,
-    ]
-
-    perr = np.sqrt(np.diag(perr))
+    if not fast_evaluation:
+        popt, perr = curve_fit(
+            jazz_fit,
+            min_max_delays,
+            min_max_probs,
+            p0=p0,
+            maxfev=5000,
+            bounds=(
+                [0, 0, -np.inf, 0],
+                [1, 1, np.inf, np.inf],
+            ),
+            sigma=err,
+        )
+        # inverting the scaling
+        popt = [
+            delta_probs * popt[0] + probs_min,
+            delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
+            popt[2] / delta_delay,
+            popt[3] / delta_delay,
+        ]
+        perr = np.sqrt(np.diag(perr))
+        zeta = popt[2] * GHZ_TO_HZ / (2 * np.pi)
+    else:
+        popt = p0
+        zeta = p0[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi)
+        perr = np.zeros_like(p0)
 
     zz_zeta = [
-        popt[2] * GHZ_TO_HZ / (2 * np.pi),
+        zeta,
         # error propagating the error for delta and then converyting into frequency
         perr[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi),
     ]
