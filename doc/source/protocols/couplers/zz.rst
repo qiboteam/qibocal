@@ -1,153 +1,103 @@
-.. _coupler_zz:
+.. _coupler_jazz:
 
-Coupler ZZ and JAZZ nulling
-==========================
+Coupler JAZZ
+============
 
-``coupler_zz`` and ``coupler_jazz`` measure the conditional frequency shift
+In architectures with tunable couplers the residual ZZ interaction :math:`\zeta`
+between two neighboring qubits depends on the coupler bias. At a specific bias,
+called the **nulling point**, the contributions of the direct qubit-qubit coupling
+and of the coupler-mediated interaction cancel, hence the residual ZZ is minimized.
 
-.. math::
+The ``coupler_jazz`` protocol locates this point by repeating the JAZZ
+(Joint Amplification of ZZ) experiment described in
+:doc:`../zz_interaction/zz_interaction` while sweeping the DC offset of the coupler
+flux line. Targets are ``[target, control]`` qubit pairs; each pair must be linked
+to a coupler in ``platform.calibration.two_qubits`` and the coupler must have a
+flux channel.
 
-    \zeta(A) = f_{\mathrm{target},c=1}(A)
-               - f_{\mathrm{target},c=0}(A)
+Experiment
+----------
 
-in Hz versus a rectangular coupler flux-pulse amplitude. Both acquire the
-target population with the control initially in each computational state,
-fit both signals, and minimize :math:`|\zeta(A)|`. Targets are ordered
-``[target, control]`` pairs. Only one pair can be acquired per action.
-
-Unlike the minimum-variance heuristic in :ref:`coupler_ramsey_zz`, these
-protocols estimate ZZ explicitly. They require calibrated single-qubit
-rotations, target readout discrimination, and a pair-to-coupler assignment in
-``platform.calibration.two_qubits`` with a configured coupler flux channel.
-The control should remain coherent/excited over the measurement interval;
-control relaxation and flux-induced leakage can bias the frequency estimates.
-
-Conditional Ramsey
-------------------
-
-``coupler_zz`` applies a coupler pulse during the target Ramsey wait.
-``delay_range`` sweeps the wait and pulse duration in ns. The target drive
-is temporarily shifted by ``detuning`` in Hz, without changing the platform's
-stored drive frequency. Each amplitude gives two fringe frequencies
-:math:`F_0,F_1`. Provided both conditional target-drive detunings have the
-same sign as the artificial detuning :math:`d`,
-
-.. math::
-
-    \zeta = -\mathrm{sign}(d)(F_1-F_0).
-
-Population-only Ramsey cannot distinguish positive and negative frequencies.
-Choose a nonzero ``detuning`` larger than the conditional shifts, while
-keeping both fringe frequencies below the sweep's Nyquist frequency. A
-conditional frequency crossing through zero invalidates this sign assignment.
-``coupler_zz`` reports the best relative pulse amplitude but does not update
-the DC bias automatically.
-
-Echoed JAZZ
------------
-
-``coupler_jazz`` uses the following sequence for each initial control state:
+For each coupler offset the following sequence is executed:
 
 .. code-block:: text
 
-    target:                 RX90 -- tau -- RX -- tau -- R(phi, pi/2) -- MZ
-    control: prepare 0 or 1 -------- tau -- RX -- tau ---------------- MZ
-    coupler:                       pulse ----- pulse
+    target:  RX90 -- tau -- RX -- tau -- RY90 -- MZ
+    control:      -- tau -- RX -- tau --------- MZ
+    coupler: DC offset held for the whole sequence
 
-Both qubits' central pi rotations start together. Each flux pulse is applied
-only during its free-evolution half-wait; the coupler returns to its idle bias
-during the echo rotations. Unequal echo-pulse durations are padded before the
-second window. Readout follows the final target rotation at every swept delay.
+The simultaneous :math:`\pi` pulse on both qubits refocuses any unconditional
+frequency shift of the target, including the one induced by the coupler bias,
+while the conditional ZZ phase keeps accumulating over the whole echo.
+The half-wait ``tau`` is swept through ``delays_settings``, whereas the coupler
+offset is swept through ``coupler_offset_range``. A ``[start, stop, step]``
+specification sweeps absolute offsets, while the ``center``, ``lincenter``,
+``asym`` and ``linasym`` specifications are relative to the coupler offset currently
+stored in the platform.
+Both target and control populations are acquired.
 
-Echoing both qubits refocuses unconditional target detuning while preserving
-the ZZ phase. To retain measurable fringes at zero ZZ, the final target
-rotation's axis is swept as :math:`\phi(\tau)=2\pi d\tau`. Here ``detuning``
-specifies an analysis-phase ramp, not a drive-frequency update, and
-``delay_range`` is **each half-wait**, not the total evolution time.
+Analysis
+--------
 
-Using :math:`H/h=f_t n_t+f_c n_c+\zeta n_t n_c` and positive rotation-axis
-phase, on the branch :math:`|d|>|\zeta|` the two unsigned fringe frequencies are
-:math:`F_0=|d+\zeta|` and :math:`F_1=|d-\zeta|`, so
+For each coupler offset the target population is fitted with a damped sinusoid
 
 .. math::
 
-    \zeta = -\frac{\mathrm{sign}(d)}{2}(F_1-F_0).
+    P_{|1\rangle}(t) = c + A \, e^{-\gamma t} \sin(\omega t),
 
-The factor of two follows from the opposite conditional echo phases.
-The phase ramp is swept in lockstep with both flux-pulse durations.
-It requires hardware support for simultaneous duration and relative-phase sweeps.
+and the ZZ coupling is obtained from the oscillation frequency,
+:math:`\zeta = \omega / 2\pi`. The initial frequency guess is computed with the
+Quinn-Fernandes estimator. When ``fast_evaluation`` is enabled (default) the fit is
+skipped and only this estimate is used: this is recommended for coarse scans,
+since ZZ can vary strongly with the coupler bias and the oscillations may be
+undersampled, making a full fit unreliable. Offsets for which the estimation fails
+are logged and skipped.
 
-Fitting and minimum search
--------------------------
+The nulling point is selected as the offset minimizing the loss
 
-The fit uses both traces simultaneously with independent readout offsets,
-contrasts and phases, and a shared target dephasing rate. Linear quadratures
-are solved at each nonlinear step; multiple spectral starting points reduce
-frequency-fit local minima. At least eight distinct increasing waits are
-needed. Use enough delay span to resolve several carrier cycles while
-retaining contrast. Nonuniform waits are supported, with a conservative
-Nyquist limit based on the largest sampling interval.
+.. math::
 
-Failed, flat, low-contrast or unresolved fits are logged and stored as NaN
-for that amplitude. If neither control trace can be fitted at any amplitude,
-the pair is omitted. The report shows both population heatmaps, ZZ estimates
-with one-sigma residual-based uncertainties, and the local minimum fit.
-The uncertainty assumes the shared-decay model describes the data; it does
-not include leakage, control relaxation or other systematic errors.
+    L = w \, \tilde{\gamma} + \frac{1 - w}{2}\left(A + \left|c - \frac{1}{2}\right|\right),
 
-A local quadratic is fitted to up to five contiguous valid amplitudes around
-the smallest measured :math:`|\zeta|`. Its roots, stationary point and endpoints
-are compared to minimize its absolute value. Thus a smooth nonzero minimum
-can be located even without a zero crossing. No extrapolation or interpolation
-across failed amplitudes is performed. With fewer than three contiguous
-points, only a sampled minimum or a two-point zero crossing is reported.
-Boundary minima are warned about and should be remeasured over a wider range.
-A reported minimum is **not proof of zero coupling**: inspect the fitted
-residual ZZ and refine the amplitude sweep.
+where :math:`\tilde{\gamma}` is the min-max normalized decay rate across offsets
+and :math:`w` is set by ``fit_weight``. The loss favors slow and flat signals
+centered at :math:`P = 1/2`, as expected when no ZZ phase is accumulated.
 
-For JAZZ, only an interior, polynomial-fitted minimum produces an updateable
-``nulling_point``. Its absolute bias is the fitted pulse amplitude plus the DC
-offset recorded during acquisition. Enabled updates replace the coupler flux
-offset and its calibration ``sweetspot`` with that absolute value; they never
-add the current offset a second time. Qubit biases are unchanged. Disable
-updates while exploring an unfamiliar amplitude range.
+The report shows the target and control population heatmaps versus coupler
+offset and delay, with the nulling point marked by a red dashed line, together
+with the estimated ZZ coupling as a function of the coupler offset.
 
-Example
--------
-
-Both protocols accept ``[start, stop, step]`` or the usual ``RangeLike``
-specifications, including ``["linspace", start, stop, count]`` with both
-endpoints. Amplitudes are relative to the acquisition DC coupler bias.
-
-.. code-block:: yaml
-
-    - id: coupler ZZ scan
-      operation: coupler_zz
-      targets: [[0, 1]]
-      update: false
-      parameters:
-        delay_range: [16, 6016, 40]
-        amplitude_range: ["linspace", -0.05, 0.05, 21]
-        detuning: 2000000
-        nshots: 2048
-        relaxation_time: 20000
-
-    - id: coupler echoed null
-      operation: coupler_jazz
-      targets: [[0, 1]]
-      update: false
-      parameters:
-        delay_range: [16, 6016, 40]
-        amplitude_range: ["linspace", -0.05, 0.05, 21]
-        detuning: 2000000
-        nshots: 2048
-        relaxation_time: 20000
+If updates are enabled, the nulling point bias is stored as the coupler
+``sweetspot`` and ``idle_bias``, and the residual ZZ at that point is stored as
+the pair coupling.
 
 Parameters
 ----------
 
-.. autoclass:: qibocal.protocols.couplers.zz.CouplerZZParameters
-    :noindex:
-
 .. autoclass:: qibocal.protocols.couplers.jazz.CouplerJAZZParameters
     :noindex:
+
+Example
+-------
+
+.. code-block:: yaml
+
+    - id: coupler jazz
+      operation: coupler_jazz
+      targets: [[0, 1]]
+      update: false
+      parameters:
+        delays_settings: [16, 20000, 400]
+        coupler_offset_range: [-0.05, 0.15, 0.005]
+        fast_evaluation: true
+        fit_weight: 0.5
+        nshots: 1024
+        relaxation_time: 50000
+
+.. image:: coupler_JAZZ.png
+
+Requirements
+------------
+
+- :ref:`rabi`
+- :ref:`ramsey`
