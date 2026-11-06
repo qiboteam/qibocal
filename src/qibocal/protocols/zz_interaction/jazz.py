@@ -60,6 +60,59 @@ class JAZZResults(ZZInteractionResults):
     """Parameters fitted during the execution."""
 
 
+def jazz_sequence(
+    calibration_platform: CalibrationPlatform,
+    target: QubitId,
+    spectator: QubitId,
+    delay: Delay,
+) -> PulseSequence:
+    """Create delay and refocusing sequences for a target-spectator pair.
+
+    Returns the requested delay on both qubits and simultaneous X(π)
+    refocusing pulses, in that order. Target rotations are handled separately.
+    """
+
+    # target qubit channels and native pulses
+    target_natives = calibration_platform.natives.single_qubit[target]
+    target_ro_ch, _ = target_natives.MZ()[0]
+    target_drive_ch, target_pi_pulse = target_natives.RX()[0]
+
+    # spectator qubit channnels and native pulses
+    spectator_natives = calibration_platform.natives.single_qubit[spectator]
+    spectator_ro_ch, _ = spectator_natives.MZ()[0]
+    spectator_drive_ch, spectator_pi_pulse = spectator_natives.RX()[0]
+
+    # first delay dequence
+    delay_sequence = PulseSequence(
+        [
+            (target_drive_ch, delay),
+            (spectator_drive_ch, delay),
+            (target_ro_ch, delay),
+            (spectator_ro_ch, delay),
+        ]
+    )
+
+    # X(pi) on both spectator and target qubits
+    max_flip_time = max(spectator_natives.RX().duration, target_natives.RX().duration)
+    flip_sequence = PulseSequence(
+        [
+            (target_drive_ch, target_pi_pulse),
+            (spectator_drive_ch, spectator_pi_pulse),
+            (target_ro_ch, Delay(duration=max_flip_time)),
+            (spectator_ro_ch, Delay(duration=max_flip_time)),
+        ]
+    )
+
+    # rotating target on the equator
+    target_rx90_seq = target_natives.R(theta=np.pi / 2)
+    # rotating target on the equator with a pi/2 phase shift
+    target_ry90_seq = target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
+
+    delay_flip_seq = delay_sequence | (flip_sequence | delay_sequence)
+
+    return target_rx90_seq | (delay_flip_seq | target_ry90_seq)
+
+
 def _acquisition(
     params: ZZInteractionParameters,
     platform: CalibrationPlatform,
@@ -93,54 +146,31 @@ def _acquisition(
     for pair in targets:
         target, spectator = pair
 
-        # target qubit channels and native pulses
-        target_drive_channel = platform.qubits[target].drive
+        # target qubit readout
         target_natives = platform.natives.single_qubit[target]
         target_ro_channel, target_ro_pulse = target_natives.MZ()[0]
 
-        # spectator qubit channnels and native pulses
-        spectator_drive_channel = platform.qubits[spectator].drive
+        # spectator qubit readout
         spectator_natives = platform.natives.single_qubit[spectator]
         spectator_ro_channel, spectator_ro_pulse = spectator_natives.MZ()[0]
 
-        pair_sequence = PulseSequence()
+        acquisition_seq = PulseSequence(
+            [
+                (target_ro_channel, target_ro_pulse),
+                (spectator_ro_channel, spectator_ro_pulse),
+            ]
+        )
+        targets_ro_pulses[target] = target_ro_pulse
+        spectator_ro_pulses[spectator] = spectator_ro_pulse
 
-        # delay
-        pair_sequence += [(target_drive_channel, delay)]
-        pair_sequence += [(spectator_drive_channel, delay)]
-        pair_sequence += [(target_ro_channel, delay)]
-        pair_sequence += [(spectator_ro_channel, delay)]
+        jazz_seq = jazz_sequence(
+            calibration_platform=platform,
+            target=target,
+            spectator=spectator,
+            delay=delay,
+        )
 
-        # X(pi) on both spectator and target qubits
-        _, target_pi_pulse = target_natives.RX()[0]
-        pair_sequence += [
-            (target_drive_channel, target_pi_pulse),
-            (target_ro_channel, Delay(duration=target_pi_pulse.duration)),
-        ]
-        pair_sequence += spectator_natives.RX()
-
-        # delay
-        pair_sequence += [(target_drive_channel, delay)]
-        pair_sequence += [(target_ro_channel, delay)]
-        pair_sequence += [(spectator_ro_channel, delay)]
-
-        # Y(pi/2)
-        pair_sequence += target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
-
-        # measuring target qubit
-        pair_sequence |= [
-            (target_ro_channel, target_ro_pulse),
-            (spectator_ro_channel, spectator_ro_pulse),
-        ]
-
-        # adding the initial X(pi/2) on target
-        pair_sequence = target_natives.R(theta=np.pi / 2) | pair_sequence
-
-        # adding both qubits ro pulses in the dictionary
-        targets_ro_pulses |= {target: target_ro_pulse}
-        spectator_ro_pulses |= {spectator: spectator_ro_pulse}
-
-        complete_sequence += pair_sequence
+        complete_sequence += jazz_seq | acquisition_seq
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
@@ -178,25 +208,35 @@ def _acquisition(
     return data
 
 
-def _jazz_fitting_process(probs, delays, err):
-    """Fit the JAZZ probability curve using a damped sinusoidal model.
+def jazz_fitting_process(
+    probs, delays, err, fast_evaluation: bool = False
+) -> tuple[list[float], list[float]]:
+    """Fit the JAZZ probability data with a damped sinusoid.
 
-    This function prepares initial parameter guesses for fitting a
-    damped sinusoidal model to JAZZ experiment data. It performs the
-    following steps:
+    The probability and delay data are min-max normalized to estimate
+    initial parameters. The angular-frequency guess is obtained with
+    :func:`quinn_fernandes_algorithm`; the offset and amplitude guesses
+    are based on the median and quantiles of the normalized probabilities.
+    Unless ``fast_evaluation`` is enabled, these guesses are refined using
+    ``curve_fit`` with the model
 
-    1. Min-max normalizes the input probability (probs) and delay
-       (delays) arrays to the range [0, 1]. Measurement errors (err) are
-       scaled consistently with the probability normalization.
-    2. Estimates an initial angular frequency (omega) using the
-       quinn_fernandes_algorithm on the normalized data.
-    3. Computes estimates for offset and amplitude from the data
-       quantiles and median, and assembles an initial parameter vector
-       p0 suitable for nonlinear least-squares fitting routines.
-    4. fits the data using ``curve_fit``; the assumed fitting model is
-    a damped sinusoid of the form:
+    .. math::
 
-        f(t) = offset + A * exp(-t / tau) * sin(omega * t + phi)
+        f(t) = c + A e^{-t/\\tau} \\sin(\\omega t + \\phi).
+
+    The fitted parameters are converted back to the original probability
+    and delay scales. With ``fast_evaluation=True``, fitting is skipped and
+    the initial parameters in normalized units are returned.
+
+    Args:
+        probs: Measured target probabilities.
+        delays: Delay values corresponding to ``probs``.
+        err: Measurement uncertainties corresponding to ``probs``.
+        fast_evaluation: If true, skip curve fitting and use initial guesses.
+
+    Returns:
+        A pair containing the fit parameters and the estimated ZZ coupling
+        frequency with its uncertainty, both represented as lists.
     """
 
     # performing a min-max scaling on x and y arrays
@@ -225,31 +265,35 @@ def _jazz_fitting_process(probs, delays, err):
         1,
     ]
 
-    popt, perr = curve_fit(
-        jazz_fit,
-        min_max_delays,
-        min_max_probs,
-        p0=p0,
-        maxfev=5000,
-        bounds=(
-            [0, 0, -np.inf, 0],
-            [1, 1, np.inf, np.inf],
-        ),
-        sigma=err,
-    )
-
-    # inverting the scaling
-    popt = [
-        delta_probs * popt[0] + probs_min,
-        delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
-        popt[2] / delta_delay,
-        popt[3] / delta_delay,
-    ]
-
-    perr = np.sqrt(np.diag(perr))
+    if not fast_evaluation:
+        popt, perr = curve_fit(
+            jazz_fit,
+            min_max_delays,
+            min_max_probs,
+            p0=p0,
+            maxfev=5000,
+            bounds=(
+                [0, 0, -np.inf, 0],
+                [1, 1, np.inf, np.inf],
+            ),
+            sigma=err,
+        )
+        # inverting the scaling
+        popt = [
+            delta_probs * popt[0] + probs_min,
+            delta_probs * popt[1] * np.exp(d_min * popt[3] / delta_delay),
+            popt[2] / delta_delay,
+            popt[3] / delta_delay,
+        ]
+        perr = np.sqrt(np.diag(perr))
+        zeta = popt[2] * GHZ_TO_HZ / (2 * np.pi)
+    else:
+        popt = p0
+        zeta = p0[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi)
+        perr = np.zeros_like(p0)
 
     zz_zeta = [
-        popt[2] * GHZ_TO_HZ / (2 * np.pi),
+        zeta,
         # error propagating the error for delta and then converyting into frequency
         perr[2] / delta_delay * GHZ_TO_HZ / (2 * np.pi),
     ]
@@ -271,7 +315,7 @@ def _fit(data: JAZZData) -> JAZZResults:
         err = data.data[pair]["targ_error"]
 
         try:
-            popt, zz_estimated = _jazz_fitting_process(
+            popt, zz_estimated = jazz_fitting_process(
                 probs=probs,
                 delays=delays,
                 err=err,

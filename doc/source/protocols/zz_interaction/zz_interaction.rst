@@ -74,7 +74,7 @@ Example
     - id: ramsey zz
       operation: ramsey_zz
       parameters:
-        delay_range: [10, 2000, 50]
+        delays_settings: [10, 2000, 50]
         detuning: 0.0
         targets: [0, 1]
 
@@ -126,7 +126,7 @@ Example
     - id: jazz
       operation: jazz
       parameters:
-        delay_range: [0, 800, 80]
+        delays_settings: [0, 800, 80]
         targets: [0, 1]
 
 .. image:: jazz.png
