@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, PulseSequence
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, sosfiltfilt
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -136,48 +136,38 @@ def _acquisition(
 
 
 def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscriminationResults:
-    """Post-Processing for Calibrate State Discrimination.
+    r"""Post-Processing for Calibrate State Discrimination.
 
-    The raw traces for 0 and 1 are demodulated with the IF stored during acquisition.
-    Moreover, fast oscillating terms (:math:`\\exp(-2\\pi \\omega_{\text{IF} t)`) are removed by applying a lowpass filter.
-    Finally, the optimal kernel is calculated as the difference between the two traces.
+    The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. The
+    residual image term (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`) is suppressed by
+    applying a lowpass filter with cutoff at :math:`|f_{\text{IF}}|`, halfway between
+    baseband and the image. The optimal kernel is calculated as the conjugate of the
+    difference between the two traces, and it is normalized to a maximum absolute weight
+    of 1.
     """
     qubits = data.qubits
 
     kernel_state_zero = {}
 
     def lowpass_filter(signal, cutoff, fs=1e9, order=5):
-        """Basic lowpass filter."""
-        norm_cutoff = cutoff / fs
-        b, a = butter(order, norm_cutoff)
-        return filtfilt(b, a, signal)
+        """Basic lowpass filter, with ``cutoff`` and sampling rate ``fs`` in Hz."""
+        sos = butter(order, cutoff, fs=fs, output="sos")
+        return sosfiltfilt(sos, signal)
 
     for qubit in qubits:
         traces = []
         freq = data.intermediate_frequency[qubit]
 
-        for i in range(2):
-            trace = data[qubit, i].i + 1.0j * data[qubit, i].q
-            t = np.arange(0, len(trace), 1)
-
-            # demodulation (we assume that RAW doesn't demodulate)
-            trace = np.array(
-                [
-                    np.exp(-2 * np.pi * t[i] * 1.0j * freq * 1e-9) * trace[i]
-                    for i in range(len(t))
-                ]
-            )
-            # apply lowpass filter to remove fast rotating terms
-            trace = lowpass_filter(trace, 2 * np.abs(freq))
+        for state in range(2):
+            trace = data[qubit, state].i + 1.0j * data[qubit, state].q
+            # attenuate the 2 * IF image; the cutoff at IF lies between it and baseband
+            if freq != 0:
+                trace = lowpass_filter(trace, np.abs(freq))
             traces.append(trace)
 
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
-
-        # Normalize the kernel
-        norm = np.sqrt(np.sum(np.abs(kernel) ** 2))
-        max_abs_weight = np.max(np.abs(kernel / norm))
-        kernel /= norm * max_abs_weight
+        kernel /= np.max(np.abs(kernel))
         kernel_state_zero[qubit] = kernel
 
     return CalibrateStateDiscriminationResults(data=kernel_state_zero)
