@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from qibolab import AcquisitionType, PulseSequence
 
@@ -14,8 +14,6 @@ from ..classification.classification import (
 )
 from .plot import plot_results
 
-DEFAULT_CLASSIFIER = "naive_bayes"
-
 __all__ = ["qutrit_classification"]
 
 
@@ -26,10 +24,7 @@ class QutritClassificationParameters(SingleShotClassificationParameters):
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
-    classifiers_list: list[str] | None = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states"""
+    """Qutrit classification data."""
 
 
 @dataclass
@@ -46,17 +41,6 @@ def _acquisition(
     This Protocol prepares the qubits in 0,1 and 2 states and measures their
     respective I, Q values.
 
-    Args:
-        nshots (int): number of times the pulse sequence will be repeated.
-        classifiers (list): list of classifiers, the available ones are:
-            - naive_bayes
-            - nn
-            - random_forest
-            - decision_tree
-        The default value is `["naive_bayes"]`.
-        savedir (str): Dumping folder of the classification results.
-        If not given, the dumping folder will be the report one.
-        relaxation_time (float): Relaxation time.
     """
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
@@ -87,11 +71,7 @@ def _acquisition(
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
 
-    data = QutritClassificationData(
-        nshots=params.nshots,
-        classifiers_list=params.classifiers_list,
-        savedir=params.savedir,
-    )
+    data = QutritClassificationData(nshots=params.nshots)
 
     options = {
         "nshots": params.nshots,
