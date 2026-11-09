@@ -146,8 +146,8 @@ class CouplerCalibration(Model):
 
     coupler: Transmon = Field(default_factory=Transmon)
     """Transmon calibration."""
-    idling_bias: float | None = None
-    """Idling bias [a.u.] for minimizing always-on ZZ-interaction between adjacent qubits."""
+    idle_bias: float | None = None
+    """Idle bias [a.u.] for minimizing always-on ZZ-interaction between adjacent qubits."""
 
 
 class TwoQubitCalibration(Model):
