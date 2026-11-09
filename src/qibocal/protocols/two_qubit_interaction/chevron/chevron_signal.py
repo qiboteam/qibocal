@@ -83,6 +83,7 @@ def _aquisition(
             parking=params.parking,
             dt=params.dt,
             native=params.native,
+            infer_hybridization=params.infer_hybridization,
         )
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,

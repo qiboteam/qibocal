@@ -63,6 +63,16 @@ class ChevronParameters(Parameters):
     """Whether to park non interacting qubits or not."""
     native: Literal["CZ", "iSWAP"] = "CZ"
     """Two qubit interaction to be calibrated."""
+    infer_hybridization: bool = False
+    """Infer the CZ interaction branch from the calibration data.
+
+    By default, the final RX pulse of the CZ chevron is applied to the high
+    frequency qubit, assuming the ``|11>-|02>`` interaction. If ``True``, the
+    calibrated frequencies, anharmonicities and flux coefficients are used to
+    determine whether the flux pulse reaches the ``|11>-|02>`` or the
+    ``|11>-|20>`` resonance first, and the final RX pulse is applied to the
+    qubit occupying level 2. Ignored for iSWAP.
+    """
 
     @property
     def amplitude_range(self) -> Range:
@@ -226,6 +236,7 @@ def _aquisition(
             parking=params.parking,
             dt=params.dt,
             native=params.native,
+            infer_hybridization=params.infer_hybridization,
         )
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,

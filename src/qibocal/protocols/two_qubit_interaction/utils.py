@@ -32,36 +32,37 @@ def determine_cz_hybridization_state(
     identifier and the flux values where resonance occurs.
     """
 
-    assert calibration_platform.calibration is not None, (
-        "Calibration data not available."
-    )
-    assert pair in calibration_platform.calibration.two_qubits, (
-        "Qubit pair not found in the two-qubit system."
-    )
+    calibration = calibration_platform.calibration
+    if calibration is None:
+        raise ValueError("Calibration data not available.")
+    # pairs may be stored in either order, independently of the frequency ordering
+    if (
+        pair not in calibration.two_qubits
+        and (pair[1], pair[0]) not in calibration.two_qubits
+    ):
+        raise ValueError(f"Qubit pair {pair} not found in the two-qubit system.")
 
     low_qubit, high_qubit = order_pair(pair, calibration_platform)
 
-    high_qubit_flux = calibration_platform.calibration.single_qubits[
-        high_qubit
-    ].qubit.flux_coefficients
-    high_qubit_f01 = calibration_platform.calibration.single_qubits[
-        high_qubit
-    ].qubit.frequency_01
-    high_qubit_eta = calibration_platform.calibration.single_qubits[
-        high_qubit
-    ].qubit.anharmonicity
+    low = calibration.single_qubits[low_qubit].qubit
+    high = calibration.single_qubits[high_qubit].qubit
 
-    assert high_qubit_flux, "qubits must be flux tunable."
+    high_qubit_flux = high.flux_coefficients
+    if not high_qubit_flux or len(high_qubit_flux) != 3:
+        raise ValueError(
+            f"Qubit {high_qubit} must be flux tunable, with quadratic flux coefficients."
+        )
 
-    low_qubit_f01 = calibration_platform.calibration.single_qubits[
-        low_qubit
-    ].qubit.frequency_01
-    low_qubit_eta = calibration_platform.calibration.single_qubits[
-        low_qubit
-    ].qubit.anharmonicity
+    low_qubit_f01 = low.frequency_01
+    high_qubit_f01 = high.frequency_01
+    if not (low_qubit_f01 and high_qubit_f01):
+        raise ValueError("Qubits must have frequency 01 defined.")
 
-    assert low_qubit_f01 and high_qubit_f01, "qubits must have frequency 01 defined."
-    assert low_qubit_eta and high_qubit_eta, "qubits must have anharmonicity defined."
+    # anharmonicities are derived from frequency_01, hence checked afterwards
+    low_qubit_eta = low.anharmonicity
+    high_qubit_eta = high.anharmonicity
+    if not (low_qubit_eta and high_qubit_eta):
+        raise ValueError("Qubits must have anharmonicity defined.")
 
     # in this convention the first qubit is always the low frequency qubit.
     # The high frequency qubit follows f_high(x) = f01_high + a x^2 + b x + c,
@@ -116,7 +117,10 @@ def plot_cz_state_energies(
     low_qubit, high_qubit = order_pair(pair, calibration_platform)
     low = calibration_platform.calibration.single_qubits[low_qubit].qubit
     high = calibration_platform.calibration.single_qubits[high_qubit].qubit
-    assert high.flux_coefficients, "qubits must be flux tunable."
+    if not high.flux_coefficients or len(high.flux_coefficients) != 3:
+        raise ValueError(
+            f"Qubit {high_qubit} must be flux tunable, with quadratic flux coefficients."
+        )
 
     # frequencies in Hz, rescaled to GHz only when plotting
     low_f01 = low.frequency_01

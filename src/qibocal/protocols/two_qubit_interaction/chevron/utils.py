@@ -21,8 +21,15 @@ def chevron_sequence(
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,
+    infer_hybridization: bool = False,
 ):
-    """Chevron pulse sequence."""
+    """Chevron pulse sequence.
+
+    For CZ, the final RX pulse is applied to the high frequency qubit, assuming
+    the ``|11>-|02>`` interaction. If ``infer_hybridization`` is set, the qubit
+    occupying level 2 is instead inferred from the calibration data, see
+    :func:`determine_cz_hybridization_state`.
+    """
     sequence = PulseSequence()
     low_natives = platform.natives.single_qubit[ordered_pair[0]]
     high_natives = platform.natives.single_qubit[ordered_pair[1]]
@@ -61,9 +68,13 @@ def chevron_sequence(
     ro_low_delay = ro_high_delay = drive_delay = Delay(duration=flux_duration)
     dt_delay = Delay(duration=dt)
 
-    hybridization_state, _ = determine_cz_hybridization_state(platform, ordered_pair)
-    state2_natives = platform.natives.single_qubit[hybridization_state[2]]
-    state2_channel, state2_rx = state2_natives.RX()[0]
+    state2_qubit = ordered_pair[1]
+    if native == "CZ" and infer_hybridization:
+        hybridization_state, _ = determine_cz_hybridization_state(
+            platform, ordered_pair
+        )
+        state2_qubit = hybridization_state[2]
+    state2_channel, state2_rx = platform.natives.single_qubit[state2_qubit].RX()[0]
 
     sequence += [
         (ro_low_channel, Delay(duration=drive_duration)),
