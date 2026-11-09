@@ -167,22 +167,7 @@ def _plot(
     fig.add_trace(
         go.Scatter(
             x=time,
-            y=data.data[target][:, 0],
-            textposition="bottom center",
-            name="I",
-            showlegend=True,
-            legendgroup="groupI",
-            mode="markers",
-        ),
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=time,
-            y=data.data[target][:, 1],
-            textposition="bottom center",
-            name="Q",
-            showlegend=True,
-            legendgroup="groupQ",
+            y=magnitude(data.data[target]),
             mode="markers",
         ),
     )
@@ -200,7 +185,7 @@ def _plot(
                 [
                     "Intermediate Frequency [Hz]",
                     "Readout amplitude [a.u.]",
-                    "Time of flights [ns]",
+                    "Time of flight [ns]",
                 ],
                 [
                     data.intermediate_frequency,
