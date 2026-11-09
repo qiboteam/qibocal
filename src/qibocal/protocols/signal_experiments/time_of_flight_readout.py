@@ -195,7 +195,6 @@ def _plot(
             )
         )
     fig.update_layout(
-        showlegend=True,
         xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )
