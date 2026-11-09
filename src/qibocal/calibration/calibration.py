@@ -52,8 +52,8 @@ class Resonator(Model):
     # TODO: Add something related to resonator calibration
 
 
-class Qubit(Model):
-    """Representation of Qubit parameters"""
+class Transmon(Model):
+    """Representation of Transmon parameters"""
 
     frequency_01: float | None = None
     """"0->1 transition frequency [Hz]."""
@@ -64,7 +64,7 @@ class Qubit(Model):
     asymmetry: float | None = None
     """Junctions asymmetry."""
     sweetspot: float | None = None
-    """Qubit sweetspot [V]."""
+    """Transmon sweetspot [V]."""
     flux_coefficients: list[float] | None = None
     """Amplitude - frequency dispersion relation coefficients """
 
@@ -127,8 +127,8 @@ class QubitCalibration(Model):
 
     resonator: Resonator = Field(default_factory=Resonator)
     """Resonator calibration."""
-    qubit: Qubit = Field(default_factory=Qubit)
-    """Qubit calibration."""
+    qubit: Transmon = Field(default_factory=Transmon)
+    """Transmon calibration."""
     readout: Readout = Field(default_factory=Readout)
     """Readout information."""
     t1: Measure | None = None
@@ -141,6 +141,15 @@ class QubitCalibration(Model):
     """Standard rb pulse fidelity."""
 
 
+class CouplerCalibration(Model):
+    """Container for calibration of a coupler."""
+
+    coupler: Transmon = Field(default_factory=Transmon)
+    """Transmon calibration."""
+    idle_bias: float | None = None
+    """Idle bias [a.u.] for minimizing always-on ZZ-interaction between adjacent qubits."""
+
+
 class TwoQubitCalibration(Model):
     """Container for calibration of qubit pair."""
 
@@ -150,6 +159,8 @@ class TwoQubitCalibration(Model):
     """CZ interleaved rb fidelity."""
     coupling: list[float] | None = None
     """Qubit-qubit coupling."""
+    coupler: QubitId | None = None
+    """Coupler mediating the interaction if available."""
 
 
 class Calibration(Model):
@@ -157,6 +168,8 @@ class Calibration(Model):
 
     single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
+    couplers: dict[QubitId, CouplerCalibration] = Field(default_factory=dict)
+    """Dict with couplers calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
     readout_mitigation_matrix: SparseArray | None = None
@@ -195,6 +208,7 @@ class Calibration(Model):
 
         return (
             self.single_qubits == other.single_qubits
+            and self.couplers == other.couplers
             and self.two_qubits == other.two_qubits
             and rm_equal
             and fc_equal
