@@ -24,7 +24,6 @@ from qibocal.fitting.classifier import run
 from qibocal.protocols.utils import (
     LEGEND_FONT_SIZE,
     MESH_SIZE,
-    TITLE_SIZE,
     evaluate_grid,
     format_error_single_cell,
     get_color_state0,
@@ -36,7 +35,6 @@ from qibocal.protocols.utils import (
 from .plot import plot_results
 
 ROC_LENGHT = 800
-ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
 
 __all__ = [
@@ -376,9 +374,8 @@ def _plot(
                     )
                 )
             fig_roc.update_layout(
-                width=ROC_WIDTH,
                 height=ROC_LENGHT,
-                title={"text": "ROC curves", "font": {"size": TITLE_SIZE}},
+                margin={"t": 30},
                 legend={"font": {"size": LEGEND_FONT_SIZE}},
             )
             fig_roc.update_xaxes(
