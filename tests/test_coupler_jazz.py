@@ -20,7 +20,7 @@ PAIR = (0, 1)
 COUPLER = 1
 
 PARAMETERS = {
-    "delays_settings": [0, 400, 20],
+    "delays": [0, 400, 20],
     "coupler_offset_range": [-0.1, 0.1, 0.05],
     "nshots": 100,
 }

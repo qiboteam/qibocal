@@ -439,7 +439,7 @@ actions:
     operation: ramsey_zz
     targets: [[0, 1]]
     parameters:
-      delays_settings:
+      delays:
       - 0
       - 20
       - 1
@@ -450,7 +450,7 @@ actions:
     operation: jazz
     targets: [[0, 1]]
     parameters:
-      delays_settings:
+      delays:
       - 0
       - 20
       - 1

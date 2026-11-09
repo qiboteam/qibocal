@@ -29,7 +29,7 @@ For each coupler offset the following sequence is executed:
 The simultaneous :math:`\pi` pulse on both qubits refocuses any unconditional
 frequency shift of the target, including the one induced by the coupler bias,
 while the conditional ZZ phase keeps accumulating over the whole echo.
-The half-wait ``tau`` is swept through ``delays_settings``, whereas the coupler
+The half-wait ``tau`` is swept through ``delays``, whereas the coupler
 offset is swept through ``coupler_offset_range``. A ``[start, stop, step]``
 specification sweeps absolute offsets, while the ``center``, ``lincenter``,
 ``asym`` and ``linasym`` specifications are relative to the coupler offset currently
@@ -87,7 +87,7 @@ Example
       targets: [[0, 1]]
       update: false
       parameters:
-        delays_settings: [16, 20000, 400]
+        delays: [16, 20000, 400]
         coupler_offset_range: [-0.05, 0.15, 0.005]
         fast_evaluation: true
         fit_weight: 0.5

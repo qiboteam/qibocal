@@ -24,12 +24,12 @@ EPS = 1  # Hz
 class ZZInteractionParameters(Parameters):
     """Parameters for ZZ-interaction experiments."""
 
-    delays_settings: RangeLike
+    delays: RangeLike
     """delay time range (start, stop, step) in the sequence. Applied twice."""
 
     @property
     def delay_range(self) -> Range:
-        return to_range(self.delays_settings)
+        return to_range(self.delays)
 
 
 ZZIntType = np.dtype(
