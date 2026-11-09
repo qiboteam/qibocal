@@ -1,16 +1,22 @@
 """Tests for TWPA frequency and offset sweeper protocol."""
 
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
+from qibolab import IqChannel, IqConfig, OscillatorConfig
 
 from qibocal.protocols import PROTOCOLS
 from qibocal.protocols.twpa.frequency_offset import (
+    PUMP_OFF_POWER,
     TwpaFrequencyOffsetData,
     TwpaFrequencyOffsetParameters,
     TwpaFrequencyOffsetResults,
     _acquisition,
     _fit,
     _plot,
+    _pump_power,
+    _update,
     twpa_frequency_offset,
     twpa_sweep,
 )
@@ -149,6 +155,9 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert qubit in fit_res.gain
         assert fit_res.frequency[qubit] in data.frequency[qubit]
         assert fit_res.offset[qubit] in data.offset[qubit]
+        assert fit_res.power[qubit] == pytest.approx(
+            10.0 + 20 * np.log10(abs(fit_res.offset[qubit]))
+        )
 
     # Test Plot with and without fit
     figs, report = _plot(data, fit_res, targets[0])
@@ -227,3 +236,79 @@ def test_acquisition_default_probes(platform, mocker):
     assert len(sweepers) == 2
     assert all(sw.range is not None for sw in sweepers[0])
     assert all(sw.range is not None for sw in sweepers[1])
+
+
+def test_reference_pump_off(platform, mocker):
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.1, 0.3, 0.1],
+            "frequency": ["center", 10_000_000, 5_000_000],
+            "nshots": 50,
+        }
+    )
+    spy = mocker.spy(platform, "execute")
+    _acquisition(params, platform, [0])
+    reference_call = spy.call_args_list[0]
+    assert len(reference_call.args) == 1
+    pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
+    probe_updates, off_updates = reference_call.kwargs["updates"]
+    assert all("offset" not in up for up in probe_updates.values())
+    assert off_updates == {pump: {"power": PUMP_OFF_POWER}}
+
+
+def _pump_platform(channels: dict, configs: dict) -> SimpleNamespace:
+    return SimpleNamespace(channels=channels, config=configs.__getitem__)
+
+
+def test_pump_power():
+    oscillator = _pump_platform({}, {"pump": OscillatorConfig(frequency=6e9, power=-5)})
+    assert _pump_power(oscillator, "pump") == -5
+
+    channel = _pump_platform(
+        {"pump": IqChannel(path="8/o2", lo="pump/lo")},
+        {
+            "pump": IqConfig(frequency=6e9),
+            "pump/lo": OscillatorConfig(frequency=6e9, power=-21.4),
+        },
+    )
+    assert _pump_power(channel, "pump") == -21.4
+
+
+@pytest.mark.parametrize(
+    "channels, match",
+    [({}, "not found"), ({"pump": IqChannel(path="8/o2")}, "has no LO")],
+)
+def test_pump_power_invalid(channels, match):
+    platform = _pump_platform(channels, {"pump": IqConfig(frequency=6e9)})
+    with pytest.raises(ValueError, match=match):
+        _pump_power(platform, "pump")
+
+
+def test_update_oscillator_pump(platform):
+    pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
+    results = TwpaFrequencyOffsetResults(
+        frequency={0: 6.1e9}, offset={0: 0.5}, gain={0: 20.0}, power={0: -12.0}
+    )
+    _update(results, platform, 0)
+    assert platform.config(pump) == OscillatorConfig(frequency=6.1e9, power=-12.0)
+
+
+def test_update_iq_pump():
+    updates = {}
+    platform = SimpleNamespace(
+        channels={
+            "acq": SimpleNamespace(twpa_pump="pump"),
+            "pump": IqChannel(path="8/o2", lo="pump/lo"),
+        },
+        qubits={0: SimpleNamespace(acquisition="acq")},
+        config={"pump": IqConfig(frequency=6e9)}.__getitem__,
+        update=updates.update,
+    )
+    results = TwpaFrequencyOffsetResults(
+        frequency={0: 6.1e9}, offset={0: 0.5}, gain={0: 20.0}, power={0: -27.4}
+    )
+    _update(results, platform, 0)
+    assert updates == {
+        "configs.pump.frequency": 6.1e9,
+        "configs.pump/lo.power": -27.4,
+    }

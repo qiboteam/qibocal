@@ -11,6 +11,7 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     ChannelId,
+    IqConfig,
     OscillatorConfig,
     Parameter,
     Pulse,
@@ -59,6 +60,8 @@ class TwpaFrequencyOffsetResults(Results):
     """Pump offset [a.u.]."""
     gain: dict[QubitId, float]
     """TWPA gain [dB]."""
+    power: dict[QubitId, float] = field(default_factory=dict)
+    """Pump power [dB], corresponding to the optimal offset."""
 
 
 @dataclass
@@ -98,6 +101,14 @@ class TwpaFrequencyOffsetData(Data):
                 "and nonzero."
             )
         return 20 * np.log10(np.mean(magnitude(self[qubit]), axis=2) / reference)
+
+
+PUMP_OFF_POWER = -60.0
+"""Pump power [dB] of the TWPA-off reference.
+
+Low enough to leave the TWPA unpumped, while within the range of both standalone
+oscillators and controllers' ports.
+"""
 
 
 def _acquisition(
@@ -149,6 +160,7 @@ def _acquisition(
 
     twpa_channels = {}
     twpa_configs = {}
+    twpa_powers = {}
     for qubit in targets:
         pump = platform.channels[platform.qubits[qubit].acquisition].twpa_pump
         if pump is None:
@@ -156,7 +168,8 @@ def _acquisition(
                 f"Qubit {qubit} does not have a TWPA pump channel configured."
             )
         twpa_channels[qubit] = pump
-        twpa_configs[qubit] = cast(OscillatorConfig, platform.config(pump))
+        twpa_configs[qubit] = cast(OscillatorConfig | IqConfig, platform.config(pump))
+        twpa_powers[qubit] = _pump_power(platform, pump)
 
     # Deduplicate TWPA channels preserving association to a target qubit
     unique_twpa_channels: dict[str, QubitId] = {}
@@ -214,15 +227,20 @@ def _acquisition(
     raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
 
     # 1. Reference measurements with TWPA off
+    # The pump is turned off by lowering its power, which also suppresses the LO
+    # leakage, unlike a null offset.
+    off_updates = {
+        _power_config(platform, ch): {"power": PUMP_OFF_POWER}
+        for ch in unique_twpa_channels
+    }
     for probe_updates in probe_updates_list:
-        updates = [{ch: {"offset": 0.0} for ch in unique_twpa_channels} | probe_updates]
         ref_results = platform.execute(
             [sequence],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
-            updates=updates,
+            updates=[probe_updates, off_updates],
         )
         for qubit in targets:
             reference_data[qubit].append(
@@ -249,12 +267,38 @@ def _acquisition(
         frequency={q: np.arange(*freq_ranges[q]).tolist() for q in targets},
         reference_value=reference_data,
         probes=params.probes,
-        power={q: twpa_configs[q].power for q in targets},
+        power=twpa_powers,
     )
     for qubit in targets:
         data.data[qubit] = np.stack(raw_data[qubit], axis=2)
 
     return data
+
+
+def _power_config(platform: CalibrationPlatform, pump: ChannelId) -> str:
+    """Configuration holding the pump power.
+
+    The pump is either a standalone oscillator, whose configuration holds the power,
+    or an IQ channel of a controller, whose power is set by its LO.
+    """
+    if isinstance(platform.config(pump), OscillatorConfig):
+        return pump
+    return _pump_lo(platform, pump)
+
+
+def _pump_power(platform: CalibrationPlatform, pump: ChannelId) -> float:
+    """Configured pump power."""
+    return cast(OscillatorConfig, platform.config(_power_config(platform, pump))).power
+
+
+def _pump_lo(platform: CalibrationPlatform, pump: ChannelId) -> str:
+    """LO of an IQ pump channel, holding its power."""
+    if pump not in platform.channels:
+        raise ValueError(f"TWPA pump channel {pump} not found in the platform.")
+    lo = getattr(platform.channels[pump], "lo", None)
+    if lo is None:
+        raise ValueError(f"TWPA pump channel {pump} has no LO, holding its power.")
+    return lo
 
 
 def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
@@ -266,6 +310,7 @@ def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
     frequency = {}
     offset = {}
     gain = {}
+    power = {}
     for qubit in data.qubits:
         averaged_gain = data.averaged_gain(qubit)
         flat_index = np.argmax(averaged_gain)
@@ -273,7 +318,10 @@ def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
         frequency[qubit] = data.frequency[qubit][j]
         offset[qubit] = data.offset[qubit][i]
         gain[qubit] = averaged_gain[i, j]
-    return TwpaFrequencyOffsetResults(frequency=frequency, offset=offset, gain=gain)
+        power[qubit] = data.power.get(qubit, 0.0) + 20 * np.log10(abs(offset[qubit]))
+    return TwpaFrequencyOffsetResults(
+        frequency=frequency, offset=offset, gain=gain, power=power
+    )
 
 
 def _plot(
@@ -369,7 +417,7 @@ def _plot(
 
     if fit is not None and target in fit:
         opt_offset = fit.offset[target]
-        opt_power = base_power + 20 * np.log10(abs(opt_offset))
+        opt_power = fit.power[target]
         labels = [
             "Pump Frequency [Hz]",
             "Pump Amplitude",
@@ -389,7 +437,33 @@ def _plot(
     return figures, fitting_report
 
 
-twpa_frequency_offset = Protocol(_acquisition, _fit, _plot)
+def _update(
+    results: TwpaFrequencyOffsetResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
+):
+    """Set the pump to the optimal frequency and power.
+
+    A standalone oscillator pump holds both in its configuration. Instead, an IQ pump
+    channel holds the frequency in its own configuration, and the power in its LO.
+
+    The LO frequency is left unchanged, since the scan is performed at fixed LO: moving
+    it would also move the LO leakage and the sideband image, which alter the pumping
+    conditions, and thus the gain, of the selected point.
+
+    Targets sharing the same pump overwrite each other's update, thus the last one
+    prevails.
+    """
+    pump = platform.channels[platform.qubits[target].acquisition].twpa_pump
+    assert pump is not None
+    frequency, power = results.frequency[target], results.power[target]
+    power_config = _power_config(platform, pump)
+    platform.update(
+        {f"configs.{pump}.frequency": frequency, f"configs.{power_config}.power": power}
+    )
+
+
+twpa_frequency_offset = Protocol(_acquisition, _fit, _plot, _update)
 """Resonator TWPA Frequency and Offset Sweeper Protocol object."""
 
 twpa_sweep = twpa_frequency_offset
