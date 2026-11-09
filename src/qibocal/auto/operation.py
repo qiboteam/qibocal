@@ -341,18 +341,6 @@ class _CallDescriptor:
         return _Binding(protocol)
 
 
-class _SignatureDescriptor:
-    """``Protocol.__signature__``, specific to each protocol.
-
-    It is absent on the class, which keeps the signature of its constructor.
-    """
-
-    def __get__(
-        self, protocol: Protocol | None, owner: type | None = None
-    ) -> inspect.Signature | None:
-        return None if protocol is None else _binding_signature(protocol)
-
-
 class _DocDescriptor:
     """``Protocol.__doc__``, specific to each protocol.
 
@@ -437,9 +425,6 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
 
     __call__ = _CallDescriptor()
     """Bind parameters to this protocol, cf. :meth:`_bind`."""
-
-    __signature__ = _SignatureDescriptor()
-    """Signature of the binding of this protocol's parameters."""
 
     def _bind(
         self,
