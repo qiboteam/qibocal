@@ -25,6 +25,7 @@ from qibocal.protocols.utils import (
     LEGEND_FONT_SIZE,
     MESH_SIZE,
     TITLE_SIZE,
+    compute_assignment_fidelity,
     evaluate_grid,
     format_error_single_cell,
     get_color_state0,
@@ -307,9 +308,13 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 rotation_angle[qubit] = models[i].angle
                 mean_gnd_states[qubit] = models[i].iq_mean0
                 mean_exc_states[qubit] = models[i].iq_mean1
-                fidelity[qubit] = models[i].fidelity
                 snr[qubit] = evaluate_snr(data.state_zero(qubit), data.state_one(qubit))
-                assignment_fidelity[qubit] = models[i].assignment_fidelity
+                # evaluate fidelities on the test set, consistently with the accuracy
+                test_predictions = np.asarray(models[i].predict(x_test))
+                assignment_fidelity[qubit] = compute_assignment_fidelity(
+                    test_predictions[y_test == 1], test_predictions[y_test == 0]
+                )
+                fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
                 predictions_state0 = models[i].predict(iq_state0.tolist())
                 effective_temperature[qubit] = models[i].effective_temperature(
                     predictions_state0, data.qubit_frequencies[qubit]
