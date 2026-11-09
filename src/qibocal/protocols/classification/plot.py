@@ -5,28 +5,19 @@ import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.colors import hex_to_rgb
-from plotly.subplots import make_subplots
 from scipy.stats import median_abs_deviation
 from scipy.stats import norm as scipy_norm
 
 from qibocal.auto.operation import Data, QubitId, Results
-from qibocal.fitting.classifier import run
 
-from ..utils import (
-    LEGEND_FONT_SIZE,
-    SPACING,
-    evaluate_grid,
-)
+from ..utils import LEGEND_FONT_SIZE
 
 __all__ = ["plot_results"]
 
 STATE_COLORS = px.colors.qualitative.Plotly
 """Colors of the prepared states."""
-CLASSIFIER_COLORS = px.colors.qualitative.Dark2
-"""Colors of the classifiers, in their decision boundaries and benchmarks."""
-BOUNDARY_DASHES = ["dash", "dot", "dashdot", "longdash"]
-"""Line styles of the classifiers' decision boundaries, distinguishing overlapping
-ones."""
+BOUNDARY_COLOR = px.colors.qualitative.Dark2[0]
+"""Color of the decision boundary."""
 MARGIN = {"t": 30}
 """Figures' margins, with no title."""
 HEIGHT = 600
@@ -145,34 +136,6 @@ def _density(states: list[npt.NDArray], edges: npt.NDArray) -> go.Image:
     )
 
 
-def _boundary_line(grid: npt.NDArray, predictions: npt.NDArray) -> npt.NDArray | None:
-    """Point and direction of a linear decision boundary.
-
-    The boundary is estimated from the classifier predictions on a square grid, as the
-    line best fitting the midpoints between neighboring grid points predicted in
-    different states. Returns ``None`` if the grid contains a single state.
-    """
-    size = int(np.sqrt(len(grid)))
-    points = grid.reshape(size, size, 2)
-    states = np.asarray(predictions).reshape(size, size)
-    midpoints = []
-    for axis in (0, 1):
-        first = [slice(None)] * 2
-        second = [slice(None)] * 2
-        first[axis], second[axis] = slice(None, -1), slice(1, None)
-        changed = states[tuple(first)] != states[tuple(second)]
-        midpoints.append(
-            (points[tuple(first)][changed] + points[tuple(second)][changed]) / 2
-        )
-    boundary = np.concatenate(midpoints)
-    if len(boundary) < 2:
-        return None
-    center = boundary.mean(axis=0)
-    # principal direction of the midpoints, i.e. the total least squares line
-    direction = np.linalg.svd(boundary - center)[2][0]
-    return np.array([center, direction])
-
-
 def _clip(line: npt.NDArray, low: npt.NDArray, high: npt.NDArray) -> npt.NDArray | None:
     """Segment of a line within a rectangle, or ``None`` if outside."""
     center, direction = line
@@ -187,39 +150,29 @@ def _clip(line: npt.NDArray, low: npt.NDArray, high: npt.NDArray) -> npt.NDArray
     return center + np.outer([start, stop], direction)
 
 
-def _boundaries(
-    data: Data, qubit: QubitId, fit: Results, low: npt.NDArray, high: npt.NDArray
-) -> list[go.Scatter]:
-    """Decision boundaries of the trained classifiers, within the plot range.
+def _boundary(
+    qubit: QubitId, fit: Results, low: npt.NDArray, high: npt.NDArray
+) -> go.Scatter | None:
+    """Decision boundary of the linear classifier, within the plot range.
 
-    The available classifiers are linear, so their boundary is a straight line.
-    Filled decision regions were only needed for non-linear classifiers, possibly
-    predicting disconnected regions.
+    The boundary is the straight line where the shots' projection on the rotated I
+    axis equals the threshold. Filled decision regions were only needed for
+    non-linear classifiers, possibly predicting disconnected regions.
     """
-    grid = evaluate_grid(data.data[qubit])
-    traces = []
-    for i, (model, predictions) in enumerate(
-        zip(data.classifiers_list, fit.grid_preds[qubit])
-    ):
-        line = _boundary_line(grid, predictions)
-        segment = _clip(line, low, high) if line is not None else None
-        if segment is None:
-            continue
-        traces.append(
-            go.Scatter(
-                x=segment[:, 0],
-                y=segment[:, 1],
-                mode="lines",
-                line={
-                    "width": 2,
-                    "dash": BOUNDARY_DASHES[i % len(BOUNDARY_DASHES)],
-                    "color": CLASSIFIER_COLORS[i % len(CLASSIFIER_COLORS)],
-                },
-                name=f"{run.pretty_name(model)} boundary",
-                hoverinfo="skip",
-            )
-        )
-    return traces
+    angle, threshold = fit.rotation_angle[qubit], fit.threshold[qubit]
+    normal = np.array([np.cos(angle), -np.sin(angle)])
+    line = np.array([threshold * normal, [normal[1], -normal[0]]])
+    segment = _clip(line, low, high)
+    if segment is None:
+        return None
+    return go.Scatter(
+        x=segment[:, 0],
+        y=segment[:, 1],
+        mode="lines",
+        line={"width": 2, "dash": "dash", "color": BOUNDARY_COLOR},
+        name="boundary",
+        hoverinfo="skip",
+    )
 
 
 def _iq_plane(
@@ -253,7 +206,8 @@ def _iq_plane(
         )
     if fit is not None:
         # on top of the densities and the centroids
-        for boundary in _boundaries(data, qubit, fit, low, high):
+        boundary = _boundary(qubit, fit, low, high)
+        if boundary is not None:
             fig.add_trace(boundary)
 
     # same units on both axes, since each state distribution is expected to be
@@ -345,36 +299,6 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
     return fig
 
 
-def _benchmarks(qubit: QubitId, models: list[str], fit: Results) -> go.Figure:
-    """Accuracy and timings of the classifiers."""
-    fig = make_subplots(
-        rows=1,
-        cols=3,
-        horizontal_spacing=SPACING,
-        subplot_titles=("accuracy", "testing time [s]", "training time [s]"),
-    )
-    for i, model in enumerate(models):
-        for plot in range(3):
-            fig.add_trace(
-                go.Scatter(
-                    x=[model],
-                    y=[fit.benchmark_table[qubit][i][plot]],
-                    mode="markers",
-                    showlegend=False,
-                    marker={
-                        "size": 10,
-                        "color": CLASSIFIER_COLORS[i % len(CLASSIFIER_COLORS)],
-                    },
-                ),
-                row=1,
-                col=plot + 1,
-            )
-    fig.update_yaxes(type="log", row=1, col=2)
-    fig.update_yaxes(type="log", row=1, col=3)
-    fig.update_layout(margin=MARGIN)
-    return fig
-
-
 def plot_results(
     data: Data, qubit: QubitId, qubit_states: int, fit: Results | None
 ) -> list[go.Figure]:
@@ -395,8 +319,6 @@ def plot_results(
     ]
 
     figures = [_iq_plane(data, qubit, states, fit)]
-    if fit is not None and qubit in fit.rotation_angle:
+    if fit is not None:
         figures.append(_histogram(qubit, states, fit))
-    if fit is not None and len(data.classifiers_list) != 1:
-        figures.append(_benchmarks(qubit, data.classifiers_list, fit))
     return figures

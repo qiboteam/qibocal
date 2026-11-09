@@ -21,8 +21,6 @@ GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
 S_TO_NS = 1e9
-MESH_SIZE = 50
-MARGIN = 0
 SPACING = 0.1
 LEGEND_FONT_SIZE = 20
 EXTREME_CHI = 1e4
@@ -270,23 +268,44 @@ def compute_assignment_fidelity(
     return fidelity
 
 
+def project(points: NDArray, angle: float) -> NDArray:
+    """Projection of IQ points on the I axis, after rotating them by `angle`."""
+    # plain arrays, also from record ones, as stored by some protocols
+    return np.asarray(points) @ np.array([np.cos(angle), -np.sin(angle)])
+
+
 def classify(arr: np.ndarray, angle: float, threshold: float) -> np.ndarray:
     """Mapping IQ array in 0s and 1s given angle and threshold."""
-    c, s = np.cos(angle), np.sin(angle)
-    rot = np.array([[c, -s], [s, c]])
-    rotated = arr @ rot.T
-    return (rotated[:, 0] > threshold).astype(int)
+    return (project(arr, angle) > threshold).astype(int)
+
+
+def linear_classifier(ground: NDArray, excited: NDArray) -> tuple[float, float]:
+    """Linear classifier of the shots prepared in the ground and excited states.
+
+    The shots are projected on the axis connecting the two centroids, rotated to the I
+    axis, and the threshold maximizes the readout fidelity, i.e. the difference
+    between the cumulative distributions of the two projections
+    (cf. https://arxiv.org/abs/1004.4323). Shots beyond the threshold are classified
+    as excited, cf. :func:`classify`.
+
+    Returns:
+        The rotation angle and the threshold.
+    """
+    axis = np.mean(excited, axis=0) - np.mean(ground, axis=0)
+    angle = -float(np.arctan2(axis[1], axis[0]))
+    ground_x = np.sort(project(ground, angle))
+    excited_x = np.sort(project(excited, angle))
+    candidates = np.unique(np.concatenate([ground_x, excited_x]))
+    below_ground = np.searchsorted(ground_x, candidates, side="right") / len(ground_x)
+    below_excited = np.searchsorted(excited_x, candidates, side="right") / len(
+        excited_x
+    )
+    threshold = float(candidates[np.argmax(below_ground - below_excited)])
+    return angle, threshold
 
 
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
-
-
-def cumulative(input_data, points):
-    r"""Evaluates in data the cumulative distribution
-    function of `points`.
-    """
-    return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
 def eval_magnitude(value: float | np.number) -> int:
@@ -415,48 +434,6 @@ def significant_digit(number: float) -> int:
         position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
 
     return int(position)
-
-
-def evaluate_grid(
-    data: NDArray,
-):
-    """
-    This function returns a matrix grid evaluated from
-    the datapoints `data`.
-    """
-    max_x = (
-        max(
-            0,
-            data["i"].max(),
-        )
-        + MARGIN
-    )
-    max_y = (
-        max(
-            0,
-            data["q"].max(),
-        )
-        + MARGIN
-    )
-    min_x = (
-        min(
-            0,
-            data["i"].min(),
-        )
-        - MARGIN
-    )
-    min_y = (
-        min(
-            0,
-            data["q"].min(),
-        )
-        - MARGIN
-    )
-    i_values, q_values = np.meshgrid(
-        np.linspace(min_x, max_x, num=MESH_SIZE),
-        np.linspace(min_y, max_y, num=MESH_SIZE),
-    )
-    return np.vstack([i_values.ravel(), q_values.ravel()]).T
 
 
 def table_dict(

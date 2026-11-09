@@ -198,10 +198,8 @@ Classification model
 
 Now that we are able to produce :math:`\ket{0}` and :math:`\ket{1}` we need to build a model
 that will discriminate between these two states, also known as `classifier`.
-Qibocal provides several classifiers of different complexities including Machine Learning based
-ones.
-
-The simplest model can be trained by running the following experiment:
+Qibocal fits a linear classifier, separating the two states with a straight line in the IQ plane,
+by running the following experiment:
 
 .. code-block:: yaml
 

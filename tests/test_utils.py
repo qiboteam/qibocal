@@ -2,12 +2,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from qibocal.protocols.utils import cumulative, eval_magnitude, to_range
-
-
-def test_cumulative():
-    data = np.arange(10, dtype=float)
-    assert np.array_equal(cumulative(data, data), data)
+from qibocal.protocols.utils import eval_magnitude, to_range
 
 
 def test_eval_magnitude():
