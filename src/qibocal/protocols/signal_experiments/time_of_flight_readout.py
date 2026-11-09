@@ -148,7 +148,8 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
                 f"{window} samples: increase `duration` or `detuning`."
             )
         th = (samples[:window].mean() + samples[-window:].mean()) / 2
-        delay = np.argmax(samples > th)
+        # first sample above the threshold marks the arrival of the signal
+        delay = np.flatnonzero(samples > th)[0]
         time_of_flights[qubit] = float(delay / sampling_rate + MINIMUM_TOF)
     return TimeOfFlightReadoutResults(time_of_flights)
 
