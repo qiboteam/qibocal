@@ -15,6 +15,7 @@ from ..utils import (
     SPACING,
     evaluate_grid,
     get_color_state1,
+    robust_std,
 )
 
 __all__ = ["plot_results"]
@@ -33,12 +34,14 @@ HEIGHT = 600
 HISTOGRAM_HEIGHT = 400
 """Height of the projected histogram figure, in pixels."""
 BINS_PER_STD = 3
-"""Density bins per standard deviation of the narrowest state distribution."""
-MIN_BINS = 20
+"""Largest number of bins per standard deviation of the narrowest state distribution.
+
+With many shots, bins are not made narrower than this, since a finer resolution is
+not needed to resolve the states.
+"""
+MIN_BINS = 10
 MAX_BINS = 200
-"""Bounds on the number of density bins per axis."""
-HISTOGRAM_BINS = 60
-"""Bins of the projected histogram."""
+"""Bounds on the number of bins per axis, both for the density and the histogram."""
 PADDING = 0.05
 """Fraction of the data extent left empty around the IQ plane plot."""
 OPACITY_EXPONENT = 0.6
@@ -55,23 +58,38 @@ def _rgba(color: str, alpha: float) -> str:
     return f"rgba({red},{green},{blue},{alpha})"
 
 
-def _robust_std(values: npt.NDArray) -> float:
-    """Standard deviation estimated from the median absolute deviation."""
-    return 1.4826 * float(np.median(np.abs(values - np.median(values))))
+def _bin_width(spread: float, shots: int, dimensions: int) -> float:
+    """Bin width adapted to the number of shots, following Scott's rule.
+
+    The optimal width of a histogram of normally distributed samples is
+    ``3.5 sigma / n ** (1 / (d + 2))``, in ``d`` dimensions. Bins are not made narrower
+    than :data:`BINS_PER_STD` per standard deviation.
+    """
+    scott = 3.5 * spread / max(shots, 1) ** (1 / (dimensions + 2))
+    return max(scott, spread / BINS_PER_STD)
+
+
+def _narrowest_spread(states: list[npt.NDArray], extent: float) -> float:
+    """Smallest standard deviation of the states, in any coordinate."""
+    spreads = [
+        float(s) for state in states for s in np.atleast_1d(robust_std(state, axis=0))
+    ]
+    return min((s for s in spreads if s > 0), default=extent)
 
 
 def _edges(states: list[npt.NDArray]) -> npt.NDArray:
     """Square density bins, shared by all the states and both axes.
 
-    The bin width is a fraction of the narrowest state distribution, such that each
-    blob is resolved, independently of how far apart the blobs are.
+    The bin width is related to the narrowest state distribution, such that each blob
+    is resolved, independently of how far apart the blobs are, and it grows with fewer
+    shots, such that bins are not too sparse, cf. :func:`_bin_width`.
     """
     points = np.concatenate(states)
     low, high = points.min(axis=0), points.max(axis=0)
     extent = float(np.max(high - low)) or 1.0
-    spreads = [_robust_std(state[:, axis]) for state in states for axis in (0, 1)]
-    spread = min((s for s in spreads if s > 0), default=extent)
-    bins = int(np.clip(np.ceil(extent / spread * BINS_PER_STD), MIN_BINS, MAX_BINS))
+    shots = min(len(state) for state in states)
+    width = _bin_width(_narrowest_spread(states, extent), shots, dimensions=2)
+    bins = int(np.clip(np.ceil(extent / width), MIN_BINS, MAX_BINS))
     width = extent / bins
     return low + width * np.arange(bins + 1)[:, np.newaxis]
 
@@ -269,7 +287,18 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
     angle, threshold = fit.rotation_angle[qubit], fit.threshold[qubit]
     c, s = np.cos(angle), np.sin(angle)
     projections = [points @ np.array([c, -s]) - threshold for points in states]
-    edges = np.histogram_bin_edges(np.concatenate(projections), bins=HISTOGRAM_BINS)
+    points = np.concatenate(projections)
+    extent = float(np.ptp(points)) or 1.0
+    shots = min(len(projection) for projection in projections)
+    spread = _narrowest_spread([p[:, np.newaxis] for p in projections], extent)
+    bins = int(
+        np.clip(
+            np.ceil(extent / _bin_width(spread, shots, dimensions=1)),
+            MIN_BINS,
+            MAX_BINS,
+        )
+    )
+    edges = np.histogram_bin_edges(points, bins=bins)
     centers = (edges[:-1] + edges[1:]) / 2
 
     fig = go.Figure()
@@ -305,6 +334,7 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
     fig.update_layout(
         height=HISTOGRAM_HEIGHT,
         margin=MARGIN,
+        plot_bgcolor="white",
         barmode="overlay",
         bargap=0,
         legend={"font": {"size": LEGEND_FONT_SIZE}},

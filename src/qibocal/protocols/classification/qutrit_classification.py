@@ -14,10 +14,6 @@ from ..classification.classification import (
 )
 from .plot import plot_results
 
-COLUMNWIDTH = 600
-LEGEND_FONT_SIZE = 20
-TITLE_SIZE = 25
-SPACING = 0.1
 DEFAULT_CLASSIFIER = "naive_bayes"
 
 __all__ = ["qutrit_classification"]

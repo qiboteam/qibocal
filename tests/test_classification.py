@@ -8,7 +8,7 @@ from qibocal.protocols.classification.classification import (
     _fit,
     _plot,
 )
-from qibocal.protocols.classification.plot import _density, _edges
+from qibocal.protocols.classification.plot import MAX_BINS, _density, _edges
 
 CENTERS = [(0.2, 0.5), (0.6, 0.1)]
 
@@ -38,7 +38,7 @@ def boundaries(figure):
 @pytest.mark.parametrize("classifiers", [["qubit_fit"], ["qubit_fit", "qblox_fit"]])
 def test_plot_size_independent_of_shots(classifiers):
     sizes = []
-    for nshots in (500, 20_000):
+    for nshots in (20_000, 200_000):
         data = single_shot_data(nshots, classifiers)
         figures, _ = _plot(data, 0, _fit(data))
         (density,) = [t for t in figures[0].data if isinstance(t, go.Image)]
@@ -46,8 +46,10 @@ def test_plot_size_independent_of_shots(classifiers):
         assert len(boundaries(figures[0])) == len(classifiers)
         assert len(figures) == (2 if len(classifiers) == 1 else 4)
         assert all(figure.layout.title.text is None for figure in figures)
-    # densities are binned: the image does not scale with the shots
-    assert sizes[1] < 2 * sizes[0]
+    # densities are binned: beyond the finest resolution, the image only grows with the
+    # data extent (slowly, through the tails), not with the shots, and it is bounded
+    assert sizes[1] < 1.5 * sizes[0]
+    assert sizes[1] <= 4 * MAX_BINS**2
 
 
 def test_density_blends_states_symmetrically():
@@ -86,3 +88,19 @@ def test_plot_without_fit():
 
     assert len(figures) == 1
     assert table == ""
+
+
+def test_bins_adapt_to_shots():
+    rng = np.random.default_rng(0)
+
+    def width(nshots):
+        states = [
+            rng.normal([0, 0], 1, (nshots, 2)),
+            rng.normal([0, 3], 1, (nshots, 2)),
+        ]
+        edges = _edges(states)
+        return edges[1, 0] - edges[0, 0]
+
+    # wider bins with fewer shots, not narrower than a third of the spread
+    assert width(200) > width(2_000) > width(20_000)
+    assert width(200_000) == pytest.approx(1 / 3, rel=0.05)

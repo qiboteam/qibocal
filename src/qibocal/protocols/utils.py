@@ -428,6 +428,18 @@ def significant_digit(number: float) -> int:
     return int(position)
 
 
+def robust_std(values: ArrayLike, axis: int | None = None) -> float | NDArray:
+    """Standard deviation estimated from the median absolute deviation.
+
+    It is insensitive to a minority of outliers, unlike :func:`numpy.std`. For a
+    Gaussian distribution, it coincides with the standard deviation.
+    """
+    values = np.asarray(values)
+    median = np.median(values, axis=axis, keepdims=True)
+    spread = 1.4826 * np.median(np.abs(values - median), axis=axis)
+    return float(spread) if np.ndim(spread) == 0 else spread
+
+
 def evaluate_grid(
     data: NDArray,
 ):
