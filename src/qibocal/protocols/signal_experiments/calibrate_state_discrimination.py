@@ -39,8 +39,6 @@ class CalibrateStateDiscriminationResults(Results):
 class CalibrateStateDiscriminationData(Data):
     """CalibrateStateDiscrimination acquisition outputs."""
 
-    resonator_type: str
-    """Resonator type."""
     lowpass_cutoff: float
     """Low-pass cutoff (Hz) for the traces."""
     intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
@@ -56,16 +54,15 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> CalibrateStateDiscriminationData:
-    r"""
-    Data acquisition for Calibrate State Discrimination experiment.
-    Calculates the optimal kernel for the readout. It has to be run one qubit at a time.
-    The kernels are stored in the result.npz generated on the report.
+    """Data acquisition for Calibrate State Discrimination experiment.
+
+    Acquires the RAW readout traces with the qubits prepared in the ground and excited
+    state, from which the optimal kernels are calculated.
 
     Args:
         params (CalibrateStateDiscriminationParameters): experiment's parameters
         platform (CalibrationPlatform): Qibolab platform object
-        qubits (dict): list of target qubits to perform the action
-
+        targets (list): list of target qubits to perform the action
     """
 
     native = platform.natives.single_qubit
@@ -102,7 +99,6 @@ def _acquisition(
         for qubit in targets
     }
     data = CalibrateStateDiscriminationData(
-        resonator_type=platform.resonator_type,
         lowpass_cutoff=params.lowpass_cutoff,
         intermediate_frequency=intermediate_frequency,
     )
@@ -125,7 +121,7 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
     """
     qubits = data.qubits
 
-    kernel_state_zero = {}
+    kernels = {}
 
     def lowpass_filter(signal, cutoff, fs=1e9, order=5):
         """Basic lowpass filter, with ``cutoff`` and sampling rate ``fs`` in Hz."""
@@ -148,9 +144,9 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
         kernel /= np.max(np.abs(kernel))
-        kernel_state_zero[qubit] = kernel
+        kernels[qubit] = kernel
 
-    return CalibrateStateDiscriminationResults(data=kernel_state_zero)
+    return CalibrateStateDiscriminationResults(data=kernels)
 
 
 def _plot(
