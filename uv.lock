@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12, <3.15"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -1760,7 +1760,7 @@ wheels = [
 [[package]]
 name = "qibo"
 version = "0.3.7"
-source = { git = "https://github.com/qiboteam/qibo.git?branch=main#a80ba848fd0b3b8dc56528aa1a295ad6f5b75cc9" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "joblib" },
     { name = "networkx" },
@@ -1768,6 +1768,10 @@ dependencies = [
     { name = "openqasm3", extra = ["parser"] },
     { name = "scipy" },
     { name = "sympy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2a/e7/a96a707ad3ada3f8dc5a5d044ce8616231019d4e5104ffbc12f217557e2a/qibo-0.3.7.tar.gz", hash = "sha256:35ac1541dd45db5336b2d0d9691b80097710f82dcac762aac78891049bae218d", size = 537417, upload-time = "2026-11-10T06:14:42.762Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/3c/669a47435b9dfc0559d49d4f6f85b8b0fe0399be3f098bd3956806dc02bf/qibo-0.3.7-py3-none-any.whl", hash = "sha256:47bad4fc664d312f603672ef51a53295000e5dbc70b1a8c702d90fd616cc0f57", size = 596973, upload-time = "2026-11-10T06:14:41.437Z" },
 ]
 
 [[package]]
@@ -1821,7 +1825,7 @@ requires-dist = [
     { name = "plotly", specifier = ">=7.0.0,<8.0.0" },
     { name = "pydantic", specifier = ">=2.8.0,<3.0.0" },
     { name = "pyyaml", specifier = ">=6.0.0,<7.0.0" },
-    { name = "qibo", git = "https://github.com/qiboteam/qibo.git?branch=main" },
+    { name = "qibo", specifier = ">=0.3.7,<0.4.0" },
     { name = "qibolab", specifier = ">=0.2.17,<0.3.0" },
     { name = "scikit-learn", specifier = ">=1.3.0,<2.0.0" },
     { name = "scipy", specifier = ">=1.10.1,<2.0.0" },
