@@ -163,6 +163,24 @@ def _plot(
     fitting_report = ""
     t = np.arange(len(data[target, 0]))
 
+    fig = go.Figure()
+    for path, name in enumerate("IQ"):
+        for state in range(2):
+            fig.add_trace(
+                go.Scatter(
+                    x=t,
+                    y=data[target, state][:, path],
+                    name=f"State {state} {name}",
+                    mode="lines",
+                )
+            )
+    fig.update_layout(
+        title="Readout traces",
+        xaxis_title="Time (ns)",
+        yaxis_title="Signal [a.u.]",
+    )
+    figures.append(fig)
+
     if fit is not None:
         fig = go.Figure()
         fig.add_trace(
@@ -181,7 +199,7 @@ def _plot(
                 x=t,
                 y=fit.data[target].imag,
                 opacity=1,
-                name="Imag",
+                name="Imaginary",
                 showlegend=True,
                 mode="lines",
             )
@@ -190,7 +208,7 @@ def _plot(
         fig.update_layout(
             showlegend=True,
             title="Optimal integration kernel",
-            xaxis_title="Readout sample",
+            xaxis_title="Time (ns)",
             yaxis_title="Normalized weight",
         )
 
