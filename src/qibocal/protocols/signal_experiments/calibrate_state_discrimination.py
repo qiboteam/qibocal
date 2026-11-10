@@ -19,11 +19,6 @@ __all__ = ["calibrate_state_discrimination"]
 class CalibrateStateDiscriminationParameters(Parameters):
     """Calibrate State Discrimination inputs."""
 
-    """Frequency step for sweep (Hz)."""
-    nshots: int | None = None
-    """Number of shots."""
-    relaxation_time: int | None = None
-    """Relaxation time (ns)."""
     lowpass_cutoff: float = 10e6
     """Low-pass cutoff (Hz) for the traces.
 
@@ -64,7 +59,7 @@ class CalibrateStateDiscriminationData(Data):
 
     resonator_type: str
     """Resonator type."""
-    lowpass_cutoff: float = 10e6
+    lowpass_cutoff: float
     """Low-pass cutoff (Hz) for the traces."""
     intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Intermediate RO frequency for each qubit."""
