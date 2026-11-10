@@ -15,6 +15,7 @@ from qibocal.auto.operation import (
     Data,
     Parameters,
     Protocol,
+    QubitId,
     QubitPairId,
     Results,
 )
@@ -32,7 +33,7 @@ from qibocal.protocols.utils import (
 
 from .... import update
 from ..utils import order_pair
-from .utils import chevron_fit, chevron_sequence
+from .utils import chevron_fit, chevron_sequence, cz_level2_qubit
 
 __all__ = ["chevron"]
 
@@ -66,12 +67,20 @@ class ChevronParameters(Parameters):
     infer_hybridization: bool = False
     """Infer the CZ interaction branch from the calibration data.
 
-    By default, the final RX pulse of the CZ chevron is applied to the high
-    frequency qubit, assuming the ``|11>-|02>`` interaction. If ``True``, the
-    calibrated frequencies, anharmonicities and flux coefficients are used to
-    determine whether the flux pulse reaches the ``|11>-|02>`` or the
-    ``|11>-|20>`` resonance first, and the final RX pulse is applied to the
-    qubit occupying level 2. Ignored for iSWAP.
+    By default, the CZ interaction branch is the one selected by ``cz_branch``.
+    If ``True``, the calibrated frequencies, anharmonicities and flux coefficients
+    are used to determine whether the flux pulse reaches the ``|11>-|02>`` or the
+    ``|11>-|20>`` resonance first, within the scanned amplitude range.
+    The final RX pulse is applied to the qubit occupying level 2, whose
+    population is inverted, and the fit is initialized accordingly.
+    Ignored for iSWAP.
+    """
+    cz_branch: Literal["11-02", "11-20"] = "11-02"
+    """CZ interaction branch, used if ``infer_hybridization`` is not set.
+
+    States are labelled as ``|low, high>``, with qubits ordered by frequency, so
+    that level 2 is occupied by the high frequency qubit for ``11-02``, and by the
+    low frequency one for ``11-20``. Ignored for iSWAP.
     """
 
     @property
@@ -144,7 +153,13 @@ class ChevronData(Data):
     detuning: dict[QubitPairId, float] = field(default_factory=dict)
     """Expected detuning between qubit in pair."""
     anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
-    """Anhamonicity of high frequency qubit in pair."""
+    """Anharmonicity term of the detuning at the interaction, in GHz.
+
+    The anharmonicity of the high frequency qubit for ``|11>-|02>``, the opposite
+    of the low frequency qubit one for ``|11>-|20>``, and 0 for iSWAP.
+    """
+    level2_qubit: dict[QubitPairId, QubitId] = field(default_factory=dict)
+    """Qubit occupying level 2 in the CZ interaction, not defined for iSWAP."""
     flux_coefficient: dict[QubitPairId, float] = field(default_factory=dict)
     """Flux coefficient to map frequency to amplitude."""
     data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
@@ -222,11 +237,7 @@ def _aquisition(
         * HZ_TO_GHZ
         for pair in data.sorted_pairs
     }
-    data.anharmonicity = {
-        pair: platform.calibration.single_qubits[pair[1]].qubit.anharmonicity
-        * HZ_TO_GHZ
-        for pair in data.sorted_pairs
-    }
+    _set_interaction_branch(params, platform, data)
 
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
@@ -236,7 +247,7 @@ def _aquisition(
             parking=params.parking,
             dt=params.dt,
             native=params.native,
-            infer_hybridization=params.infer_hybridization,
+            level2_qubit=data.level2_qubit.get(pair),
         )
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
@@ -261,15 +272,72 @@ def _aquisition(
             averaging_mode=AveragingMode.CYCLIC,
         )
 
-        data.data[pair[0], pair[1]] = np.stack(
-            [
-                results[ro_low.id],
-                1 - results[ro_high.id]
-                if params.native == "CZ"
-                else results[ro_high.id],
-            ]
+        data.data[pair[0], pair[1]] = invert_level2(
+            data, pair, [results[ro_low.id], results[ro_high.id]]
         )
     return data
+
+
+def _set_interaction_branch(
+    params: ChevronParameters, platform: CalibrationPlatform, data: ChevronData
+):
+    """Store the qubit occupying level 2 and the anharmonicity term of each pair.
+
+    The detuning between the interacting states at zero amplitude, used to
+    initialize the fit, is ``f_high - f_low + anharmonicity``, with
+    ``anharmonicity`` being ``0`` for ``|10>-|01>`` (iSWAP), ``alpha_high`` for
+    ``|11>-|02>`` and ``-alpha_low`` for ``|11>-|20>``.
+    """
+    amplitude_range = (min(data.amplitude), max(data.amplitude))
+    for pair in data.sorted_pairs:
+        level2_qubit = cz_level2_qubit(
+            platform,
+            pair,
+            native=params.native,
+            infer_hybridization=params.infer_hybridization,
+            cz_branch=params.cz_branch,
+            amplitude_range=amplitude_range,
+        )
+        data.anharmonicity[pair] = 0.0
+        if level2_qubit is not None:
+            data.level2_qubit[pair] = level2_qubit
+            sign = 1 if level2_qubit == pair[1] else -1
+            data.anharmonicity[pair] = (
+                sign
+                * platform.calibration.single_qubits[level2_qubit].qubit.anharmonicity
+                * HZ_TO_GHZ
+            )
+
+
+def invert_level2(
+    data: ChevronData, pair: QubitPairId, signals: list[np.ndarray]
+) -> np.ndarray:
+    """Stack the low and high qubit signals, inverting the one of level 2 qubit.
+
+    The final RX pulse maps the initial ``|1>`` state of the qubit occupying level 2
+    to ``|0>``, while it leaves ``|2>`` unchanged, so that its inverted population
+    oscillates in phase with the other qubit one.
+    """
+    level2_qubit = data.level2_qubit.get(pair)
+    return np.stack(
+        [
+            1 - signal if qubit == level2_qubit else signal
+            for qubit, signal in zip(pair, signals)
+        ]
+    )
+
+
+def _resonance_amplitude(amplitude: float, amplitudes: list[float]) -> float:
+    """Signed resonance amplitude, given its absolute value.
+
+    The fit model only depends on the squared amplitude, hence the negative
+    resonance is selected if only that one lies within the scanned amplitudes.
+    """
+
+    def scanned(value):
+        return min(amplitudes) <= value <= max(amplitudes)
+
+    return -amplitude if scanned(-amplitude) and not scanned(amplitude) else amplitude
 
 
 def _fit(data: ChevronData) -> ChevronResults:
@@ -297,7 +365,9 @@ def _fit(data: ChevronData) -> ChevronResults:
                 fitted_parameters[pair].append(popt.tolist())
                 duration[pair].append(np.pi / popt[2])
                 half_duration[pair].append(np.pi / popt[2] / 2)
-                amplitude[pair].append(np.sqrt(-popt[0] / popt[1]))
+                amplitude[pair].append(
+                    _resonance_amplitude(np.sqrt(-popt[0] / popt[1]), data.amplitude)
+                )
             except Exception as e:
                 fitted_parameters[pair].append([])
                 duration[pair].append([])
@@ -316,12 +386,14 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
+    level2_qubit = data.level2_qubit.get(target)
+    inverted = [" (inverted)" if qubit == level2_qubit else "" for qubit in target]
     fig = make_subplots(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {target[0]} - Low Frequency - Data",
-            f"Qubit {target[1]} - High Frequency - Data",
+            f"Qubit {target[0]} - Low Frequency - Data{inverted[0]}",
+            f"Qubit {target[1]} - High Frequency - Data{inverted[1]}",
             f"Qubit {target[0]} - Low Frequency - minmax scaled",
             f"Qubit {target[1]} - High Frequency - minmax scaled",
         ),
@@ -410,18 +482,17 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
             fig.update_yaxes(showticklabels=True, showline=True, row=i, col=j)
 
     if fit is not None:
-        fitting_report = table_html(
-            table_dict(
-                target[1],
-                [f"{fit.native} amplitude", f"{fit.native} duration"],
-                [
-                    np.mean(fit.amplitude[target]),
-                    np.round(np.mean(fit.duration[target]))
-                    if data.native == "CZ"
-                    else np.round(np.mean(fit.half_duration[target])),
-                ],
-            )
-        )
+        names = [f"{fit.native} amplitude", f"{fit.native} duration"]
+        values = [
+            np.mean(fit.amplitude[target]),
+            np.round(np.mean(fit.duration[target]))
+            if data.native == "CZ"
+            else np.round(np.mean(fit.half_duration[target])),
+        ]
+        if level2_qubit is not None:
+            names.append("CZ interaction")
+            values.append("|11>-|02>" if level2_qubit == target[1] else "|11>-|20>")
+        fitting_report = table_html(table_dict(target[1], names, values))
 
     return [fig], fitting_report
 

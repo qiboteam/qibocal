@@ -1,7 +1,7 @@
 import numpy as np
 from qibolab import Delay, PulseSequence, VirtualZ
 
-from qibocal.auto.operation import QubitPairId
+from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.two_qubit_interaction.utils import (
     determine_cz_hybridization_state,
@@ -14,6 +14,32 @@ COUPLER_PULSE_DURATION = 100
 """Duration of coupler pulse."""
 
 
+def cz_level2_qubit(
+    platform: CalibrationPlatform,
+    ordered_pair: QubitPairId,
+    native: str = "CZ",
+    infer_hybridization: bool = False,
+    cz_branch: str = "11-02",
+    amplitude_range: tuple[float, float] | None = None,
+) -> QubitId | None:
+    """Qubit occupying level 2 in the non-computational state of the CZ interaction.
+
+    The branch is either ``cz_branch``, ``|11>-|02>`` or ``|11>-|20>`` in the
+    ``|low, high>`` ordering of ``ordered_pair``, or it is inferred from the
+    calibration data, considering only the resonances within ``amplitude_range``,
+    see :func:`determine_cz_hybridization_state`.
+    No qubit is returned for iSWAP, which involves no level 2.
+    """
+    if native != "CZ":
+        return None
+    if infer_hybridization:
+        hybridization_state, _ = determine_cz_hybridization_state(
+            platform, ordered_pair, amplitude_range
+        )
+        return hybridization_state[2]
+    return ordered_pair[1] if cz_branch == "11-02" else ordered_pair[0]
+
+
 def chevron_sequence(
     platform: CalibrationPlatform,
     ordered_pair: QubitPairId,
@@ -21,14 +47,13 @@ def chevron_sequence(
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,
-    infer_hybridization: bool = False,
+    level2_qubit: QubitId | None = None,
 ):
     """Chevron pulse sequence.
 
-    For CZ, the final RX pulse is applied to the high frequency qubit, assuming
-    the ``|11>-|02>`` interaction. If ``infer_hybridization`` is set, the qubit
-    occupying level 2 is instead inferred from the calibration data, see
-    :func:`determine_cz_hybridization_state`.
+    For CZ, the final RX pulse is applied to ``level2_qubit``, the qubit occupying
+    level 2 in the non-computational state, see :func:`cz_level2_qubit`.
+    It defaults to the high frequency qubit, i.e. the ``|11>-|02>`` interaction.
     """
     sequence = PulseSequence()
     low_natives = platform.natives.single_qubit[ordered_pair[0]]
@@ -68,12 +93,7 @@ def chevron_sequence(
     ro_low_delay = ro_high_delay = drive_delay = Delay(duration=flux_duration)
     dt_delay = Delay(duration=dt)
 
-    state2_qubit = ordered_pair[1]
-    if native == "CZ" and infer_hybridization:
-        hybridization_state, _ = determine_cz_hybridization_state(
-            platform, ordered_pair
-        )
-        state2_qubit = hybridization_state[2]
+    state2_qubit = ordered_pair[1] if level2_qubit is None else level2_qubit
     state2_channel, state2_rx = platform.natives.single_qubit[state2_qubit].RX()[0]
 
     sequence += [

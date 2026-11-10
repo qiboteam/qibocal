@@ -17,10 +17,12 @@ The expected population oscillation pattern follows:
 where :math:`\Delta=\omega_1 - \omega_2`, :math:`g` is the coupling constant for the two qubits and :math:`\phi` takes into account flux distortions.
 
 The pulse sequence used to calibrate the CZ gate is the same as the one for the iSWAP gate, with the addition of an initial :math:`\pi` pulse applied to the qubit with the lower frequency so that both qubits are initially prepared in the :math:`\ket{1}`. With this sequence the CZ gate is implemented leveraging the avoided crossing between the state :math:`\ket{11}` and one of the non-computational states :math:`\ket{02}` or :math:`\ket{20}`, where states are labelled as :math:`\ket{n_L n_H}`, with :math:`L` and :math:`H` the qubits with lower and higher frequency, respectively.
-A final :math:`\pi` pulse is applied before readout to the qubit occupying level 2 in the non-computational state.
+A final :math:`\pi` pulse is applied before readout to the qubit occupying level 2 in the non-computational state: it maps the :math:`\ket{1}` state of that qubit to :math:`\ket{0}`, leaving :math:`\ket{2}` unchanged, so that its population is reported inverted, oscillating in phase with the one of the other qubit.
+The detuning between the interacting states, used to initialize the fit, is :math:`f_H - f_L + \alpha_H` for :math:`\ket{11}`–:math:`\ket{02}`, :math:`f_H - f_L - \alpha_L` for :math:`\ket{11}`–:math:`\ket{20}` and :math:`f_H - f_L` for the iSWAP :math:`\ket{10}`–:math:`\ket{01}` interaction, with :math:`\alpha` the anharmonicities.
+Since the chevron model only depends on the squared amplitude, the fitted amplitude is reported with the sign of the scanned amplitudes.
 
 By default, the interaction is assumed to be the :math:`\ket{11}`–:math:`\ket{02}` one, and the final :math:`\pi` pulse is applied to the qubit with the higher frequency.
-Setting ``infer_hybridization: true`` instead infers the interaction from the calibration data.
+The branch can be selected explicitly with ``cz_branch: 11-20``, or inferred from the calibration data setting ``infer_hybridization: true``.
 Since only the higher-frequency qubit is fluxed, its frequency follows :math:`f_H(A)` as a function of the flux pulse amplitude :math:`A`, given by the calibrated flux coefficients, and the two resonance conditions are
 
 .. math::
@@ -28,9 +30,10 @@ Since only the higher-frequency qubit is fluxed, its frequency follows :math:`f_
 	\ket{11} \leftrightarrow \ket{02}: \quad f_H(A) = f_L - \alpha_H, \qquad
 	\ket{11} \leftrightarrow \ket{20}: \quad f_H(A) = f_L + \alpha_L,
 
-with :math:`\alpha` the anharmonicities.
-Both are solved analytically, and the resonance reached with the smallest :math:`|A|` determines which qubit receives the final :math:`\pi` pulse.
-This requires the ``frequency_01`` and ``frequency_12`` calibrations of both qubits, together with the ``flux_coefficients`` of the higher-frequency qubit, and is ignored for the iSWAP gate.
+Both are solved analytically, keeping only the real resonances within the scanned amplitude range, and the resonance with the smallest :math:`|A|` determines which qubit occupies level 2.
+If neither resonance is reachable within the scanned range, or both are equally distant from zero amplitude, an error is raised, and the branch should be selected explicitly.
+This requires the ``frequency_01`` and ``frequency_12`` calibrations of both qubits, together with the ``flux_coefficients`` of the higher-frequency qubit.
+Both options are ignored for the iSWAP gate.
 
 Parameters
 ^^^^^^^^^^

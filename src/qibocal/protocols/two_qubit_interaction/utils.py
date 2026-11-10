@@ -21,15 +21,23 @@ def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]
 
 
 def determine_cz_hybridization_state(
-    calibration_platform: CalibrationPlatform, pair: QubitPairId
+    calibration_platform: CalibrationPlatform,
+    pair: QubitPairId,
+    amplitude_range: tuple[float, float] | None = None,
 ) -> tuple[dict[int, QubitId], list[float]]:
     """Determine which qubit occupies each level in the CZ hybridized states.
 
     Uses calibrated frequencies, anharmonicities, and flux coefficients to
-    find the flux roots of the 11–02 and 11–20 resonances. The nearest roots
-    to zero are compared to infer which qubit occupies levels 0 and 2.
+    find the flux roots of the 11–02 and 11–20 resonances. Only real roots
+    within ``amplitude_range``, if given, are considered, and the absolute
+    values of the roots nearest to zero are compared to infer which qubit
+    occupies levels 0 and 2.
     This function returns a tuple containing the mapping from level (0 or 2) to qubit
     identifier and the flux values where resonance occurs.
+
+    Raises:
+        ValueError: if calibration data are missing, if no resonance is reachable,
+            or if both resonances are equally distant from zero amplitude.
     """
 
     calibration = calibration_platform.calibration
@@ -84,20 +92,35 @@ def determine_cz_hybridization_state(
         a, b, offset - (low_qubit_f01 + low_qubit_eta)
     )
 
-    # If Omega(high)_12 < Omega(low)_01, the 11 and 02 levels never cross
-    # as flux is varied. In that case there is no real 11-02 resonance point
-    # to compare with the 11-20 crossing, which always occurs.
-    # In fact, since Omega(20) = 2 * Omega(low)_01 + anharm(low)
-    # and Omega(11) = Omega(low)_01 + Omega(high)_01, but Omega(high)_12 < Omega(low)_01 so for
-    # transmons (negative anharmonicity), then is also true that
-    # Omega(high)_01 > Omega(low)_01 + anharm(low).
-    if len(flux_resonance_11_02) > 0:
-        smallest_11_02 = min(flux_resonance_11_02, key=abs)
-        if len(flux_resonance_11_20) == 0 or abs(smallest_11_02) <= abs(
-            min(flux_resonance_11_20, key=abs)
-        ):
-            return {0: low_qubit, 2: high_qubit}, flux_resonance_11_02
+    # only real roots within the supported amplitude interval are reachable.
+    # E.g. if Omega(high)_12 < Omega(low)_01 and the flux pulse can only lower
+    # Omega(high)_01, the 11-02 resonance is never reached.
+    if amplitude_range is not None:
+        low_amplitude, high_amplitude = sorted(amplitude_range)
+        flux_resonance_11_02, flux_resonance_11_20 = (
+            [root for root in roots if low_amplitude <= root <= high_amplitude]
+            for roots in (flux_resonance_11_02, flux_resonance_11_20)
+        )
 
+    # the resonance reached with the smallest flux amplitude determines the branch
+    distance_11_02, distance_11_20 = (
+        min((abs(root) for root in roots), default=np.inf)
+        for roots in (flux_resonance_11_02, flux_resonance_11_20)
+    )
+    if np.isinf(distance_11_02) and np.isinf(distance_11_20):
+        raise ValueError(
+            f"No |11>-|02> or |11>-|20> resonance reachable for pair {pair}"
+            + ("" if amplitude_range is None else f" in {amplitude_range}")
+            + ", select the CZ branch explicitly."
+        )
+    if distance_11_02 == distance_11_20:
+        raise ValueError(
+            f"|11>-|02> and |11>-|20> resonances of pair {pair} are equally distant "
+            "from zero amplitude, select the CZ branch explicitly."
+        )
+
+    if distance_11_02 < distance_11_20:
+        return {0: low_qubit, 2: high_qubit}, flux_resonance_11_02
     return {0: high_qubit, 2: low_qubit}, flux_resonance_11_20
 
 

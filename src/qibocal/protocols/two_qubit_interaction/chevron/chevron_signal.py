@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 
-import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import Protocol, QubitPairId
@@ -17,7 +16,9 @@ from .chevron import (
     ChevronResults,
     _fit,
     _plot,
+    _set_interaction_branch,
     _update,
+    invert_level2,
 )
 from .utils import chevron_sequence
 
@@ -74,6 +75,7 @@ def _aquisition(
         * HZ_TO_GHZ
         for pair in data.sorted_pairs
     }
+    _set_interaction_branch(params, platform, data)
 
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
@@ -83,7 +85,7 @@ def _aquisition(
             parking=params.parking,
             dt=params.dt,
             native=params.native,
-            infer_hybridization=params.infer_hybridization,
+            level2_qubit=data.level2_qubit.get(pair),
         )
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
@@ -116,13 +118,13 @@ def _aquisition(
             averaging_mode=AveragingMode.CYCLIC,
         )
 
-        data.data[pair[0], pair[1]] = np.stack(
+        data.data[pair[0], pair[1]] = invert_level2(
+            data,
+            pair,
             [
-                minmax_scaling(magnitude(results[ro_low.id]), axis=None),
-                1 - minmax_scaling(magnitude(results[ro_high.id]), axis=None)
-                if params.native == "CZ"
-                else minmax_scaling(magnitude(results[ro_high.id]), axis=None),
-            ]
+                minmax_scaling(magnitude(results[ro.id]), axis=None)
+                for ro in (ro_low, ro_high)
+            ],
         )
 
     return data
