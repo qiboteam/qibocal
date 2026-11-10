@@ -9,6 +9,7 @@ from scipy.signal import butter, sosfiltfilt
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import table_dict, table_html
 
 from .utils import _get_lo_frequency
 
@@ -213,6 +214,20 @@ def _plot(
         )
 
         figures.append(fig)
+
+        # the kernel is the conjugate of the separation: compare its SNR with the one
+        # of a square window, which weights all the samples equally
+        kernel = fit.data[target]
+        gain = np.sqrt(
+            len(kernel) * np.sum(np.abs(kernel) ** 2) / np.abs(np.sum(kernel)) ** 2
+        )
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["Estimated SNR gain over square window"],
+                [round(float(gain), 3)],
+            )
+        )
 
     return figures, fitting_report
 
