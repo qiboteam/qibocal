@@ -26,31 +26,12 @@ class CalibrateStateDiscriminationParameters(Parameters):
     """
 
 
-CalibrateStateDiscriminationResType = np.dtype(
-    [
-        ("State 0 kernel", np.float64),
-    ]
-)
-"""Custom dtype for CalibrateStateDiscrimination."""
-
-
 @dataclass
 class CalibrateStateDiscriminationResults(Results):
     """Calibrate State Discrimination outputs."""
 
-    data: dict[
-        tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationResType]
-    ] = field(default_factory=dict)
-    """State 0 kernel"""
-
-
-CalibrateStateDiscriminationType = np.dtype(
-    [
-        ("i", np.float64),
-        ("q", np.float64),
-    ]
-)
-"""Custom dtype for CalibrateStateDiscrimination."""
+    data: dict[QubitId, npt.NDArray[np.complex128]] = field(default_factory=dict)
+    """Integration kernel of each qubit."""
 
 
 @dataclass
@@ -63,9 +44,10 @@ class CalibrateStateDiscriminationData(Data):
     """Low-pass cutoff (Hz) for the traces."""
     intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Intermediate RO frequency for each qubit."""
-    data: dict[tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]] = (
-        field(default_factory=dict)
+    data: dict[tuple[QubitId, int], npt.NDArray[np.float64]] = field(
+        default_factory=dict
     )
+    """Raw traces of each qubit and state, with I and Q on the last axis."""
 
 
 def _acquisition(
@@ -125,16 +107,7 @@ def _acquisition(
     )
     for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:
-            serial = ro_pulses[qubit]
-            result = results[serial]
-            data.register_qubit(
-                CalibrateStateDiscriminationType,
-                (qubit, state),
-                {
-                    "i": result[..., 0],
-                    "q": result[..., 1],
-                },
-            )
+            data.data[qubit, state] = results[ro_pulses[qubit]]
     return data
 
 
@@ -163,7 +136,7 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
         freq = data.intermediate_frequency[qubit]
 
         for state in range(2):
-            trace = data[qubit, state].i + 1.0j * data[qubit, state].q
+            trace = data[qubit, state] @ [1, 1j]
             # remove averaging noise above a few resonator linewidths, and the 2 * IF
             # image, by never exceeding the IF
             cutoff = (
@@ -188,8 +161,7 @@ def _plot(
     # Plot kernels
     figures = []
     fitting_report = ""
-    trace0 = data[target, 0].i + 1.0j * data[target, 0].q
-    t = np.arange(0, len(trace0), 1)
+    t = np.arange(len(data[target, 0]))
 
     if fit is not None:
         fig = go.Figure()
