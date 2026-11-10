@@ -24,6 +24,11 @@ class CalibrateStateDiscriminationParameters(Parameters):
     """Number of shots."""
     relaxation_time: int | None = None
     """Relaxation time (ns)."""
+    lowpass_cutoff: float = 10e6
+    """Low-pass cutoff (Hz) for the traces.
+
+    Choose a few resonator linewidths.
+    """
 
 
 CalibrateStateDiscriminationResType = np.dtype(
@@ -59,6 +64,8 @@ class CalibrateStateDiscriminationData(Data):
 
     resonator_type: str
     """Resonator type."""
+    lowpass_cutoff: float = 10e6
+    """Low-pass cutoff (Hz) for the traces."""
     intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Intermediate RO frequency for each qubit."""
     data: dict[tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]] = (
@@ -118,6 +125,7 @@ def _acquisition(
     }
     data = CalibrateStateDiscriminationData(
         resonator_type=platform.resonator_type,
+        lowpass_cutoff=params.lowpass_cutoff,
         intermediate_frequency=intermediate_frequency,
     )
     for state, ro_pulses in zip([0, 1], all_ro_pulses):
@@ -138,12 +146,13 @@ def _acquisition(
 def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscriminationResults:
     r"""Post-Processing for Calibrate State Discrimination.
 
-    The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. The
-    residual image term (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`) is suppressed by
-    applying a lowpass filter with cutoff at :math:`|f_{\text{IF}}|`, halfway between
-    baseband and the image. The optimal kernel is calculated as the conjugate of the
-    difference between the two traces, and it is normalized to a maximum absolute weight
-    of 1.
+    The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. A lowpass
+    filter at ``lowpass_cutoff`` removes the averaging noise above the readout signal
+    bandwidth. Its cutoff never exceeds :math:`|f_{\text{IF}}|`, halfway between
+    baseband and the residual image (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`),
+    which is then suppressed as well. The optimal kernel is calculated as the conjugate
+    of the difference between the two traces, and it is normalized to a maximum absolute
+    weight of 1.
     """
     qubits = data.qubits
 
@@ -160,10 +169,12 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
         for state in range(2):
             trace = data[qubit, state].i + 1.0j * data[qubit, state].q
-            # attenuate the 2 * IF image; the cutoff at IF lies between it and baseband
-            if freq != 0:
-                trace = lowpass_filter(trace, np.abs(freq))
-            traces.append(trace)
+            # remove averaging noise above a few resonator linewidths, and the 2 * IF
+            # image, by never exceeding the IF
+            cutoff = (
+                min(data.lowpass_cutoff, abs(freq)) if freq else data.lowpass_cutoff
+            )
+            traces.append(lowpass_filter(trace, cutoff))
 
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
