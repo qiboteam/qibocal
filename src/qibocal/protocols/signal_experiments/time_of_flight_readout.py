@@ -19,36 +19,55 @@ MINIMUM_TOF = 28
 """Minimum value for time of flight"""
 
 
+def _window_size(intermediate_frequency: float, sampling_rate: float) -> int:
+    """Number of samples spanning one period of the intermediate frequency.
+
+    The baseline and signal levels are estimated by averaging over this window, so that
+    any residual oscillation at the intermediate frequency (from imperfect I/Q balance)
+    averages out.
+    """
+    period = 1e9 / abs(intermediate_frequency)  # [ns]
+    return max(1, round(period * sampling_rate))
+
+
 @dataclass
 class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
     detuning: float = 20e6
-    """Detuning with respect to corresponding LO frequency [Hz]."""
+    """Detuning with respect to corresponding LO frequency [Hz].
+
+    Must be non-zero: the returned pulse is identified by its oscillation at this
+    frequency, which also separates it from DC offsets and LO leakage.
+    """
     duration: float = 1e3
-    """Duration of the readout pulse."""
+    """Duration of the readout pulse and of the acquired trace [ns]."""
     readout_amplitude: float = 0.5
     """Amplitude of the readout pulse."""
-    window_size: int = 10
-    """Window size for the moving average."""
+
+    def __post_init__(self):
+        if self.detuning == 0:
+            raise ValueError("`detuning` must be non-zero.")
 
 
 @dataclass
 class TimeOfFlightReadoutResults(Results):
     """TimeOfFlightReadout outputs."""
 
-    time_of_flights: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
+    time_of_flights: dict[QubitId, float]
+    """Time of flight of each qubit [ns]."""
 
 
 @dataclass
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
-    windows_size: int
-    sampling_rate: int
+    sampling_rate: float
+    """ADC sampling rate [GSps]."""
     intermediate_frequency: float
+    """Detuning of the probe with respect to the LO [Hz]."""
     amplitude: float
+    """Amplitude of the readout pulse."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -68,7 +87,12 @@ def _acquisition(
             amplitude=params.readout_amplitude,
             envelope=Rectangular(),
         )
-        ro_pulse = replace(ro_pulse, probe=probe)
+        # the RAW trace length is set by the acquisition, so it has to span the probe
+        ro_pulse = replace(
+            ro_pulse,
+            probe=probe,
+            acquisition=replace(ro_pulse.acquisition, duration=params.duration),
+        )
         sequence.append((ro_channel, ro_pulse))
 
     results = platform.execute(
@@ -88,8 +112,8 @@ def _acquisition(
         ],
     )
 
+    assert platform.sampling_rate is not None
     data = TimeOfFlightReadoutData(
-        windows_size=params.window_size,
         sampling_rate=platform.sampling_rate,
         intermediate_frequency=params.detuning,
         amplitude=params.readout_amplitude,
@@ -103,34 +127,30 @@ def _acquisition(
 
 
 def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
-    """Post-processing function for TimeOfFlightReadout."""
+    """Post-processing function for TimeOfFlightReadout.
+
+    The magnitude of the raw trace is compared against a threshold halfway between the
+    baseline level (mean of the first window, before the pulse arrives) and the signal
+    level (mean of the last window, after it has arrived). The time of flight is the
+    time of the first sample above the threshold.
+    """
 
     qubits = data.qubits
     time_of_flights = {}
 
-    window_size = data.windows_size
     sampling_rate = data.sampling_rate
+    window = _window_size(data.intermediate_frequency, sampling_rate)
     for qubit in qubits:
-        delays = []
-        for i in range(2):
-            samples = data.data[qubit][:, i]
-            window_size = int(len(samples) / 10)
-
-            for feat in ["min", "max"]:
-                th = (
-                    getattr(np, feat)(samples[:window_size])
-                    + getattr(np, feat)(samples[:-window_size])
-                ) / 2
-                # try-expect in order to handle sporadic failing with mock
-                try:
-                    delay = np.where(samples < th if feat == "min" else samples > th)[
-                        0
-                    ][0]
-                except IndexError:
-                    delay = 0
-                delays.append(delay)
-        time_of_flight_readout = float(min(delays) / sampling_rate + MINIMUM_TOF)
-        time_of_flights[qubit] = time_of_flight_readout
+        samples = magnitude(data.data[qubit])
+        if len(samples) < 2 * window:
+            raise ValueError(
+                f"Trace of {len(samples)} samples is too short for a window of "
+                f"{window} samples: increase `duration` or `detuning`."
+            )
+        th = (samples[:window].mean() + samples[-window:].mean()) / 2
+        # first sample above the threshold marks the arrival of the signal
+        delay = np.flatnonzero(samples > th)[0]
+        time_of_flights[qubit] = float(delay / sampling_rate + MINIMUM_TOF)
     return TimeOfFlightReadoutResults(time_of_flights)
 
 
@@ -142,37 +162,16 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    sampling_rate = data.sampling_rate
-    y = magnitude(data.data[target])
+    time = np.arange(len(data.data[target])) / data.sampling_rate + MINIMUM_TOF
 
     fig.add_trace(
         go.Scatter(
-            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
-            y=data.data[target][:, 0],
-            textposition="bottom center",
-            name="I",
-            showlegend=True,
-            legendgroup="groupI",
-            mode="markers",
-        ),
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
-            y=data.data[target][:, 1],
-            textposition="bottom center",
-            name="Q",
-            showlegend=True,
-            legendgroup="groupQ",
+            x=time,
+            y=magnitude(data.data[target]),
             mode="markers",
         ),
     )
 
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
-        yaxis_title="Signal [a.u.]",
-    )
     if fit is not None:
         fig.add_vline(
             x=fit.time_of_flights[target],
@@ -186,7 +185,7 @@ def _plot(
                 [
                     "Intermediate Frequency [Hz]",
                     "Readout amplitude [a.u.]",
-                    "Time of flights [ns]",
+                    "Time of flight [ns]",
                 ],
                 [
                     data.intermediate_frequency,
@@ -196,7 +195,6 @@ def _plot(
             )
         )
     fig.update_layout(
-        showlegend=True,
         xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )
