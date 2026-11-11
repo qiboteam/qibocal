@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import dataclasses
 import inspect
 import json
+import typing
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
@@ -228,6 +230,131 @@ class Results(AbstractData):
         super().save(path, filename)
 
 
+def _parameters_type(protocol: Protocol) -> type | None:
+    """Annotated parameters type of the protocol acquisition, if any."""
+    try:
+        parameters = protocol.parameters_type
+    except (StopIteration, TypeError, ValueError, NameError):
+        return None
+    if parameters is inspect.Parameter.empty or not isinstance(parameters, type):
+        return None
+    return parameters
+
+
+def _binding_signature(protocol: Protocol) -> inspect.Signature:
+    """Signature of the binding of `protocol`, with its own parameters.
+
+    The parameters of the protocol become keyword-only arguments, together with the
+    settings shared by all :class:`Parameters`. When the parameters are not a
+    dataclass, the generic signature of :meth:`Protocol._bind` is returned.
+    """
+    generic = inspect.signature(protocol._bind)
+    parameters = _parameters_type(protocol)
+    if parameters is None or not dataclasses.is_dataclass(parameters):
+        return generic
+    try:
+        hints = typing.get_type_hints(parameters)
+    except (NameError, TypeError):
+        hints = {}
+
+    def default(field: dataclasses.Field) -> Any:
+        if field.default is not dataclasses.MISSING:
+            return field.default
+        if field.default_factory is not dataclasses.MISSING:
+            return field.default_factory()
+        return inspect.Parameter.empty
+
+    fields_ = [
+        inspect.Parameter(
+            field.name,
+            inspect.Parameter.KEYWORD_ONLY,
+            default=default(field),
+            annotation=hints.get(field.name, field.type),
+        )
+        for field in dataclasses.fields(parameters)
+        if field.init
+    ]
+    names = {field.name for field in fields_}
+    if issubclass(parameters, Parameters):
+        # shared settings, which are not dataclass fields, cf. `Parameters.load`
+        fields_ += [
+            inspect.Parameter(
+                name,
+                inspect.Parameter.KEYWORD_ONLY,
+                default=None,
+                annotation=hint | None,
+            )
+            for name, hint in typing.get_type_hints(Parameters).items()
+            if name in DEFAULT_PARENT_PARAMETERS and name not in names
+        ]
+    leading = [
+        parameter
+        for parameter in generic.parameters.values()
+        if parameter.kind is not inspect.Parameter.VAR_KEYWORD
+    ]
+    return generic.replace(parameters=leading + fields_)
+
+
+def _binding_doc(protocol: Protocol) -> str:
+    """Docstring of the binding of `protocol`, with its own parameters."""
+    generic = inspect.getdoc(protocol._bind) or ""
+    parameters = _parameters_type(protocol)
+    if parameters is None:
+        return generic
+    doc = inspect.getdoc(parameters)
+    own = f"Bind {parameters.__name__} to this protocol."
+    return f"{own}\n\n{doc}\n\n{generic}" if doc else f"{own}\n\n{generic}"
+
+
+class _Binding:
+    """Binding of a specific protocol, i.e. the bound ``protocol.__call__``.
+
+    Calling it binds parameters to the protocol. It also exposes the signature and
+    docstring of that specific protocol, for interactive tools to display them.
+    """
+
+    def __init__(self, protocol: Protocol):
+        self._protocol = protocol
+
+    @property
+    def __signature__(self) -> inspect.Signature:
+        return _binding_signature(self._protocol)
+
+    @property
+    def __doc__(self) -> str:  # type: ignore[override]
+        return _binding_doc(self._protocol)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> BoundProtocol:
+        return self._protocol._bind(*args, **kwargs)
+
+
+class _CallDescriptor:
+    """``Protocol.__call__``, specific to each protocol.
+
+    Accessed on the class, it is the generic method. Accessed on a protocol, it is the
+    binding of that protocol, whose signature and docstring describe its parameters.
+    """
+
+    def __get__(self, protocol: Protocol | None, owner: type | None = None) -> Any:
+        if protocol is None:
+            return owner._bind if owner is not None else self
+        return _Binding(protocol)
+
+
+class _DocDescriptor:
+    """``Protocol.__doc__``, specific to each protocol.
+
+    Accessed on the class, it is the class docstring. Accessed on a protocol, it
+    describes the binding of its parameters.
+    """
+
+    def __init__(self, doc: str):
+        self._doc = doc
+
+    def __get__(self, protocol: Protocol | None, owner: type | None = None) -> str:
+        return self._doc if protocol is None else _binding_doc(protocol)
+
+
 # Type variables for generic Protocol
 _ParametersT = TypeVar("_ParametersT")
 _FitParsT = TypeVar("_FitParsT")
@@ -238,7 +365,8 @@ _ResultsT = TypeVar("_ResultsT")
 
 @dataclass
 class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]):
-    """A calibration protocol with explicit type-safe interface.
+    __doc__ = _DocDescriptor(  # type: ignore[assignment]
+        """A calibration protocol with explicit type-safe interface.
 
     This protocol definition separates concerns into distinct phases:
     - acquisition: collects raw data from hardware
@@ -254,7 +382,12 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
         _ReportParsT: Type of report function parameters
         _DataT: Type of data returned by acquisition
         _ResultsT: Type of results returned by fit
+
+    Calling a protocol binds its parameters, cf. :meth:`_bind`. The signature and
+    docstring of each protocol's call describe its own parameters, for interactive
+    tools (e.g. IPython, Jupyter, and editors' completion) to display them.
     """
+    )
 
     acquisition: Callable[..., _DataT]
     """Acquire data with parameters and optional platform/targets."""
@@ -290,7 +423,10 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
             return None
         return inspect.signature(self.fit, eval_str=True).return_annotation
 
-    def __call__(
+    __call__ = _CallDescriptor()
+    """Bind parameters to this protocol, cf. :meth:`_bind`."""
+
+    def _bind(
         self,
         pars: _ParametersT | None = None,
         fit: _FitParsT | None = None,
