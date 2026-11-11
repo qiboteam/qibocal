@@ -51,8 +51,7 @@ def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
 
     The shots are projected on the line joining the two means, and the SNR is the
     separation of the means over the single-shot noise on their difference,
-    :math:`|\mu_1 - \mu_0| / \sqrt{\sigma_0^2 + \sigma_1^2}`, as in Eq. (115) of
-    Blais et al., Rev. Mod. Phys. 93, 025005 (2021).
+    :math:`|\mu_1 - \mu_0| / \sqrt{\sigma_0^2 + \sigma_1^2}`.
     """
     line = np.mean(ones, axis=0) - np.mean(zeros, axis=0)
     projection_zeros, projection_ones = np.dot(zeros, line), np.dot(ones, line)
