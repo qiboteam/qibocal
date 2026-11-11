@@ -1,6 +1,7 @@
 id: resonator_flux
 operation: resonator_flux
 parameters:
+  amplitude: 0.1
   bias_center: 0.0
   bias_step: 0.02
   bias_width: 1.9

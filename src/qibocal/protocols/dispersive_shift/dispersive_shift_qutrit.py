@@ -84,9 +84,6 @@ def _acquisition(
 
     """
 
-    if params.amplitude is None:
-        raise ValueError("The readout probe 'amplitude' is required.")
-
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
     sequence_2 = PulseSequence()

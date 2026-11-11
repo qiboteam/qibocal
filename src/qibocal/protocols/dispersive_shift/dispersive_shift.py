@@ -45,12 +45,8 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
-    amplitude: float | None = None
-    """Readout probe amplitude, the same for all qubits.
-
-    It is required to acquire data. It is optional only to load reports produced by
-    previous versions, which used the calibrated measurement.
-    """
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
     duration: float = 2000
     """Readout probe duration [ns], the same for all qubits.
 
@@ -118,10 +114,8 @@ class DispersiveShiftData(Data):
 def readout(
     params: DispersiveShiftParameters, platform: CalibrationPlatform, qubit: QubitId
 ) -> PulseSequence:
-    """Rectangular readout, independent of the calibrated measurements."""
+    """Rectangular readout, with the input amplitude and duration."""
     channel = platform.qubits[qubit].acquisition
-    if channel is None:
-        raise ValueError(f"Acquisition channel for qubit {qubit} not defined.")
     probe = Pulse(
         duration=params.duration, amplitude=params.amplitude, envelope=Rectangular()
     )
@@ -144,9 +138,6 @@ def _acquisition(
         platform (CalibrationPlatform): Qibolab platform object
         targets (list): list of target qubits to perform the action
     """
-
-    if params.amplitude is None:
-        raise ValueError("The readout probe 'amplitude' is required.")
 
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()

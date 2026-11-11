@@ -41,12 +41,8 @@ class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
 
     bias_center: float | None = None
     freq_center: float | None = None
-    amplitude: float | None = None
-    """Readout probe amplitude, the same for all qubits.
-
-    It is required to acquire data. It is optional only to load reports produced by
-    previous versions, which used the calibrated measurement.
-    """
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
     duration: float = 2000
     """Readout probe duration [ns], the same for all qubits.
 
@@ -123,9 +119,6 @@ def _acquisition(
     The resonators are probed with rectangular readouts, independent of the calibrated
     measurements.
     """
-    if params.amplitude is None:
-        raise ValueError("The readout probe 'amplitude' is required.")
-
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
@@ -138,8 +131,6 @@ def _acquisition(
     offset_sweepers = []
     for q in targets:
         ro_channel = platform.qubits[q].acquisition
-        if ro_channel is None:
-            raise ValueError(f"Acquisition channel for qubit {q} not defined.")
         ro_pulses[q] = Readout(
             acquisition=Acquisition(duration=params.duration),
             probe=Pulse(
