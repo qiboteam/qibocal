@@ -28,8 +28,9 @@ Example
 .. image:: kernels.png
 
 In the fitting procedure a low-pass filter at ``lowpass_cutoff`` (ideally a few
-resonator linewidths) removes the averaging noise from the acquired traces. Its cutoff
-never exceeds the intermediate frequency, so that the residual image at twice the
+resonator linewidths) removes the averaging noise from the acquired traces. If
+``lowpass_cutoff`` is not set, the intermediate frequency is used as the cutoff. The
+cutoff never exceeds the intermediate frequency, so that the residual image at twice the
 intermediate frequency is attenuated as well. The optimal kernel is then calculated by
 taking the conjugate of the differences of the two traces. It is normalized to a maximum
 absolute weight of 1. Since the kernel changes the integrated IQ plane, the readout

@@ -20,10 +20,10 @@ __all__ = ["calibrate_state_discrimination"]
 class CalibrateStateDiscriminationParameters(Parameters):
     """Calibrate State Discrimination inputs."""
 
-    lowpass_cutoff: float = 10e6
+    lowpass_cutoff: float | None = None
     """Low-pass cutoff (Hz) for the traces.
 
-    Choose a few resonator linewidths.
+    Choose a few resonator linewidths. If ``None``, the intermediate frequency is used.
     """
 
 
@@ -39,7 +39,7 @@ class CalibrateStateDiscriminationResults(Results):
 class CalibrateStateDiscriminationData(Data):
     """CalibrateStateDiscrimination acquisition outputs."""
 
-    lowpass_cutoff: float
+    lowpass_cutoff: float | None
     """Low-pass cutoff (Hz) for the traces."""
     intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Intermediate RO frequency for each qubit."""
@@ -113,11 +113,12 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
     The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. A lowpass
     filter at ``lowpass_cutoff`` removes the averaging noise above the readout signal
-    bandwidth. Its cutoff never exceeds :math:`|f_{\text{IF}}|`, halfway between
-    baseband and the residual image (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`),
-    which is then suppressed as well. The optimal kernel is calculated as the conjugate
-    of the difference between the two traces, and it is normalized to a maximum absolute
-    weight of 1.
+    bandwidth. If ``lowpass_cutoff`` is ``None``, the cutoff is set to the IF. The
+    cutoff never exceeds :math:`|f_{\text{IF}}|`, halfway between baseband and the
+    residual image (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`), which is then
+    suppressed as well. The optimal kernel is calculated as the conjugate of the
+    difference between the two traces, and it is normalized to a maximum absolute weight
+    of 1.
     """
     qubits = data.qubits
 
@@ -130,16 +131,16 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
     for qubit in qubits:
         traces = []
-        freq = data.intermediate_frequency[qubit]
+        freq = abs(data.intermediate_frequency[qubit])
+        # remove averaging noise above a few resonator linewidths, and the 2 * IF image,
+        # by never exceeding the IF
+        cutoff = data.lowpass_cutoff
+        if freq:
+            cutoff = freq if cutoff is None else min(cutoff, freq)
 
         for state in range(2):
             trace = data[qubit, state] @ [1, 1j]
-            # remove averaging noise above a few resonator linewidths, and the 2 * IF
-            # image, by never exceeding the IF
-            cutoff = (
-                min(data.lowpass_cutoff, abs(freq)) if freq else data.lowpass_cutoff
-            )
-            traces.append(lowpass_filter(trace, cutoff))
+            traces.append(trace if cutoff is None else lowpass_filter(trace, cutoff))
 
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
