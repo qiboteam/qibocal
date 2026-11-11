@@ -11,8 +11,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 import numpy.typing as npt
-
-from ..utils import robust_std
+from scipy.stats import median_abs_deviation
 
 __all__ = ["CoreRegion", "core_region", "rotate"]
 
@@ -104,7 +103,10 @@ def core_region(ground: npt.NDArray, excited: npt.NDArray) -> CoreRegion:
     excluded.
     """
     cores = [
-        (np.median(points, axis=0), robust_std(points, axis=0))
+        (
+            np.median(points, axis=0),
+            median_abs_deviation(points, axis=0, scale="normal"),
+        )
         for points in (ground, excited)
     ]
     region = CoreRegion(
