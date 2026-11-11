@@ -4,7 +4,7 @@ from qibolab import AcquisitionType, PulseSequence
 
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import plot_results, readout_frequency
+from qibocal.protocols.utils import readout_frequency
 
 from ...auto.operation import Results
 from ..classification.classification import (
@@ -12,11 +12,8 @@ from ..classification.classification import (
     SingleShotClassificationData,
     SingleShotClassificationParameters,
 )
+from .plot import plot_results
 
-COLUMNWIDTH = 600
-LEGEND_FONT_SIZE = 20
-TITLE_SIZE = 25
-SPACING = 0.1
 DEFAULT_CLASSIFIER = "naive_bayes"
 
 __all__ = ["qutrit_classification"]
