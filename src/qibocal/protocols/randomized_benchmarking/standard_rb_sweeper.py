@@ -1,7 +1,7 @@
 import numpy as np
 from qibo.backends import NumpyBackend
 from qibo.gates import U3, Unitary
-from qibo.transpiler.unitary_decompositions import u3_decomposition
+from qibo.transpiler.decompositions.unitary_decompositions import u3_decomposition
 from qibolab import (
     AcquisitionType,
     AveragingMode,
