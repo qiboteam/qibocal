@@ -295,3 +295,30 @@ def test_iswap_phase_correction(platform, phases):
         assert isinstance(vz, VirtualZ)
         key = (qubit, pair[1 - pair.index(qubit)])
         assert vz.phase == pytest.approx(fit.virtual_phase[key])
+
+
+@pytest.mark.parametrize(
+    "theta, expected",
+    [
+        ((0.2, 6.2, 0.2), (0.2, 6.2, 0.2)),
+        (("linspace", 0, 2 * np.pi, 5), (0, 2 * np.pi, np.pi / 2)),
+        (("window", np.pi, 2, 0.5), (np.pi - 1, np.pi + 1, 0.5)),
+    ],
+)
+def test_theta_range(theta, expected):
+    params = VirtualZPhasesParameters.load({"theta": theta})
+    assert params.theta_range() == pytest.approx(expected)
+    # theta takes precedence over the legacy parameters
+    params = VirtualZPhasesParameters.load(
+        {"theta": theta, "theta_start": 1, "theta_end": 2, "theta_step": 0.1}
+    )
+    assert params.theta_range() == pytest.approx(expected)
+
+
+def test_theta_range_legacy_and_missing():
+    params = VirtualZPhasesParameters.load(
+        {"theta_start": 0, "theta_end": 3, "theta_step": 0.5}
+    )
+    assert params.theta_range() == (0, 3, 0.5)
+    with pytest.raises(AssertionError, match="Either theta"):
+        VirtualZPhasesParameters.load({}).theta_range()

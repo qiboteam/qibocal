@@ -34,6 +34,11 @@ Below is an example runcard for this experiment.
         theta_start: 0
         theta_step: 0.5
 
+Alternatively, the sweep can be specified with ``theta``, which accepts any
+:class:`qibocal.protocols.utils.RangeLike` and takes precedence over
+``theta_start``, ``theta_end`` and ``theta_step``, e.g.
+``theta: [linspace, 0, 6.28, 20]``.
+
 The expected output is the following:
 
 .. image:: virtual_z.png
