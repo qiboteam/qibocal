@@ -72,8 +72,6 @@ def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     path = f"native_gates.single_qubit.{qubit}.MZ"
     if platform.natives.single_qubit[qubit].MZ is None:
         channel = platform.qubits[qubit].acquisition
-        if channel is None:
-            raise ValueError(f"Acquisition channel for qubit {qubit} not defined.")
         readout = Readout(
             acquisition=Acquisition(duration=DEFAULT_READOUT_DURATION),
             probe=Pulse(

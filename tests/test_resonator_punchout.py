@@ -54,7 +54,7 @@ def test_rectangular_probe(platform, mocker, acquisition, parameters, sweeps):
 
 
 def test_legacy_frequency_ranges():
-    """Legacy ranges sweep the same frequencies as previous versions."""
+    """The deprecated width and step define the frequency ranges."""
     center, width, step = 7e9, 10e6, 1e6
     punchout = ResonatorPunchoutParameters.load(
         {"freq_width": width, "freq_step": step, **AMPLITUDES}

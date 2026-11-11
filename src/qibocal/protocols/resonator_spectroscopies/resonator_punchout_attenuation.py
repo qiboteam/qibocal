@@ -165,10 +165,7 @@ def _acquisition(
     ro_pulses = {}
     freq_sweepers = {}
     for qubit in targets:
-        # rectangular readouts, independent of the calibrated measurements
         ro_channel = platform.qubits[qubit].acquisition
-        if ro_channel is None:
-            raise ValueError(f"Acquisition channel for qubit {qubit} not defined.")
         ro_pulse = Readout(
             acquisition=Acquisition(duration=params.duration),
             probe=Pulse(

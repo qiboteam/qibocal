@@ -140,15 +140,13 @@ def _acquisition(
     """Data acquisition for Punchout over amplitude.
 
     The sequence is made of simultaneous rectangular readouts, whose duration is given
-    as input, independently of the calibrated measurements. Their amplitude is swept.
+    as input. Their amplitude is swept.
     """
     ro_pulses = {}
     freq_sweepers = {}
     sequence = PulseSequence()
     for qubit in targets:
         ro_channel = platform.qubits[qubit].acquisition
-        if ro_channel is None:
-            raise ValueError(f"Acquisition channel for qubit {qubit} not defined.")
         ro_pulses[qubit] = Readout(
             acquisition=Acquisition(duration=params.duration),
             probe=Pulse(
