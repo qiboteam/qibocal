@@ -6,7 +6,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Generic, NewType, TypeVar
+from typing import Any, NewType
 
 import numpy as np
 import numpy.typing as npt
@@ -228,16 +228,8 @@ class Results(AbstractData):
         super().save(path, filename)
 
 
-# Type variables for generic Protocol
-_ParametersT = TypeVar("_ParametersT")
-_FitParsT = TypeVar("_FitParsT")
-_ReportParsT = TypeVar("_ReportParsT")
-_DataT = TypeVar("_DataT")
-_ResultsT = TypeVar("_ResultsT")
-
-
 @dataclass
-class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]):
+class Protocol[ParametersT, FitParsT, ReportParsT, DataT, ResultsT]:
     """A calibration protocol with explicit type-safe interface.
 
     This protocol definition separates concerns into distinct phases:
@@ -249,17 +241,17 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
     All phases except acquisition are optional, allowing flexible workflow composition.
 
     Type Parameters:
-        _ParametersT: Type of acquisition parameters
-        _FitParsT: Type of fit function parameters
-        _ReportParsT: Type of report function parameters
-        _DataT: Type of data returned by acquisition
-        _ResultsT: Type of results returned by fit
+        ParametersT: Type of acquisition parameters
+        FitParsT: Type of fit function parameters
+        ReportParsT: Type of report function parameters
+        DataT: Type of data returned by acquisition
+        ResultsT: Type of results returned by fit
     """
 
-    acquisition: Callable[..., _DataT]
+    acquisition: Callable[..., DataT]
     """Acquire data with parameters and optional platform/targets."""
 
-    fit: Callable[..., _ResultsT] | None = None
+    fit: Callable[..., ResultsT] | None = None
     """Process data and produce results. Takes data and optional fit params."""
 
     report: Callable[..., Any] | None = None
@@ -292,9 +284,9 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
 
     def __call__(
         self,
-        pars: _ParametersT | None = None,
-        fit: _FitParsT | None = None,
-        report: _ReportParsT | None = None,
+        pars: ParametersT | None = None,
+        fit: FitParsT | None = None,
+        report: ReportParsT | None = None,
         **kwargs: Any,
     ) -> BoundProtocol:
         """Bind parameters to this protocol.
@@ -324,23 +316,23 @@ class Protocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
 
 
 @dataclass
-class BoundProtocol(Generic[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]):
+class BoundProtocol[ParametersT, FitParsT, ReportParsT, DataT, ResultsT]:
     """A protocol bound with specific parameters and execution configuration.
 
     This represents a specific protocol execution with all required parameters
     and optional phase parameters already determined.
     """
 
-    protocol: Protocol[_ParametersT, _FitParsT, _ReportParsT, _DataT, _ResultsT]
+    protocol: Protocol[ParametersT, FitParsT, ReportParsT, DataT, ResultsT]
     """The protocol being bound."""
 
-    parameters: _ParametersT
+    parameters: ParametersT
     """Acquisition parameters."""
 
-    fitpars: _FitParsT | None = None
+    fitpars: FitParsT | None = None
     """Optional fit phase parameters."""
 
-    reportpars: _ReportParsT | None = None
+    reportpars: ReportParsT | None = None
     """Optional report phase parameters."""
 
 

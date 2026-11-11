@@ -64,7 +64,7 @@ requires = ["uv_build>=0.12.9,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
