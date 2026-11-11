@@ -28,7 +28,7 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.calibration.calibration import QubitId
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import Range, RangeLike, table_dict, table_html, to_range
 
 from ... import update
 from ...update import replace
@@ -41,16 +41,39 @@ __all__ = ["correct_virtual_z_phases", "create_sequence", "fit_sinusoid", "phase
 class VirtualZPhasesParameters(Parameters):
     """VirtualZ runcard inputs."""
 
-    theta_start: float
+    theta: RangeLike | None = None
+    """Angles for the virtual phase sweep [rad].
+
+    See :class:`qibocal.protocols.utils.RangeLike`. Takes precedence over
+    ``theta_start``, ``theta_end`` and ``theta_step``.
+    """
+    theta_start: float | None = None
     """Initial angle for the low frequency qubit measurement in radians."""
-    theta_end: float
+    theta_end: float | None = None
     """Final angle for the low frequency qubit measurement in radians."""
-    theta_step: float
+    theta_step: float | None = None
     """Step size for the theta sweep in radians."""
     native: Literal["CZ", "iSWAP"] = "CZ"
     """Two-qubit interaction to be calibrated, either CZ or iSWAP."""
     dt: float = 16
     """Time delay between flux pulses and readout."""
+
+    def theta_range(self) -> Range:
+        """Range of the virtual phase sweep, as ``(start, stop, step)``."""
+
+        def legacy_range() -> Range:
+            assert self.theta_start is not None, (
+                "Either theta or theta_start, theta_end, theta_step must be provided."
+            )
+            assert self.theta_end is not None
+            assert self.theta_step is not None
+            return (self.theta_start, self.theta_end, self.theta_step)
+
+        return (
+            to_range(self.theta, center=0.0)
+            if self.theta is not None
+            else legacy_range()
+        )
 
 
 @dataclass
@@ -242,8 +265,7 @@ def _acquisition(
         tuple[QubitId, QubitId, Literal["I", "X"]], tuple[PulseId, PulseId]
     ] = {}
 
-    range_ = (params.theta_start, params.theta_end, params.theta_step)
-    thetas = np.arange(*range_)
+    thetas = np.arange(*params.theta_range())
     # RZ(theta) compiles to VirtualZ(phase=-theta). The fit returns the
     # opposite frame shift, which cancels the gate's unwanted single-qubit phase.
     vzphases = -thetas
