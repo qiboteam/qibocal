@@ -26,13 +26,12 @@ from qibocal.protocols.utils import (
     MESH_SIZE,
     evaluate_grid,
     format_error_single_cell,
-    get_color_state0,
     round_report,
     table_dict,
     table_html,
 )
 
-from .plot import plot_results
+from .plot import CLASSIFIER_COLORS, plot_results
 
 ROC_LENGHT = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
@@ -370,7 +369,7 @@ def _plot(
                         y=tpr,
                         name=name,
                         mode="lines",
-                        marker={"size": 3, "color": get_color_state0(i)},
+                        line={"color": CLASSIFIER_COLORS[i % len(CLASSIFIER_COLORS)]},
                     )
                 )
             fig_roc.update_layout(

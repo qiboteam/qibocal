@@ -1,6 +1,5 @@
 from collections import Counter
 from collections.abc import Sequence
-from colorsys import hls_to_rgb
 from enum import StrEnum
 from typing import Literal
 
@@ -25,9 +24,7 @@ S_TO_NS = 1e9
 MESH_SIZE = 50
 MARGIN = 0
 SPACING = 0.1
-COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
-TITLE_SIZE = 25
 EXTREME_CHI = 1e4
 """Chi2 output when errors list contains zero elements"""
 KB = constants.k
@@ -393,14 +390,6 @@ def chi2_reduced_complex(
     return chi2_real + chi2_imag
 
 
-def get_color_state0(number) -> str:
-    return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
-
-
-def get_color_state1(number) -> str:
-    return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
-
-
 def significant_digit(number: float) -> int:
     """Computes the position of the first significant digit of a given number.
 
@@ -426,18 +415,6 @@ def significant_digit(number: float) -> int:
         position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
 
     return int(position)
-
-
-def robust_std(values: ArrayLike, axis: int | None = None) -> float | NDArray:
-    """Standard deviation estimated from the median absolute deviation.
-
-    It is insensitive to a minority of outliers, unlike :func:`numpy.std`. For a
-    Gaussian distribution, it coincides with the standard deviation.
-    """
-    values = np.asarray(values)
-    median = np.median(values, axis=axis, keepdims=True)
-    spread = 1.4826 * np.median(np.abs(values - median), axis=axis)
-    return float(spread) if np.ndim(spread) == 0 else spread
 
 
 def evaluate_grid(

@@ -4,7 +4,9 @@ import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.colors import hex_to_rgb
 from plotly.subplots import make_subplots
+from scipy.stats import median_abs_deviation
 from scipy.stats import norm as scipy_norm
 
 from qibocal.auto.operation import Data, QubitId, Results
@@ -14,16 +16,14 @@ from ..utils import (
     LEGEND_FONT_SIZE,
     SPACING,
     evaluate_grid,
-    get_color_state1,
-    robust_std,
 )
 
 __all__ = ["plot_results"]
 
 STATE_COLORS = px.colors.qualitative.Plotly
 """Colors of the prepared states."""
-BOUNDARY_COLORS = px.colors.qualitative.Dark2
-"""Colors of the classifiers' decision boundaries."""
+CLASSIFIER_COLORS = px.colors.qualitative.Dark2
+"""Colors of the classifiers, in their decision boundaries and benchmarks."""
 BOUNDARY_DASHES = ["dash", "dot", "dashdot", "longdash"]
 """Line styles of the classifiers' decision boundaries, distinguishing overlapping
 ones."""
@@ -54,7 +54,7 @@ one over-represents them, merging the cores of overlapping states.
 
 def _rgba(color: str, alpha: float) -> str:
     """Convert a hex color to an RGBA string."""
-    red, green, blue = (int(color[i : i + 2], 16) for i in (1, 3, 5))
+    red, green, blue = hex_to_rgb(color)
     return f"rgba({red},{green},{blue},{alpha})"
 
 
@@ -70,9 +70,15 @@ def _bin_width(spread: float, shots: int, dimensions: int) -> float:
 
 
 def _narrowest_spread(states: list[npt.NDArray], extent: float) -> float:
-    """Smallest standard deviation of the states, in any coordinate."""
+    """Smallest standard deviation of the states, in any coordinate.
+
+    It is estimated from the median absolute deviation, insensitive to a minority of
+    outliers.
+    """
     spreads = [
-        float(s) for state in states for s in np.atleast_1d(robust_std(state, axis=0))
+        float(s)
+        for state in states
+        for s in np.atleast_1d(median_abs_deviation(state, axis=0, scale="normal"))
     ]
     return min((s for s in spreads if s > 0), default=extent)
 
@@ -92,11 +98,6 @@ def _edges(states: list[npt.NDArray]) -> npt.NDArray:
     bins = int(np.clip(np.ceil(extent / width), MIN_BINS, MAX_BINS))
     width = extent / bins
     return low + width * np.arange(bins + 1)[:, np.newaxis]
-
-
-def _rgb(color: str) -> npt.NDArray:
-    """Convert a hex color to RGB components."""
-    return np.array([int(color[i : i + 2], 16) for i in (1, 3, 5)], dtype=float)
 
 
 def _density(states: list[npt.NDArray], edges: npt.NDArray) -> go.Image:
@@ -119,7 +120,9 @@ def _density(states: list[npt.NDArray], edges: npt.NDArray) -> go.Image:
     )
     total = counts.sum(axis=0)
     weights = np.divide(counts, total, out=np.zeros_like(counts), where=total > 0)
-    colors = np.array([_rgb(STATE_COLORS[state]) for state in range(len(states))])
+    colors = np.array(
+        [hex_to_rgb(STATE_COLORS[state]) for state in range(len(states))], dtype=float
+    )
     rgb = np.rint(np.einsum("syx,sc->yxc", weights, colors))
     opacity = np.round((total / max(total.max(), 1)) ** OPACITY_EXPONENT, 3)
     width = edges[1] - edges[0]
@@ -210,7 +213,7 @@ def _boundaries(
                 line={
                     "width": 2,
                     "dash": BOUNDARY_DASHES[i % len(BOUNDARY_DASHES)],
-                    "color": BOUNDARY_COLORS[i % len(BOUNDARY_COLORS)],
+                    "color": CLASSIFIER_COLORS[i % len(CLASSIFIER_COLORS)],
                 },
                 name=f"{run.pretty_name(model)} boundary",
                 hoverinfo="skip",
@@ -358,7 +361,10 @@ def _benchmarks(qubit: QubitId, models: list[str], fit: Results) -> go.Figure:
                     y=[fit.benchmark_table[qubit][i][plot]],
                     mode="markers",
                     showlegend=False,
-                    marker={"size": 10, "color": get_color_state1(i)},
+                    marker={
+                        "size": 10,
+                        "color": CLASSIFIER_COLORS[i % len(CLASSIFIER_COLORS)],
+                    },
                 ),
                 row=1,
                 col=plot + 1,
@@ -389,7 +395,7 @@ def plot_results(
     ]
 
     figures = [_iq_plane(data, qubit, states, fit)]
-    if fit is not None and qubit in getattr(fit, "rotation_angle", {}):
+    if fit is not None and qubit in fit.rotation_angle:
         figures.append(_histogram(qubit, states, fit))
     if fit is not None and len(data.classifiers_list) != 1:
         figures.append(_benchmarks(qubit, data.classifiers_list, fit))
