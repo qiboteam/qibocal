@@ -2,7 +2,17 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    Acquisition,
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    Sweeper,
+)
 from scipy.ndimage import median_filter
 from scipy.signal import find_peaks
 
@@ -31,6 +41,17 @@ class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
 
     bias_center: float | None = None
     freq_center: float | None = None
+    amplitude: float | None = None
+    """Readout probe amplitude, the same for all qubits.
+
+    It is required to acquire data. It is optional only to load reports produced by
+    previous versions, which used the calibrated measurement.
+    """
+    duration: float = 2000
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
 
 
 @dataclass
@@ -97,7 +118,13 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorFluxData:
-    """Data acquisition for ResonatorFlux experiment."""
+    """Data acquisition for ResonatorFlux experiment.
+
+    The resonators are probed with rectangular readouts, independent of the calibrated
+    measurements.
+    """
+    if params.amplitude is None:
+        raise ValueError("The readout probe 'amplitude' is required.")
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
@@ -110,9 +137,18 @@ def _acquisition(
     freq_sweepers = []
     offset_sweepers = []
     for q in targets:
-        ro_sequence = platform.natives.single_qubit[q].MZ()
-        ro_pulses[q] = ro_sequence[0][1]
-        sequence += ro_sequence
+        ro_channel = platform.qubits[q].acquisition
+        if ro_channel is None:
+            raise ValueError(f"Acquisition channel for qubit {q} not defined.")
+        ro_pulses[q] = Readout(
+            acquisition=Acquisition(duration=params.duration),
+            probe=Pulse(
+                duration=params.duration,
+                amplitude=params.amplitude,
+                envelope=Rectangular(),
+            ),
+        )
+        sequence.append((ro_channel, ro_pulses[q]))
 
         qubit = platform.qubits[q]
         offset0 = platform.config(qubit.flux).offset
