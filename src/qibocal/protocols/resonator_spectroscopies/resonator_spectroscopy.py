@@ -4,7 +4,17 @@ from dataclasses import dataclass, field, fields
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    Acquisition,
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -19,7 +29,6 @@ from qibocal.protocols.utils import (
     to_range,
 )
 from qibocal.result import magnitude, phase
-from qibocal.update import replace
 
 from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
 
@@ -92,9 +101,13 @@ class ResonatorSpectroscopyParameters(Parameters):
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
-    amplitude: float | None = None
-    """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
-    Otherwise the default amplitude defined on the platform runcard will be used"""
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
+    duration: float = 2000
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
 
     def __post_init__(self):
         if isinstance(self.power_level, str):
@@ -166,27 +179,27 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorSpectroscopyData:
-    """Data acquisition for resonator spectroscopy."""
-    # create a sequence of pulses for the experiment:
-    # MZ
+    """Data acquisition for resonator spectroscopy.
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    The sequence is made of simultaneous rectangular readouts, whose amplitude and
+    duration are given as inputs.
+    """
     sequence = PulseSequence()
     ro_pulses = {}
     amplitudes = {}
 
     for q in targets:
-        natives = platform.natives.single_qubit[q]
-        channel, pulse = natives.MZ()[0]
-
-        if params.amplitude is not None:
-            probe = replace(pulse.probe, amplitude=params.amplitude)
-            pulse = replace(pulse, probe=probe)
-
-        amplitudes[q] = pulse.probe.amplitude
-
-        ro_pulses[q] = pulse
-        sequence.append((channel, pulse))
+        readout = Readout(
+            acquisition=Acquisition(duration=params.duration),
+            probe=Pulse(
+                duration=params.duration,
+                amplitude=params.amplitude,
+                envelope=Rectangular(),
+            ),
+        )
+        amplitudes[q] = params.amplitude
+        ro_pulses[q] = readout
+        sequence.append((platform.qubits[q].acquisition, readout))
 
     sweepers = [
         Sweeper(
@@ -282,7 +295,6 @@ def _update(
 ):
     update.readout_frequency(results.frequency[target], platform, target)
     if len(results.bare_frequency) == 0:
-        update.readout_amplitude(results.amplitude[target], platform, target)
         update.dressed_resonator_frequency(results.frequency[target], platform, target)
 
     else:
