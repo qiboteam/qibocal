@@ -55,9 +55,11 @@ def test_rectangular_probe(
         assert readout.probe.duration == readout.acquisition.duration == 1000
 
 
-@pytest.mark.parametrize("acquisition, parameters, extra, _", PROTOCOLS)
-def test_amplitude_required(platform, acquisition, parameters, extra, _):
-    params = parameters.load({"frequency": ["center", 2e6, 1e6], **extra})
-    assert params.duration == 2000
-    with pytest.raises(ValueError, match="'amplitude' is required"):
-        acquisition(params, platform, [0])
+@pytest.mark.parametrize("parameters, extra", [(p, e) for _, p, e, _ in PROTOCOLS])
+def test_amplitude_required(parameters, extra):
+    loaded = parameters.load(
+        {"frequency": ["center", 2e6, 1e6], "amplitude": 0.1, **extra}
+    )
+    assert loaded.duration == 2000
+    with pytest.raises(TypeError, match="amplitude"):
+        parameters.load({"frequency": ["center", 2e6, 1e6], **extra})
