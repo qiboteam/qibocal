@@ -388,8 +388,11 @@ def _update(
         target if target in platform.natives.two_qubit else reversed_target
     )
 
+    # CZ requires a full oscillation |11> -> |02> -> |11>, while iSWAP
+    # corresponds to the semi-period of the fitted oscillation.
+    duration = results.duration if results.native == "CZ" else results.half_duration
     getattr(update, f"{results.native}_duration")(
-        np.mean(results.duration[result_target]), platform, platform_target
+        np.mean(duration[result_target]), platform, platform_target
     )
     getattr(update, f"{results.native}_amplitude")(
         np.mean(results.amplitude[result_target]), platform, platform_target
