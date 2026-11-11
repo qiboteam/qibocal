@@ -47,12 +47,17 @@ __all__ = [
 
 
 def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
-    """Compute snr for zeros and ones"""
+    r"""Compute the single-shot SNR of the two clouds.
+
+    The shots are projected on the line joining the two means, and the SNR is the
+    separation of the means over the single-shot noise on their difference,
+    :math:`|\mu_1 - \mu_0| / \sqrt{\sigma_0^2 + \sigma_1^2}`.
+    """
     line = np.mean(ones, axis=0) - np.mean(zeros, axis=0)
     projection_zeros, projection_ones = np.dot(zeros, line), np.dot(ones, line)
     mu0, std0 = np.mean(projection_zeros), np.std(projection_zeros)
     mu1, std1 = np.mean(projection_ones), np.std(projection_ones)
-    return np.abs(mu1 - mu0) ** 2 / 2 / std0 / std1
+    return np.abs(mu1 - mu0) / np.sqrt(std0**2 + std1**2)
 
 
 @dataclass
@@ -406,7 +411,7 @@ def _plot(
                         np.round(fit.threshold[target], 6),
                         np.round(fit.fidelity[target], 3),
                         np.round(fit.assignment_fidelity[target], 3),
-                        np.round(fit.snr[target], 1),
+                        np.round(fit.snr[target], 2),
                         format_error_single_cell(
                             round_report([fit.effective_temperature[target]])
                         ),

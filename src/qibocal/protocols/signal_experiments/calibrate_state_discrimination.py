@@ -9,6 +9,7 @@ from scipy.signal import butter, sosfiltfilt
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import table_dict, table_html
 
 from .utils import _get_lo_frequency
 
@@ -19,51 +20,33 @@ __all__ = ["calibrate_state_discrimination"]
 class CalibrateStateDiscriminationParameters(Parameters):
     """Calibrate State Discrimination inputs."""
 
-    """Frequency step for sweep (Hz)."""
-    nshots: int | None = None
-    """Number of shots."""
-    relaxation_time: int | None = None
-    """Relaxation time (ns)."""
+    lowpass_cutoff: float | None = None
+    """Low-pass cutoff (Hz) for the traces.
 
-
-CalibrateStateDiscriminationResType = np.dtype(
-    [
-        ("State 0 kernel", np.float64),
-    ]
-)
-"""Custom dtype for CalibrateStateDiscrimination."""
+    Choose a few resonator linewidths. If ``None``, the intermediate frequency is used.
+    """
 
 
 @dataclass
 class CalibrateStateDiscriminationResults(Results):
     """Calibrate State Discrimination outputs."""
 
-    data: dict[
-        tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationResType]
-    ] = field(default_factory=dict)
-    """State 0 kernel"""
-
-
-CalibrateStateDiscriminationType = np.dtype(
-    [
-        ("i", np.float64),
-        ("q", np.float64),
-    ]
-)
-"""Custom dtype for CalibrateStateDiscrimination."""
+    data: dict[QubitId, npt.NDArray[np.complex128]] = field(default_factory=dict)
+    """Integration kernel of each qubit."""
 
 
 @dataclass
 class CalibrateStateDiscriminationData(Data):
     """CalibrateStateDiscrimination acquisition outputs."""
 
-    resonator_type: str
-    """Resonator type."""
+    lowpass_cutoff: float | None
+    """Low-pass cutoff (Hz) for the traces."""
     intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Intermediate RO frequency for each qubit."""
-    data: dict[tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]] = (
-        field(default_factory=dict)
+    data: dict[tuple[QubitId, int], npt.NDArray[np.float64]] = field(
+        default_factory=dict
     )
+    """Raw traces of each qubit and state, with I and Q on the last axis."""
 
 
 def _acquisition(
@@ -71,16 +54,15 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> CalibrateStateDiscriminationData:
-    r"""
-    Data acquisition for Calibrate State Discrimination experiment.
-    Calculates the optimal kernel for the readout. It has to be run one qubit at a time.
-    The kernels are stored in the result.npz generated on the report.
+    """Data acquisition for Calibrate State Discrimination experiment.
+
+    Acquires the RAW readout traces with the qubits prepared in the ground and excited
+    state, from which the optimal kernels are calculated.
 
     Args:
         params (CalibrateStateDiscriminationParameters): experiment's parameters
         platform (CalibrationPlatform): Qibolab platform object
-        qubits (dict): list of target qubits to perform the action
-
+        targets (list): list of target qubits to perform the action
     """
 
     native = platform.natives.single_qubit
@@ -117,37 +99,30 @@ def _acquisition(
         for qubit in targets
     }
     data = CalibrateStateDiscriminationData(
-        resonator_type=platform.resonator_type,
+        lowpass_cutoff=params.lowpass_cutoff,
         intermediate_frequency=intermediate_frequency,
     )
     for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:
-            serial = ro_pulses[qubit]
-            result = results[serial]
-            data.register_qubit(
-                CalibrateStateDiscriminationType,
-                (qubit, state),
-                {
-                    "i": result[..., 0],
-                    "q": result[..., 1],
-                },
-            )
+            data.data[qubit, state] = results[ro_pulses[qubit]]
     return data
 
 
 def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscriminationResults:
     r"""Post-Processing for Calibrate State Discrimination.
 
-    The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. The
-    residual image term (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`) is suppressed by
-    applying a lowpass filter with cutoff at :math:`|f_{\text{IF}}|`, halfway between
-    baseband and the image. The optimal kernel is calculated as the conjugate of the
+    The raw traces for 0 and 1 are already demodulated to baseband by Qibolab. A lowpass
+    filter at ``lowpass_cutoff`` removes the averaging noise above the readout signal
+    bandwidth. If ``lowpass_cutoff`` is ``None``, the cutoff is set to the IF. The
+    cutoff never exceeds :math:`|f_{\text{IF}}|`, halfway between baseband and the
+    residual image (:math:`\exp(-2\pi i \cdot 2 f_{\text{IF}} t)`), which is then
+    suppressed as well. The optimal kernel is calculated as the conjugate of the
     difference between the two traces, and it is normalized to a maximum absolute weight
     of 1.
     """
     qubits = data.qubits
 
-    kernel_state_zero = {}
+    kernels = {}
 
     def lowpass_filter(signal, cutoff, fs=1e9, order=5):
         """Basic lowpass filter, with ``cutoff`` and sampling rate ``fs`` in Hz."""
@@ -156,21 +131,23 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
     for qubit in qubits:
         traces = []
-        freq = data.intermediate_frequency[qubit]
+        freq = abs(data.intermediate_frequency[qubit])
+        # remove averaging noise above a few resonator linewidths, and the 2 * IF image,
+        # by never exceeding the IF
+        cutoff = data.lowpass_cutoff
+        if freq:
+            cutoff = freq if cutoff is None else min(cutoff, freq)
 
         for state in range(2):
-            trace = data[qubit, state].i + 1.0j * data[qubit, state].q
-            # attenuate the 2 * IF image; the cutoff at IF lies between it and baseband
-            if freq != 0:
-                trace = lowpass_filter(trace, np.abs(freq))
-            traces.append(trace)
+            trace = data[qubit, state] @ [1, 1j]
+            traces.append(trace if cutoff is None else lowpass_filter(trace, cutoff))
 
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
         kernel /= np.max(np.abs(kernel))
-        kernel_state_zero[qubit] = kernel
+        kernels[qubit] = kernel
 
-    return CalibrateStateDiscriminationResults(data=kernel_state_zero)
+    return CalibrateStateDiscriminationResults(data=kernels)
 
 
 def _plot(
@@ -182,8 +159,25 @@ def _plot(
     # Plot kernels
     figures = []
     fitting_report = ""
-    trace0 = data[target, 0].i + 1.0j * data[target, 0].q
-    t = np.arange(0, len(trace0), 1)
+    t = np.arange(len(data[target, 0]))
+
+    fig = go.Figure()
+    for path, name in enumerate("IQ"):
+        for state in range(2):
+            fig.add_trace(
+                go.Scatter(
+                    x=t,
+                    y=data[target, state][:, path],
+                    name=f"State {state} {name}",
+                    mode="lines",
+                )
+            )
+    fig.update_layout(
+        title="Readout traces",
+        xaxis_title="Time (ns)",
+        yaxis_title="Signal [a.u.]",
+    )
+    figures.append(fig)
 
     if fit is not None:
         fig = go.Figure()
@@ -203,7 +197,7 @@ def _plot(
                 x=t,
                 y=fit.data[target].imag,
                 opacity=1,
-                name="Imag",
+                name="Imaginary",
                 showlegend=True,
                 mode="lines",
             )
@@ -212,11 +206,25 @@ def _plot(
         fig.update_layout(
             showlegend=True,
             title="Optimal integration kernel",
-            xaxis_title="Readout sample",
+            xaxis_title="Time (ns)",
             yaxis_title="Normalized weight",
         )
 
         figures.append(fig)
+
+        # the kernel is the conjugate of the separation: compare its SNR with the one
+        # of a square window, which weights all the samples equally
+        kernel = fit.data[target]
+        gain = np.sqrt(
+            len(kernel) * np.sum(np.abs(kernel) ** 2) / np.abs(np.sum(kernel)) ** 2
+        )
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["Estimated SNR gain over square window"],
+                [round(float(gain), 3)],
+            )
+        )
 
     return figures, fitting_report
 
