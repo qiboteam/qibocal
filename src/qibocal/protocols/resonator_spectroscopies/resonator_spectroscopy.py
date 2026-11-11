@@ -101,12 +101,8 @@ class ResonatorSpectroscopyParameters(Parameters):
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
-    amplitude: float | None = None
-    """Readout probe amplitude, the same for all qubits.
-
-    It is required to acquire data. It is optional only to load reports produced by
-    previous versions, which defaulted to the calibrated readout amplitude.
-    """
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
     duration: float = 2000
     """Readout probe duration [ns], the same for all qubits.
 
@@ -186,19 +182,13 @@ def _acquisition(
     """Data acquisition for resonator spectroscopy.
 
     The sequence is made of simultaneous rectangular readouts, whose amplitude and
-    duration are given as inputs, independently of the calibrated measurements.
+    duration are given as inputs.
     """
-    if params.amplitude is None:
-        raise ValueError("The readout probe 'amplitude' is required.")
-
     sequence = PulseSequence()
     ro_pulses = {}
     amplitudes = {}
 
     for q in targets:
-        channel = platform.qubits[q].acquisition
-        if channel is None:
-            raise ValueError(f"Acquisition channel for qubit {q} not defined.")
         readout = Readout(
             acquisition=Acquisition(duration=params.duration),
             probe=Pulse(
@@ -209,7 +199,7 @@ def _acquisition(
         )
         amplitudes[q] = params.amplitude
         ro_pulses[q] = readout
-        sequence.append((channel, readout))
+        sequence.append((platform.qubits[q].acquisition, readout))
 
     sweepers = [
         Sweeper(

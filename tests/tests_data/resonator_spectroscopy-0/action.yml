@@ -1,6 +1,7 @@
 id: resonator_spectroscopy
 operation: resonator_spectroscopy
 parameters:
+  amplitude: 0.1
   freq_step: 10000.0
   freq_width: 10000000.0
   nshots: 1000

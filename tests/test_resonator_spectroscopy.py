@@ -3,7 +3,6 @@ import yaml
 from conftest import PATH_TESTING_DATA, approx_for_regression
 from qibolab import Rectangular
 
-from qibocal.auto.task import Completed
 from qibocal.protocols.resonator_spectroscopies.resonator_spectroscopy import (
     ResonatorSpectroscopyData,
     ResonatorSpectroscopyParameters,
@@ -59,15 +58,9 @@ def test_rectangular_probe(platform, mocker):
     assert resonator_parameters(amplitude=0.05).duration == 2000
 
 
-def test_amplitude_required(platform):
-    with pytest.raises(ValueError, match="'amplitude' is required"):
-        resonator_spectroscopy_acquisition(resonator_parameters(), platform, [0])
-
-
-def test_previous_reports_load():
-    """Reports produced without an explicit amplitude are still loaded."""
-    completed = Completed.load(PATH_TESTING_DATA / "resonator_spectroscopy-0")
-    assert completed.task.parameters.amplitude is None
+def test_amplitude_required():
+    with pytest.raises(TypeError, match="amplitude"):
+        resonator_parameters()
 
 
 def test_update_keeps_readout_amplitude(platform):
