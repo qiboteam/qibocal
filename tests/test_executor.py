@@ -487,7 +487,7 @@ def test_open_records_normalized_parameters(tmp_path, platform):
     with Executor.open(path, platform=platform, targets=[0], force=True) as e:
         e(
             qibocal.protocols.resonator_spectroscopy(
-                frequency=frequency, power_level="low", nshots=10
+                frequency=frequency, power_level="low", amplitude=0.05, nshots=10
             )
         )
 
