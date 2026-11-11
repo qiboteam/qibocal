@@ -103,7 +103,21 @@ def fit_virtualz(
     pair: list,
     thetas: list,
     key=None,
+    native: str = "CZ",
 ):
+    r"""Extract virtual phase, angle and leakage from the virtual Z experiment.
+
+    For CZ the phase of the ``I`` setup is the single-qubit phase acquired by the
+    target, and the difference between the ``X`` and ``I`` phases is the conditional
+    phase (ideally :math:`\pi`).
+
+    For iSWAP the target phase is measured after the excitation is transferred from
+    the partner qubit, :math:`|01\rangle \to i e^{i\phi_t}|10\rangle`, so the ``I``
+    phase is :math:`\phi_t + \pi/2` and the virtual phase is :math:`\phi_t`. The
+    ``X`` phase is :math:`\phi_{11} - \phi_c - \pi/2`, so the returned angle
+    :math:`\phi_{11} - \phi_t - \phi_c` is the residual conditional phase, which is
+    0 for an ideal iSWAP and cannot be corrected with virtual Z rotations.
+    """
     fitted_parameters = {}
     angle = {}
     virtual_phase = {}
@@ -119,7 +133,7 @@ def fit_virtualz(
             params = fit_sinusoid(np.array(thetas), target_data)
             fitted_param[target, control, setup] = params
         except Exception as e:
-            log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
+            log.warning(f"{native} fit failed for pair ({target, control}) due to {e}.")
 
     for setup in ["I", "X"]:
         # leakage estimate: L = m /2
@@ -130,11 +144,14 @@ def fit_virtualz(
             np.mean(data[target, control, "X"][1] - data[target, control, "I"][1])
         )
 
-        angle[key] = phase_diff(
-            fitted_param[target, control, "X"][2],
-            fitted_param[target, control, "I"][2],
-        )
-        virtual_phase[key] = fitted_param[target, control, "I"][2]
+        phase_i = fitted_param[target, control, "I"][2]
+        phase_x = fitted_param[target, control, "X"][2]
+        if native == "iSWAP":
+            angle[key] = float(np.mod(phase_x - phase_i + np.pi, 2 * np.pi))
+            virtual_phase[key] = float(np.mod(phase_i - np.pi / 2, 2 * np.pi))
+        else:
+            angle[key] = phase_diff(phase_x, phase_i)
+            virtual_phase[key] = phase_i
         fitted_parameters[key, setup] = fitted_param[target, control, setup]
 
     return fitted_parameters, virtual_phase, angle, leakage

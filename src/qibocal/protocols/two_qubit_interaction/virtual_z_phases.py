@@ -1,4 +1,4 @@
-"""CZ virtual correction experiment for two qubit gates, tune landscape."""
+"""CZ/iSWAP virtual phase correction experiment for two qubit gates."""
 
 from dataclasses import dataclass
 from typing import Literal
@@ -47,9 +47,9 @@ class VirtualZPhasesParameters(Parameters):
     """Final angle for the low frequency qubit measurement in radians."""
     theta_step: float
     """Step size for the theta sweep in radians."""
-    native: str = "CZ"
-    """Two-qubit interaction to be calibrated. Only CZ is supported."""
-    dt: float | None = 16
+    native: Literal["CZ", "iSWAP"] = "CZ"
+    """Two-qubit interaction to be calibrated, either CZ or iSWAP."""
+    dt: float = 16
     """Time delay between flux pulses and readout."""
 
 
@@ -64,7 +64,12 @@ class VirtualZPhasesResults(Results):
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
     angle: dict[QubitPairId, float] | None = None
-    """Native angle."""
+    """Native angle.
+
+    For CZ it is the conditional phase (ideally pi). For iSWAP it is the residual
+    conditional phase on :math:`|11\\rangle`, which cannot be corrected with
+    virtual Z rotations (ideally 0).
+    """
     virtual_phase: dict[QubitPairId, dict[QubitId, float]] | None = None
     """Virtual Z phase correction."""
 
@@ -112,16 +117,26 @@ def create_sequence(
     flux_pulse: Pulse | None = None,
     *,
     vzphase: float = 0.0,
+    native: Literal["CZ", "iSWAP"] = "CZ",
 ) -> tuple[PulseSequence, Pulse, VirtualZ]:
     """
-    Create the pulse sequence for the calibration of CZ virtual phases.
+    Create the pulse sequence for the calibration of two-qubit gate virtual phases.
 
-    The sequence includes:
+    For ``native="CZ"`` the sequence includes:
     - A preliminary RX90 pulse on the `target_qubit`.
     - An optional X pulse on the `control_qubit` based on the `setup` type.
     - A flux pulse implementing the two-qubit native gate.
     - A delay of duration `dt` before the final X90 pulse on the target qubit.
+    - An optional X pulse on the `control_qubit` (leakage detection).
     - Measurement pulses.
+
+    For ``native="iSWAP"`` the gate exchanges the excitation between the two
+    qubits, so the roles before the gate are swapped: the preliminary RX90 pulse is
+    played on the `control_qubit` (the superposition is transferred to the
+    `target_qubit` by the gate) and the optional X pulse on the `target_qubit`
+    (the excitation is transferred to the `control_qubit`). The rest of the
+    sequence is unchanged.
+
     It is possible to specify the maximum duration for the flux pulses with the
     `flux_pulse_max_duration` parameter.
 
@@ -130,27 +145,37 @@ def create_sequence(
     - The applied flux pulse.
     - The final `VirtualZ` pulse to be used for phase sweeping.
     """
+    assert native in ("CZ", "iSWAP"), f"Unsupported native gate {native}."
 
     target_natives = platform.natives.single_qubit[target_qubit]
     control_natives = platform.natives.single_qubit[control_qubit]
+    # iSWAP swaps the qubits: prepare on the partner what must be found on the
+    # other qubit after the gate.
+    prep_natives, excited_natives = (
+        (target_natives, control_natives)
+        if native == "CZ"
+        else (control_natives, target_natives)
+    )
 
     sequence = PulseSequence()
     # X90
-    sequence += target_natives.R(theta=np.pi / 2)
+    sequence += prep_natives.R(theta=np.pi / 2)
     # X
     if setup == "X":
-        assert control_natives.RX is not None
-        sequence += control_natives.RX()
+        assert excited_natives.RX is not None
+        sequence += excited_natives.RX()
 
     flux_channel = platform.qubits[ordered_pair[1]].flux
     assert flux_channel is not None, (
         "Flux channel must be defined for the control qubit."
     )
-    # CZ
+    # native two-qubit gate
     if flux_pulse is None:
-        cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
-        assert cz_sequence is not None
-        flux_pulse_ = next(iter(cz_sequence.channel(flux_channel)))
+        native_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)
+        assert native_sequence is not None, (
+            f"{native} native not defined for pair {ordered_pair}."
+        )
+        flux_pulse_ = next(iter(native_sequence.channel(flux_channel)))
         assert isinstance(flux_pulse_, Pulse), "Flux pulse must be a Pulse object."
         flux_pulse = flux_pulse_
 
@@ -170,7 +195,8 @@ def create_sequence(
 
     sequence |= target_natives.R(theta=np.pi / 2)
 
-    # X gate for the leakage
+    # X gate for the leakage: for both natives the control qubit ends in |1>
+    # in the X setup, so this brings it back to |0> unless it leaked.
     if setup == "X":
         sequence += control_natives.RX()
 
@@ -203,8 +229,11 @@ def _acquisition(
     remnant single qubit Z phase aquired during the execution to be corrected.
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
+
+    For the iSWAP gate the excitation is exchanged between the two qubits, therefore
+    the X90 pulse is played on the partner qubit and the superposition is
+    transferred by the gate onto the measured qubit (see :func:`create_sequence`).
     """
-    assert params.native == "CZ", "This protocol supports only CZ gate."
 
     data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]] = {}
     sequences: list[PulseSequence] = []
@@ -216,7 +245,7 @@ def _acquisition(
     range_ = (params.theta_start, params.theta_end, params.theta_step)
     thetas = np.arange(*range_)
     # RZ(theta) compiles to VirtualZ(phase=-theta). The fit returns the
-    # opposite frame shift, which cancels the CZ's unwanted single-qubit phase.
+    # opposite frame shift, which cancels the gate's unwanted single-qubit phase.
     vzphases = -thetas
 
     for pair in targets:
@@ -235,6 +264,7 @@ def _acquisition(
                     control_q,
                     ordered_pair,
                     dt=params.dt,
+                    native=params.native,
                 )
 
                 sequences.append(sequence)
@@ -286,7 +316,7 @@ def _fit(
     leakage = {}
     for pair in pairs:
         new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
-            data[pair], tuple(pair), data.thetas
+            data[pair], tuple(pair), data.thetas, native=data.native
         )
         fitted_parameters |= new_fitted_parameter
         virtual_phase |= new_phases
@@ -371,7 +401,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     table_dict(
                         [target_q, target_q, control_q],
                         [
-                            f"{fit.native} angle [rad]",
+                            f"{fit.native} angle [rad]"
+                            if fit.native == "CZ"
+                            else f"{fit.native} conditional phase [rad]",
                             "Virtual Z phase [rad]",
                             "Leakage [a.u.]",
                         ],

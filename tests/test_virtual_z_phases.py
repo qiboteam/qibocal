@@ -155,3 +155,143 @@ def test_fit_plot_update_single_cz(platform):
         vz = list(sequence.channel(platform.qubits[pair[0]].drive))[-1]
         assert isinstance(vz, VirtualZ)
         assert vz.phase == pytest.approx(phase)
+
+
+def _drive_rotation(theta, phi):
+    """Rotation of angle ``theta`` around the axis ``cos(phi) X + sin(phi) Y``."""
+    return np.array(
+        [
+            [np.cos(theta / 2), -1j * np.exp(-1j * phi) * np.sin(theta / 2)],
+            [-1j * np.exp(1j * phi) * np.sin(theta / 2), np.cos(theta / 2)],
+        ]
+    )
+
+
+def _noisy_iswap(phase_low, phase_high, phase_11):
+    """iSWAP with single-qubit phases acquired after the exchange and a residual
+    conditional phase on |11>, in the (low, high) qubit basis."""
+    gate = np.zeros((4, 4), dtype=complex)
+    gate[0, 0] = 1
+    gate[2, 1] = 1j * np.exp(1j * phase_low)  # |01> -> |10>: low qubit excited
+    gate[1, 2] = 1j * np.exp(1j * phase_high)  # |10> -> |01>: high qubit excited
+    gate[3, 3] = np.exp(1j * phase_11)
+    return gate
+
+
+def _simulate(platform, sequence, pair, gate, target):
+    """Excited state probability of ``target`` for ``sequence`` with ``gate`` as
+    the two-qubit interaction."""
+    sequence = sequence.align_to_delays()
+    flux_start = 0.0
+    for pulse in sequence.channel(platform.qubits[pair[1]].flux):
+        if isinstance(pulse, Pulse):
+            break
+        flux_start += pulse.duration
+    before, after = np.eye(4, dtype=complex), np.eye(4, dtype=complex)
+    for i, qubit in enumerate(pair):
+        rx_amplitude = platform.natives.single_qubit[qubit].RX()[0][1].amplitude
+        start = 0.0
+        for pulse in sequence.to_relative_phases().channel(
+            platform.qubits[qubit].drive
+        ):
+            if isinstance(pulse, Pulse):
+                rotation = _drive_rotation(
+                    np.pi * pulse.amplitude / rx_amplitude, pulse.relative_phase
+                )
+                ops = [np.eye(2), np.eye(2)]
+                ops[i] = rotation
+                op = np.kron(*ops)
+                if start < flux_start:
+                    before = op @ before
+                else:
+                    after = op @ after
+            start += pulse.duration
+    state = after @ gate @ before @ np.array([1, 0, 0, 0])
+    probabilities = np.abs(state.reshape(2, 2)) ** 2
+    return probabilities.sum(axis=1 - pair.index(target))[1]
+
+
+def test_iswap_sequence(platform):
+    pair = order_pair((0, 1), platform)
+    low, high = (platform.natives.single_qubit[q] for q in pair)
+    sequence, flux, _ = create_sequence(platform, "X", *pair, pair, 16, native="iSWAP")
+    assert flux == next(
+        iter(
+            platform.natives.two_qubit[pair].iSWAP.channel(
+                platform.qubits[pair[1]].flux
+            )
+        )
+    )
+    low_drive = [
+        p
+        for p in sequence.channel(platform.qubits[pair[0]].drive)
+        if isinstance(p, Pulse)
+    ]
+    high_drive = [
+        p
+        for p in sequence.channel(platform.qubits[pair[1]].drive)
+        if isinstance(p, Pulse)
+    ]
+    # X on the target before the gate, X90 after it
+    assert [p.amplitude for p in low_drive] == pytest.approx(
+        [low.RX()[0][1].amplitude, low.R(theta=np.pi / 2)[0][1].amplitude]
+    )
+    # X90 on the control before the gate, X after it for leakage
+    assert [p.amplitude for p in high_drive] == pytest.approx(
+        [high.R(theta=np.pi / 2)[0][1].amplitude, high.RX()[0][1].amplitude]
+    )
+
+
+@pytest.mark.parametrize("phases", [(0.0, 0.0, 0.0), (2.1, 0.7, 0.3), (-1.3, 4.0, 5.9)])
+def test_iswap_phase_correction(platform, phases):
+    phase_low, phase_high, phase_11 = phases
+    gate = _noisy_iswap(phase_low, phase_high, phase_11)
+    pair = order_pair((0, 1), platform)
+    thetas = np.linspace(0, 2 * np.pi, 60)
+    data = {}
+    for target, control in [pair, pair[::-1]]:
+        for setup in ("I", "X"):
+            target_prob, control_prob = [], []
+            for theta in thetas:
+                sequence, _, _ = create_sequence(
+                    platform,
+                    setup,
+                    target,
+                    control,
+                    pair,
+                    16,
+                    vzphase=-theta,
+                    native="iSWAP",
+                )
+                target_prob.append(_simulate(platform, sequence, pair, gate, target))
+                control_prob.append(_simulate(platform, sequence, pair, gate, control))
+            data[target, control, setup] = np.stack([target_prob, control_prob])
+
+    fit = _fit(VirtualZPhasesData(data=data, thetas=thetas.tolist(), native="iSWAP"))
+    conditional = np.mod(phase_11 - phase_low - phase_high, 2 * np.pi)
+    for qubit, phase in zip(pair, (phase_low, phase_high)):
+        key = (qubit, pair[1 - pair.index(qubit)])
+        assert np.exp(1j * fit.virtual_phase[key]) == pytest.approx(np.exp(1j * phase))
+        assert np.exp(1j * fit.angle[key]) == pytest.approx(np.exp(1j * conditional))
+        assert fit.leakage[key] == pytest.approx(0, abs=1e-10)
+
+    # A frame shift of +phase implements RZ(-phase) after the gate.
+    corrected = (
+        np.kron(
+            gates.RZ(0, -fit.virtual_phase[pair]).matrix(),
+            gates.RZ(0, -fit.virtual_phase[pair[::-1]]).matrix(),
+        )
+        @ gate
+    )
+    expected = gates.iSWAP(0, 1).matrix() @ np.diag([1, 1, 1, np.exp(1j * conditional)])
+    # equal up to a global phase
+    global_phase = corrected[0, 0] / expected[0, 0]
+    np.testing.assert_allclose(corrected, global_phase * expected, atol=1e-6)
+
+    _update(fit, platform, pair)
+    sequence = platform.natives.two_qubit[pair].iSWAP
+    for qubit in pair:
+        vz = list(sequence.channel(platform.qubits[qubit].drive))[-1]
+        assert isinstance(vz, VirtualZ)
+        key = (qubit, pair[1 - pair.index(qubit)])
+        assert vz.phase == pytest.approx(fit.virtual_phase[key])

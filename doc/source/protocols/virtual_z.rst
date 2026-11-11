@@ -1,8 +1,16 @@
 Virtual Z
 =========
 
-The protocol applies the CZ gate once and measures conditional oscillations while
-sweeping the virtual Z phase.
+The protocol applies the native two-qubit gate (CZ or iSWAP) once and measures
+conditional oscillations while sweeping the virtual Z phase.
+
+For the iSWAP gate the excitation is exchanged between the two qubits: the
+:math:`\pi/2` pulse is applied to the partner qubit, so that the gate transfers the
+superposition onto the measured qubit. The fitted phase contains the :math:`\pi/2`
+of the ideal iSWAP (:math:`|01\rangle \to i|10\rangle`), which is removed from the
+virtual Z correction. The reported angle is the residual conditional phase on
+:math:`|11\rangle`, which is 0 for an ideal iSWAP and cannot be corrected with
+virtual Z rotations. Select the gate with ``native: iSWAP``.
 
 Parameters
 ^^^^^^^^^^
