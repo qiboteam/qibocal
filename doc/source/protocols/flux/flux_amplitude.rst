@@ -55,18 +55,16 @@ and asymmetry of the junction. We expect a linear dependence which is fitted acc
 .. note::
   The phase :math:`\varphi = 2 \pi \Delta f_q \tau` is only measured modulo :math:`2\pi` and is
   unwrapped along the amplitude axis. This only works if the phase changes by less than :math:`\pi`
-  between consecutive amplitudes, i.e. if the detuning changes by less than :math:`1/(2\tau)` per
-  ``amplitude_step`` (e.g. 8.3 MHz for a 60 ns flux pulse). Since the detuning gets steeper away from
-  the sweetspot, this condition first breaks at large amplitudes. When it does, the detuning folds
-  back on itself and the arc appears reflected and repeated along the amplitude axis, and a fold
-  at the first step shifts the whole curve by :math:`1/\tau`. The resulting fit is wrong, so check
-  that the detuning has a single maximum and otherwise reduce ``amplitude_step`` or ``duration``.
+  between consecutive amplitudes, i.e. if the detuning changes by less than the Nyquist frequency
+  :math:`1/(2\tau)` per ``amplitude_step`` (e.g. 8.3 MHz for a 60 ns flux pulse). The detuning is
+  steepest at large amplitudes, where the steps first leave the first Nyquist zone and are aliased:
+  the arc folds back and repeats along the amplitude axis (or, if already at the first step, shifts
+  by :math:`1/\tau`). If this happens reduce ``amplitude_step`` or ``duration``.
 
   .. image:: flux_amplitude_aliasing.png
 
-  In the example above, with ``amplitude_step: 0.01`` the 20 ns pulse follows the true detuning,
-  while for the 60 ns pulse the limit of 8.3 MHz per step is exceeded around amplitude 0.09 and
-  the measured detuning folds back.
+  With ``amplitude_step: 0.01``, the 20 ns pulse follows the true detuning, while the 60 ns pulse
+  exceeds the 8.3 MHz limit around amplitude 0.09 and folds back.
 
 
 Flux-crosstalk measurements
