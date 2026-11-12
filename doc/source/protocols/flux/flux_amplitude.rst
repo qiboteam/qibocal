@@ -52,6 +52,20 @@ On the right we derive the how the magnetic flux changing by applying a flux pul
 to compute the flux experienced by the qubit. We are using an approximation where we neglect both the anharmonicity
 and asymmetry of the junction. We expect a linear dependence which is fitted accordingly.
 
+.. note::
+  The phase :math:`\varphi = 2 \pi \Delta f_q \tau` is only measured modulo :math:`2\pi` and is
+  unwrapped along the amplitude axis. This only works if the phase changes by less than :math:`\pi`
+  between consecutive amplitudes, i.e. if the detuning changes by less than the Nyquist frequency
+  :math:`1/(2\tau)` per ``amplitude_step`` (e.g. 8.3 MHz for a 60 ns flux pulse). The detuning is
+  steepest at large amplitudes, where the steps first leave the first Nyquist zone and are aliased:
+  the arc folds back and repeats along the amplitude axis (or, if already at the first step, shifts
+  by :math:`1/\tau`). If this happens reduce ``amplitude_step`` or ``duration``.
+
+  .. image:: flux_amplitude_aliasing.png
+
+  With ``amplitude_step: 0.01``, the 20 ns pulse follows the true detuning, while the 60 ns pulse
+  exceeds the 8.3 MHz limit around amplitude 0.09 and folds back.
+
 
 Flux-crosstalk measurements
 ---------------------------
