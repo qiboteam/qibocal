@@ -164,6 +164,9 @@ def _fit(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
         frequency=frequency,
         amplitude=data.amplitudes,
         fitted_parameters=params,
+        lo_frequencies={qubit: [] for qubit in data.qubits},
+        steps={qubit: [] for qubit in data.qubits},
+        flagged={qubit: [] for qubit in data.qubits},
         anharmonicity=anharmonicities,
     )
 
