@@ -16,12 +16,12 @@ gate time is :math:`t_p = 2\tau + 2` samples and the total duration is
 .. image:: snz_pulse.png
 
 Population leaked to :math:`\ket{02}` by the first half-pulse returns to
-:math:`\ket{11}` during the second one if the relative phase accumulated in between
-is right. Since the
-detuning :math:`\Delta_{02}/2\pi` is typically 0.5-1 GHz and the flux AWG has
-~1 ns time resolution :math:`t_s`, :math:`t_\text{idle}` changes this phase only in
-coarse steps of :math:`\Delta_{02} t_s`. The :math:`\pm B` samples provide the fine,
-continuous control :cite:p:`SNZ_2021`.
+:math:`\ket{11}` during the second one if the relative phase accumulated in between is
+right. Since :math:`t_\text{idle}` is discretized by the flux AWG sampling rate
+:math:`t_s`, it changes this phase only in coarse steps of :math:`\Delta_{02} t_s`,
+where :math:`\Delta_{02}` is the detuning of :math:`\ket{02}` during the idling
+(typically :math:`\Delta_{02}/2\pi \sim` 0.5-1 GHz and :math:`t_s \sim` 1 ns). The
+:math:`\pm B` samples provide the fine, continuous control.
 
 The resulting landscape is regular: leakage shows a vertical valley in :math:`A`, at
 the :math:`\ket{11}`-:math:`\ket{02}` resonance, and a diagonal one, and
@@ -49,6 +49,15 @@ performed.
 A typical workflow is :doc:`../chevron` to locate the
 :math:`\ket{11} \leftrightarrow \ket{02}` interaction, then ``snz_optimize``, then
 :doc:`../virtual_z` to calibrate the single-qubit phase corrections.
+
+The gate time :math:`t_p` should not be shorter than the speed limit
+:math:`t_\text{lim}`, the period of the on-resonance :doc:`../chevron` oscillation.
+Below it, the minimum leakage at :math:`\phi_{CZ} = \pi` increases. An example of a
+measured chevron, with the extracted :math:`t_\text{lim}`, is shown below.
+
+.. image:: snz_chevron.png
+    :width: 50%
+    :align: center
 
 .. note::
 
