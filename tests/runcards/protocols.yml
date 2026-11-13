@@ -578,6 +578,7 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
+      amplitude: 0.1
       nshots: 10
 
   - id: dispersive shift qutrit
@@ -585,6 +586,7 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
+      amplitude: 0.1
       nshots: 10
 
   - id: standard rb no error

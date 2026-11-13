@@ -5,7 +5,17 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.constants
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    Acquisition,
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -35,6 +45,13 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
+    duration: float = 2000
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
 
     def frequency_range(self, center: float = 0.0) -> Range:
         def legacy_range() -> Range:
@@ -94,6 +111,18 @@ class DispersiveShiftData(Data):
     )
 
 
+def readout(
+    params: DispersiveShiftParameters, platform: CalibrationPlatform, qubit: QubitId
+) -> PulseSequence:
+    """Rectangular readout, with the input amplitude and duration."""
+    channel = platform.qubits[qubit].acquisition
+    probe = Pulse(
+        duration=params.duration, amplitude=params.amplitude, envelope=Rectangular()
+    )
+    acquisition = Acquisition(duration=params.duration)
+    return PulseSequence([(channel, Readout(acquisition=acquisition, probe=probe))])
+
+
 def _acquisition(
     params: DispersiveShiftParameters,
     platform: CalibrationPlatform,
@@ -114,8 +143,8 @@ def _acquisition(
     sequence_1 = PulseSequence()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        sequence_0 += natives.MZ()
-        sequence_1 += natives.RX() | natives.MZ()
+        sequence_0 += readout(params, platform, qubit)
+        sequence_1 += natives.RX() | readout(params, platform, qubit)
 
     data = DispersiveShiftData(resonator_type=platform.resonator_type)
 

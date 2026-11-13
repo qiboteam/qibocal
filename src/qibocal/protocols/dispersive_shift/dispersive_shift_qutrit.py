@@ -19,7 +19,7 @@ from qibocal.protocols.utils import (
 
 from ...result import magnitude, phase
 from ..resonator_spectroscopies.resonator_spectroscopy import ResSpecType
-from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
+from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters, readout
 
 __all__ = ["dispersive_shift_qutrit"]
 
@@ -91,14 +91,14 @@ def _acquisition(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         # prepare 0 and measure
-        sequence_0 += natives.MZ()
+        sequence_0 += readout(params, platform, qubit)
 
         # prepare 1 and measure
-        sequence_1 += natives.RX() | natives.MZ()
+        sequence_1 += natives.RX() | readout(params, platform, qubit)
 
         # prepare 2 and measure
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
-        sequence_2 += (natives.RX() + natives.RX12()) | natives.MZ()
+        sequence_2 += (natives.RX() + natives.RX12()) | readout(params, platform, qubit)
 
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 

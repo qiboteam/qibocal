@@ -123,6 +123,7 @@ A possible runcard to assess how the resonator frequency changes by varying flux
         bias_width: 0.4
         freq_step: 100000
         freq_width: 6000000
+        amplitude: 0.1
         nshots: 2000
         relaxation_time: 1000
 
