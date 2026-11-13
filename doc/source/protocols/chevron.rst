@@ -16,7 +16,21 @@ The expected population oscillation pattern follows:
 
 where :math:`\Delta=\omega_1 - \omega_2`, :math:`g` is the coupling constant for the two qubits and :math:`\phi` takes into account flux distortions.
 
-The pulse sequence used to calibrate the CZ gate is the same as the one for the iSWAP gate, with the addition of an initial :math:`\pi` pulse applied to the qubit with the lower frequency so that both qubits are initially prepared in the :math:`\ket{1}`. With this sequence the CZ gate is implemented leveraging the avoided crossing between the states :math:`\ket{11}` and :math:`\ket{20}`.
+The pulse sequence used to calibrate the CZ gate is the same as the one for the iSWAP gate, with the addition of an initial :math:`\pi` pulse applied to the qubit with the lower frequency so that both qubits are initially prepared in the :math:`\ket{1}`. With this sequence the CZ gate is implemented leveraging the avoided crossing between the state :math:`\ket{11}` and one of the non-computational states :math:`\ket{02}` or :math:`\ket{20}`, where states are labelled as :math:`\ket{n_L n_H}`, with :math:`L` and :math:`H` the qubits with lower and higher frequency, respectively.
+A final :math:`\pi` pulse is applied before readout to the qubit occupying level 2 in the non-computational state.
+
+By default, the interaction is assumed to be the :math:`\ket{11}`–:math:`\ket{02}` one, and the final :math:`\pi` pulse is applied to the qubit with the higher frequency.
+Setting ``infer_hybridization: true`` instead infers the interaction from the calibration data.
+Since only the higher-frequency qubit is fluxed, its frequency follows :math:`f_H(A)` as a function of the flux pulse amplitude :math:`A`, given by the calibrated flux coefficients, and the two resonance conditions are
+
+.. math::
+
+	\ket{11} \leftrightarrow \ket{02}: \quad f_H(A) = f_L - \alpha_H, \qquad
+	\ket{11} \leftrightarrow \ket{20}: \quad f_H(A) = f_L + \alpha_L,
+
+with :math:`\alpha` the anharmonicities.
+Both are solved analytically, and the resonance reached with the smallest :math:`|A|` determines which qubit receives the final :math:`\pi` pulse.
+This requires the ``frequency_01`` and ``frequency_12`` calibrations of both qubits, together with the ``flux_coefficients`` of the higher-frequency qubit, and is ignored for the iSWAP gate.
 
 Parameters
 ^^^^^^^^^^
@@ -41,6 +55,18 @@ Below is an example runcard for this experiment.
         duration_max: 100
         duration_min: 5
         duration_step: 4
+        relaxation_time: 50000
+
+The same experiment, with the interaction branch inferred from the calibration data, can be written using the range syntax as
+
+.. code-block:: yaml
+
+    - id: chevron
+      operation: chevron
+      parameters:
+        amplitude: [0.45, 0.48, 0.0005]
+        duration: [5, 100, 4]
+        infer_hybridization: true
         relaxation_time: 50000
 
 The expected output is the following:

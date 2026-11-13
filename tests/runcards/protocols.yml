@@ -636,6 +636,17 @@ actions:
       nshots: 1000
       parking: True
 
+  - id: chevron cz infer hybridization
+    operation: chevron
+    targets: [[0, 1]]
+    parameters:
+      amplitude: [0.1, 0.6, 0.01]
+      duration: [10, 50, 1]
+      native: CZ
+      nshots: 1000
+      parking: True
+      infer_hybridization: True
+
   - id: chevron cz signal
     operation: chevron_signal
     targets: [[0, 1]]
