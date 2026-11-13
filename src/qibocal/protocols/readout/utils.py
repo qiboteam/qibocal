@@ -13,8 +13,13 @@ from qibolab import (
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
-from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import (
+    classify,
+    compute_assignment_fidelity,
+    linear_classifier,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -84,22 +89,6 @@ def base_sequence(
     return [sequence_0, sequence_1], readouts
 
 
-def fit_classification_model(
-    measured_0: npt.NDArray[np.float64], measured_1: npt.NDArray[np.float64]
-) -> QubitFit:
-    """Fit a binary readout classification model to IQ samples.
-
-    It returns the fitted qubit classification model.
-    """
-
-    model = QubitFit()
-    model.fit(
-        np.concatenate((measured_0, measured_1)),
-        np.asarray([0] * len(measured_0) + [1] * len(measured_1)),
-    )
-    return model
-
-
 def fit_readout_classification_models(
     targets: list[QubitId],
     parameter_dict: dict[QubitId, list[float]],
@@ -133,15 +122,12 @@ def fit_readout_classification_models(
                 data[qubit, 0, param] = sweep_state_0
                 data[qubit, 1, param] = sweep_state_1
 
-            fitted_result = fit_classification_model(sweep_state_0, sweep_state_1)
-
-            fit_res.setdefault(qubit, []).append(
-                [
-                    fitted_result.assignment_fidelity,
-                    fitted_result.angle,
-                    fitted_result.threshold,
-                ]
+            angle, threshold = linear_classifier(sweep_state_0, sweep_state_1)
+            fidelity = compute_assignment_fidelity(
+                classify(sweep_state_1, angle, threshold),
+                classify(sweep_state_0, angle, threshold),
             )
+            fit_res.setdefault(qubit, []).append([fidelity, angle, threshold])
 
     return ReadoutData(
         swept_parameter=parameter_dict,

@@ -1,16 +1,13 @@
-import json
-import pathlib
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import dataclass, field, fields
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
-import pandas as pd
-import plotly.graph_objects as go
 from qibolab import AcquisitionType, PulseSequence
-from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
 from qibocal.auto.operation import (
+    DATAFILE,
     RESULTSFILE,
     Data,
     Parameters,
@@ -18,23 +15,19 @@ from qibocal.auto.operation import (
     QubitId,
     Results,
 )
-from qibocal.auto.serialize import serialize
 from qibocal.calibration import CalibrationPlatform
-from qibocal.fitting.classifier import run
+from qibocal.config import log
 from qibocal.protocols.utils import (
-    LEGEND_FONT_SIZE,
-    MESH_SIZE,
-    evaluate_grid,
+    effective_qubit_temperature,
     format_error_single_cell,
+    linear_classifier,
+    project,
     round_report,
     table_dict,
     table_html,
 )
 
-from .plot import CLASSIFIER_COLORS, plot_results
-
-ROC_LENGHT = 800
-DEFAULT_CLASSIFIER = "qubit_fit"
+from .plot import plot_results
 
 __all__ = [
     "ClassificationType",
@@ -42,6 +35,26 @@ __all__ = [
     "SingleShotClassificationParameters",
     "single_shot_classification",
 ]
+
+LEGACY_FIELDS = {
+    "classifiers_list",
+    "savedir",
+    "names",
+    "y_preds",
+    "grid_preds",
+    "models",
+    "benchmark_table",
+    "classifiers_hpars",
+    "x_tests",
+    "y_tests",
+}
+"""Fields of the removed classifiers, still found in runcards and saved reports."""
+
+
+def _known(cls: type, values: dict) -> dict:
+    """Drop the fields of the removed classifiers, which `cls` does not define."""
+    names = {f.name for f in fields(cls)}
+    return {k: v for k, v in values.items() if k in names or k not in LEGACY_FIELDS}
 
 
 def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
@@ -62,12 +75,16 @@ def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
-    classifiers_list: list[str] | None = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states."""
-    savedir: str | None = " "
-    """Dumping folder of the classification results."""
+    @classmethod
+    def load(cls, input_parameters):
+        """Load parameters, ignoring the ones of the removed classifiers."""
+        legacy = LEGACY_FIELDS & set(input_parameters)
+        if legacy:
+            log.warning(
+                f"Ignoring {sorted(legacy)}: the classifiers have been removed, and "
+                "the states are classified by a linear threshold."
+            )
+        return super().load(_known(cls, input_parameters))
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
@@ -78,16 +95,20 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    savedir: str
-    """Dumping folder of the classification results."""
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    classifiers_list: list[str] | None = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states."""
+
+    @classmethod
+    def load(cls, path: Path, filename: str = DATAFILE):
+        """Load data, also saved with the removed classifiers' fields."""
+        params = cls.load_params(path, filename)
+        data = cls.load_data(path, filename)
+        if params is None and data is None:
+            return None
+        params = _known(cls, params or {})
+        return cls(**params) if data is None else cls(data=data, **params)
 
     def state_zero(self, qubit: QubitId) -> npt.NDArray:
         """Get state zero data."""
@@ -104,74 +125,28 @@ class SingleShotClassificationData(Data):
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    names: list
-    """List of models name."""
-    savedir: str
-    """Dumping folder of the classification results."""
-    y_preds: dict[QubitId, list]
-    """Models' predictions of the test set."""
-    grid_preds: dict[QubitId, list]
-    """Models' prediction of the contour grid."""
     threshold: dict[QubitId, float] = field(default_factory=dict)
-    """Threshold for classification."""
+    """Threshold for classification, along the rotated I axis."""
     rotation_angle: dict[QubitId, float] = field(default_factory=dict)
-    """Threshold for classification."""
+    """Angle rotating the axis connecting the centroids to the I axis."""
     mean_gnd_states: dict[QubitId, list[float]] = field(default_factory=dict)
     """Centroid of the ground state blob."""
     mean_exc_states: dict[QubitId, list[float]] = field(default_factory=dict)
     """Centroid of the excited state blob."""
     fidelity: dict[QubitId, float] = field(default_factory=dict)
-    """Fidelity evaluated only with the `qubit_fit` model."""
+    """Readout fidelity."""
     assignment_fidelity: dict[QubitId, float] = field(default_factory=dict)
-    """Assignment fidelity evaluated only with the `qubit_fit` model."""
+    """Assignment fidelity."""
     effective_temperature: dict[QubitId, float] = field(default_factory=dict)
     """Qubit effective temperature from Boltzmann distribution."""
-    models: dict[QubitId, list] = field(default_factory=list)
-    """List of trained classification models."""
-    benchmark_table: dict[QubitId, pd.DataFrame] | None = field(default_factory=dict)
-    """Benchmark tables."""
-    classifiers_hpars: dict[QubitId, dict] | None = field(default_factory=dict)
-    """Classifiers hyperparameters."""
-    x_tests: dict[QubitId, list] = field(default_factory=dict)
-    """Test set."""
-    y_tests: dict[QubitId, list] = field(default_factory=dict)
-    """Test set."""
     snr: dict[QubitId, float] = field(default_factory=dict)
     """SNR for two clouds"""
 
-    def __contains__(self, key: QubitId):
-        """Checking if key is in Results.
-
-        Overwritten because classifiers_hpars is empty when running the
-        default_classifier.
-        """
-        return all(
-            key in getattr(self, field.name)
-            for field in fields(self)
-            if isinstance(getattr(self, field.name), dict)
-            and field.name != "classifiers_hpars"
-        )
-
-    def save(self, path):
-        classifiers = run.import_classifiers(self.names)
-        for qubit in self.models:
-            for i, mod in enumerate(classifiers):
-                if self.savedir == " ":
-                    save_path = pathlib.Path(path)
-                else:
-                    save_path = pathlib.Path(self.savedir)
-
-                classifier = run.Classifier(mod, save_path / f"qubit{qubit}")
-                classifier.savedir.mkdir(parents=True, exist_ok=True)
-                dump_dir = classifier.base_dir / classifier.name / classifier.name
-                classifier.dump()(self.models[qubit][i], dump_dir)
-                classifier.dump_hyper(self.classifiers_hpars[qubit][classifier.name])
-        asdict_class = asdict(self)
-        asdict_class.pop("models")
-        asdict_class.pop("classifiers_hpars")
-        (path / f"{RESULTSFILE}.json").write_text(
-            json.dumps(serialize(asdict_class)), encoding="utf-8"
-        )
+    @classmethod
+    def load(cls, path: Path, filename: str = RESULTSFILE):
+        """Load results, also saved with the removed classifiers' fields."""
+        params = cls.load_params(path, filename)
+        return None if params is None else cls(**_known(cls, params))
 
 
 def _acquisition(
@@ -179,27 +154,15 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> SingleShotClassificationData:
-    """
-    Args:
-        nshots (int): number of times the pulse sequence will be repeated.
-        classifiers (list): list of classifiers, the available ones are:
-            - qubit_fit
-            - qblox_fit.
-        The default value is `["qubit_fit"]`.
-        savedir (str): Dumping folder of the classification results.
-        If not given the dumping folder will be the report one.
-        relaxation_time (float): Relaxation time.
+    """Measure the qubits prepared in the ground and excited states.
 
-        Example:
+    Example:
         .. code-block:: yaml
 
-        - id: single_shot_classification_1
-            operation: single_shot_classification
-            parameters:
-            nshots: 5000
-            savedir: "single_shot"
-            classifiers_list: ["qubit_fit"]
-
+            - id: single_shot_classification_1
+              operation: single_shot_classification
+              parameters:
+                nshots: 5000
     """
 
     # create two sequences of pulses:
@@ -232,8 +195,6 @@ def _acquisition(
             qubit: platform.config(platform.qubits[qubit].drive).frequency
             for qubit in targets
         },
-        classifiers_list=params.classifiers_list,
-        savedir=params.savedir,
     )
 
     options = {
@@ -262,82 +223,28 @@ def _acquisition(
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
-    qubits = data.qubits
-
-    benchmark_tables = {}
-    models_dict = {}
-    y_tests = {}
-    x_tests = {}
-    hpars = {}
-    snr = {}
-    threshold = {}
-    rotation_angle = {}
-    mean_gnd_states = {}
-    mean_exc_states = {}
-    fidelity = {}
-    assignment_fidelity = {}
-    y_test_predict = {}
-    grid_preds_dict = {}
-    effective_temperature = {}
-    for qubit in qubits:
-        qubit_data = data.data[qubit]
-        state0_data = qubit_data[qubit_data.state == 0]
-        iq_state0 = state0_data[["i", "q"]]
-        benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
-            data, qubit
+    results = SingleShotClassificationResults()
+    for qubit in data.qubits:
+        ground, excited = data.state_zero(qubit), data.state_one(qubit)
+        angle, threshold = linear_classifier(ground, excited)
+        ground_x, excited_x = project(ground, angle), project(excited, angle)
+        # probabilities of measuring a state, given the prepared one
+        p10 = float(np.mean(ground_x > threshold))
+        p01 = float(np.mean(excited_x <= threshold))
+        results.rotation_angle[qubit] = angle
+        results.threshold[qubit] = threshold
+        results.mean_gnd_states[qubit] = np.mean(ground, axis=0).tolist()
+        results.mean_exc_states[qubit] = np.mean(excited, axis=0).tolist()
+        results.fidelity[qubit] = 1 - p10 - p01
+        results.assignment_fidelity[qubit] = 1 - (p10 + p01) / 2
+        results.snr[qubit] = evaluate_snr(ground, excited)
+        results.effective_temperature[qubit] = effective_qubit_temperature(
+            prob_0=1 - p10,
+            prob_1=p10,
+            qubit_frequency=data.qubit_frequencies[qubit],
+            nshots=len(ground),
         )
-        benchmark_tables[qubit] = benchmark_table.values.tolist()
-        models_dict[qubit] = models
-        y_tests[qubit] = y_test.tolist()
-        x_tests[qubit] = x_test.tolist()
-        hpars[qubit] = {}
-        y_preds = []
-        grid_preds = []
-        grid = evaluate_grid(qubit_data)
-        for i, model_name in enumerate(names):
-            hpars[qubit][model_name] = hpars_list[i]
-            try:
-                y_preds.append(models[i].predict_proba(x_test)[:, 1].tolist())
-            except AttributeError:
-                y_preds.append(models[i].predict(x_test).tolist())
-            grid_preds.append(
-                np.round(np.reshape(models[i].predict(grid), (MESH_SIZE, MESH_SIZE)))
-                .astype(np.int64)
-                .tolist()
-            )
-            if model_name == "qubit_fit":
-                threshold[qubit] = models[i].threshold
-                rotation_angle[qubit] = models[i].angle
-                mean_gnd_states[qubit] = models[i].iq_mean0
-                mean_exc_states[qubit] = models[i].iq_mean1
-                fidelity[qubit] = models[i].fidelity
-                snr[qubit] = evaluate_snr(data.state_zero(qubit), data.state_one(qubit))
-                assignment_fidelity[qubit] = models[i].assignment_fidelity
-                predictions_state0 = models[i].predict(iq_state0.tolist())
-                effective_temperature[qubit] = models[i].effective_temperature(
-                    predictions_state0, data.qubit_frequencies[qubit]
-                )
-        y_test_predict[qubit] = y_preds
-        grid_preds_dict[qubit] = grid_preds
-    return SingleShotClassificationResults(
-        benchmark_table=benchmark_tables,
-        y_tests=y_tests,
-        x_tests=x_tests,
-        names=names,
-        classifiers_hpars=hpars,
-        models=models_dict,
-        threshold=threshold,
-        rotation_angle=rotation_angle,
-        mean_gnd_states=mean_gnd_states,
-        mean_exc_states=mean_exc_states,
-        fidelity=fidelity,
-        assignment_fidelity=assignment_fidelity,
-        effective_temperature=effective_temperature,
-        savedir=data.savedir,
-        y_preds=y_test_predict,
-        grid_preds=grid_preds_dict,
-        snr=snr,
-    )
+    return results
 
 
 def _plot(
@@ -345,77 +252,36 @@ def _plot(
     target: QubitId,
     fit: SingleShotClassificationResults,
 ):
-    fitting_report = ""
-    models_name = data.classifiers_list
     figures = plot_results(data, target, 2, fit)
-    if fit is not None:
-        y_test = fit.y_tests[target]
-        y_pred = fit.y_preds[target]
-
-        if len(models_name) != 1:
-            # Evaluate the ROC curve
-            fig_roc = go.Figure()
-            fig_roc.add_shape(
-                type="line", line={"dash": "dash"}, x0=0.0, x1=1.0, y0=0.0, y1=1.0
-            )
-            for i, model in enumerate(models_name):
-                y_pred = fit.y_preds[target][i]
-                fpr, tpr, _ = roc_curve(y_test, y_pred)
-                auc_score = roc_auc_score(y_test, y_pred)
-                name = f"{model} (AUC={auc_score:.2f})"
-                fig_roc.add_trace(
-                    go.Scatter(
-                        x=fpr,
-                        y=tpr,
-                        name=name,
-                        mode="lines",
-                        line={"color": CLASSIFIER_COLORS[i % len(CLASSIFIER_COLORS)]},
-                    )
-                )
-            fig_roc.update_layout(
-                height=ROC_LENGHT,
-                margin={"t": 30},
-                legend={"font": {"size": LEGEND_FONT_SIZE}},
-            )
-            fig_roc.update_xaxes(
-                title_text="False Positive Rate",
-                range=[0, 1],
-            )
-            fig_roc.update_yaxes(
-                title_text="True Positive Rate",
-                range=[0, 1],
-            )
-            figures.append(fig_roc)
-
-        if "qubit_fit" in models_name:
-            fitting_report = table_html(
-                table_dict(
-                    target,
-                    [
-                        "Average State 0",
-                        "Average State 1",
-                        "Rotational Angle",
-                        "Threshold",
-                        "Readout Fidelity",
-                        "Assignment Fidelity",
-                        "SNR",
-                        "Effective Qubit Temperature [K]",
-                    ],
-                    [
-                        np.round(fit.mean_gnd_states[target], 3),
-                        np.round(fit.mean_exc_states[target], 3),
-                        np.round(fit.rotation_angle[target], 3),
-                        np.round(fit.threshold[target], 6),
-                        np.round(fit.fidelity[target], 3),
-                        np.round(fit.assignment_fidelity[target], 3),
-                        np.round(fit.snr[target], 2),
-                        format_error_single_cell(
-                            round_report([fit.effective_temperature[target]])
-                        ),
-                    ],
-                )
-            )
-
+    if fit is None or target not in fit:
+        return figures, ""
+    fitting_report = table_html(
+        table_dict(
+            target,
+            [
+                "Average State 0",
+                "Average State 1",
+                "Rotational Angle",
+                "Threshold",
+                "Readout Fidelity",
+                "Assignment Fidelity",
+                "SNR",
+                "Effective Qubit Temperature [K]",
+            ],
+            [
+                np.round(fit.mean_gnd_states[target], 3),
+                np.round(fit.mean_exc_states[target], 3),
+                np.round(fit.rotation_angle[target], 3),
+                np.round(fit.threshold[target], 6),
+                np.round(fit.fidelity[target], 3),
+                np.round(fit.assignment_fidelity[target], 3),
+                np.round(fit.snr[target], 2),
+                format_error_single_cell(
+                    round_report([fit.effective_temperature[target]])
+                ),
+            ],
+        )
+    )
     return figures, fitting_report
 
 
