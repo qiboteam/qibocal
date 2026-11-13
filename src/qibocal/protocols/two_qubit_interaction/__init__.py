@@ -1,3 +1,4 @@
+from .avoidedcrossing import avoided_crossing
 from .chevron import chevron, chevron_signal
 from .chsh import chsh
 from .cross_resonance import (
@@ -12,6 +13,7 @@ from .snz_optimize_t_idle import snz_optimize_t_idle
 from .virtual_z_phases import correct_virtual_z_phases
 
 __all__ = [
+    "avoided_crossing",
     "cancellation_amplitude_tuning",
     "cancellation_phase_tuning",
     "chevron",

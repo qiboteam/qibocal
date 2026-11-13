@@ -39,6 +39,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     qubit_vz
     flux_gate/index
     cryoscope/cryoscope
+    avoided_crossing
     chevron
     virtual_z
     snz/snz
