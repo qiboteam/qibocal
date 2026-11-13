@@ -41,6 +41,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     cryoscope/cryoscope
     chevron
     virtual_z
+    snz/snz
     state_tomographies
     coherence/index
     chsh
