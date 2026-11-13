@@ -1,14 +1,25 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from pydantic import BaseModel, TypeAdapter
-from qibolab import Platform, PulseSequence, VirtualZ
+from qibolab import (
+    Acquisition,
+    Platform,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    VirtualZ,
+)
 
 from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.calibration.calibration import TwoQubitCalibration
+
+if TYPE_CHECKING:
+    from qibocal.calibration import CalibrationPlatform
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -48,9 +59,37 @@ def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId)
     platform.calibration.single_qubits[qubit].resonator.dressed_frequency = freq
 
 
+DEFAULT_READOUT_DURATION = 2000
+"""Duration [ns] of the measurement, when created by :func:`readout_amplitude`."""
+
+
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
-    """Update readout amplitude value in platform for specific qubit."""
-    platform.update({f"native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude": amp})
+    """Update readout amplitude value in platform for specific qubit.
+
+    If the qubit has no measurement yet, it is created as a rectangular readout, of
+    duration :data:`DEFAULT_READOUT_DURATION`, and with no time of flight.
+    """
+    path = f"native_gates.single_qubit.{qubit}.MZ"
+    if platform.natives.single_qubit[qubit].MZ is None:
+        channel = platform.qubits[qubit].acquisition
+        readout = Readout(
+            acquisition=Acquisition(duration=DEFAULT_READOUT_DURATION),
+            probe=Pulse(
+                duration=DEFAULT_READOUT_DURATION,
+                amplitude=amp,
+                envelope=Rectangular(),
+            ),
+            time_of_flight=0,
+        )
+        # the native measurement, in its serialized form
+        platform.update({path: [(channel, readout.model_dump())]})
+        return
+    platform.update({f"{path}.0.1.probe.amplitude": amp})
+
+
+def punchout_amplitude(amp: float, platform: "CalibrationPlatform", qubit: QubitId):
+    """Record the readout amplitude found by the punchout, for specific qubit."""
+    platform.calibration.single_qubits[qubit].resonator.punchout_amplitude = amp
 
 
 def drive_frequency(freq: float | tuple | list, platform: Platform, qubit: QubitId):

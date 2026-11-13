@@ -42,6 +42,12 @@ class Resonator(Model):
     """Depletion time [ns]."""
     bare_frequency_amplitude: float | None = None
     """Readout amplitude at high frequency."""
+    punchout_amplitude: float | None = None
+    """Readout amplitude found by the resonator punchout.
+
+    It is a starting point for the measurement amplitude, which may be refined
+    later on, e.g. optimizing the readout fidelity.
+    """
 
     @property
     def dispersive_shift(self):

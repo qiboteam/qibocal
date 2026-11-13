@@ -4,14 +4,24 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    Acquisition,
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ, Range, RangeLike, table_dict, table_html, to_range
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
 __all__ = ["ResonatorPunchoutAttenuationData", "resonator_punchout_attenuation"]
@@ -21,34 +31,89 @@ __all__ = ["ResonatorPunchoutAttenuationData", "resonator_punchout_attenuation"]
 class ResonatorPunchoutAttenuationParameters(Parameters):
     """ResonatorPunchoutAttenuation runcard inputs."""
 
-    freq_width: int
-    """Width for frequency sweep relative to the readout frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    min_attenuation: float
-    """Minimum LO attenuation [dB] (0 = no attenuation, lower = more attenuation)."""
-    max_attenuation: float
-    """Maximum LO attenuation [dB]."""
-    step_attenuation: float
-    """Step LO attenuation [dB]."""
+    attenuation: RangeLike | None = None
+    """LO attenuation range for sweep [dB] (0 = no attenuation).
+
+    Center-based specifications (e.g. ``center``, ``asym``) are not supported, since
+    there is no reference attenuation.
+    """
+    min_attenuation: float | None = None
+    """Minimum LO attenuation [dB] (0 = no attenuation, lower = more attenuation).
+
+    .. deprecated:: 0.2.7
+        Use :attr:`attenuation` instead.
+    """
+    max_attenuation: float | None = None
+    """Maximum LO attenuation [dB].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`attenuation` instead.
+    """
+    step_attenuation: float | None = None
+    """Step LO attenuation [dB].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`attenuation` instead.
+    """
+    frequency: RangeLike | None = None
+    """Frequency range for sweep [Hz]."""
+    freq_width: int | None = None
+    """Width for frequency sweep relative to the readout frequency [Hz].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`frequency` instead.
+    """
+    freq_step: int | None = None
+    """Frequency step for sweep [Hz].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`frequency` instead.
+    """
+    amplitude: float = 1.0
+    """Readout probe amplitude, the same for all qubits."""
+    duration: float = 2000
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
     attenuation_range: np.ndarray = None
+
+    def attenuation_sweep(self) -> Range:
+        """LO attenuation range for sweep [dB], as ``(start, stop, step)``."""
+        if self.attenuation is not None:
+            return to_range(self.attenuation)
+        if (
+            self.min_attenuation is None
+            or self.max_attenuation is None
+            or self.step_attenuation is None
+        ):
+            raise ValueError(
+                "Provide 'attenuation' or all of 'min_attenuation', "
+                "'max_attenuation' and 'step_attenuation'."
+            )
+        return (self.min_attenuation, self.max_attenuation, self.step_attenuation)
 
     def compute_attenuation_range(
         self, platform: CalibrationPlatform
     ) -> npt.NDArray[np.float64]:
         """LO attenuation range [dB]."""
-        self.attenuation_range = np.arange(
-            self.min_attenuation,
-            self.max_attenuation,
-            self.step_attenuation,
-        )
+        self.attenuation_range = np.arange(*self.attenuation_sweep())
 
-    @property
-    def delta_frequency_range(self) -> npt.NDArray[np.float64]:
-        """Frequency detuning range [Hz]."""
-        return np.arange(
-            -self.freq_width / 2,
-            self.freq_width / 2 + self.freq_step,
+    def frequency_range(self, center: float) -> Range:
+        """Frequency range for sweep [Hz], around the `center` readout frequency.
+
+        The legacy range, from :attr:`freq_width` and :attr:`freq_step`, includes its
+        end point.
+        """
+        if self.frequency is not None:
+            return to_range(self.frequency, center=center)
+        if self.freq_width is None or self.freq_step is None:
+            raise ValueError(
+                "Provide 'frequency' or both 'freq_width' and 'freq_step'."
+            )
+        return (
+            center - self.freq_width / 2,
+            center + self.freq_width / 2 + self.freq_step,
             self.freq_step,
         )
 
@@ -112,11 +177,10 @@ def _acquisition(
         ResonatorPunchoutAttenuationData
     """
 
-    assert params.min_attenuation >= 0, """minimum attenuation value is defined >=0"""
-    assert params.max_attenuation >= params.min_attenuation, (
-        """max_attenuation is always >= min_attenuation"""
-    )
-    assert params.step_attenuation >= 0, """step_attenuation is always >=0"""
+    start, stop, step = params.attenuation_sweep()
+    assert start >= 0, """minimum attenuation value is defined >=0"""
+    assert stop >= start, """maximum attenuation is always >= minimum attenuation"""
+    assert step >= 0, """attenuation step is always >=0"""
 
     # compute range of attenuation to sweep on
     params.compute_attenuation_range(platform)
@@ -129,9 +193,15 @@ def _acquisition(
     ro_pulses = {}
     freq_sweepers = {}
     for qubit in targets:
-        # Create pulse sequence
-        natives = platform.natives.single_qubit[qubit]
-        ro_channel, ro_pulse = natives.MZ()[0]
+        ro_channel = platform.qubits[qubit].acquisition
+        ro_pulse = Readout(
+            acquisition=Acquisition(duration=params.duration),
+            probe=Pulse(
+                duration=params.duration,
+                amplitude=params.amplitude,
+                envelope=Rectangular(),
+            ),
+        )
         ro_pulses[qubit] = ro_pulse
         sequence.append((ro_channel, ro_pulse))
 
@@ -144,7 +214,7 @@ def _acquisition(
         f0 = platform.config(probe).frequency
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
-            values=f0 + params.delta_frequency_range,
+            range=params.frequency_range(f0),
             channels=[probe],
         )
 
