@@ -31,12 +31,30 @@ __all__ = ["ResonatorPunchoutAttenuationData", "resonator_punchout_attenuation"]
 class ResonatorPunchoutAttenuationParameters(Parameters):
     """ResonatorPunchoutAttenuation runcard inputs."""
 
-    min_attenuation: float
-    """Minimum LO attenuation [dB] (0 = no attenuation, lower = more attenuation)."""
-    max_attenuation: float
-    """Maximum LO attenuation [dB]."""
-    step_attenuation: float
-    """Step LO attenuation [dB]."""
+    attenuation: RangeLike | None = None
+    """LO attenuation range for sweep [dB] (0 = no attenuation).
+
+    Center-based specifications (e.g. ``center``, ``asym``) are not supported, since
+    there is no reference attenuation.
+    """
+    min_attenuation: float | None = None
+    """Minimum LO attenuation [dB] (0 = no attenuation, lower = more attenuation).
+
+    .. deprecated:: 0.2.7
+        Use :attr:`attenuation` instead.
+    """
+    max_attenuation: float | None = None
+    """Maximum LO attenuation [dB].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`attenuation` instead.
+    """
+    step_attenuation: float | None = None
+    """Step LO attenuation [dB].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`attenuation` instead.
+    """
     frequency: RangeLike | None = None
     """Frequency range for sweep [Hz]."""
     freq_width: int | None = None
@@ -60,15 +78,26 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """
     attenuation_range: np.ndarray = None
 
+    def attenuation_sweep(self) -> Range:
+        """LO attenuation range for sweep [dB], as ``(start, stop, step)``."""
+        if self.attenuation is not None:
+            return to_range(self.attenuation)
+        if (
+            self.min_attenuation is None
+            or self.max_attenuation is None
+            or self.step_attenuation is None
+        ):
+            raise ValueError(
+                "Provide 'attenuation' or all of 'min_attenuation', "
+                "'max_attenuation' and 'step_attenuation'."
+            )
+        return (self.min_attenuation, self.max_attenuation, self.step_attenuation)
+
     def compute_attenuation_range(
         self, platform: CalibrationPlatform
     ) -> npt.NDArray[np.float64]:
         """LO attenuation range [dB]."""
-        self.attenuation_range = np.arange(
-            self.min_attenuation,
-            self.max_attenuation,
-            self.step_attenuation,
-        )
+        self.attenuation_range = np.arange(*self.attenuation_sweep())
 
     def frequency_range(self, center: float) -> Range:
         """Frequency range for sweep [Hz], around the `center` readout frequency.
@@ -148,11 +177,10 @@ def _acquisition(
         ResonatorPunchoutAttenuationData
     """
 
-    assert params.min_attenuation >= 0, """minimum attenuation value is defined >=0"""
-    assert params.max_attenuation >= params.min_attenuation, (
-        """max_attenuation is always >= min_attenuation"""
-    )
-    assert params.step_attenuation >= 0, """step_attenuation is always >=0"""
+    start, stop, step = params.attenuation_sweep()
+    assert start >= 0, """minimum attenuation value is defined >=0"""
+    assert stop >= start, """maximum attenuation is always >= minimum attenuation"""
+    assert step >= 0, """attenuation step is always >=0"""
 
     # compute range of attenuation to sweep on
     params.compute_attenuation_range(platform)

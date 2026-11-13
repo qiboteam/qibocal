@@ -75,6 +75,58 @@ def test_legacy_frequency_ranges():
         ResonatorPunchoutParameters.load(AMPLITUDES).frequency_range(center)
 
 
+@pytest.mark.parametrize(
+    "parameters, sweeps, legacy, method",
+    [
+        (
+            ResonatorPunchoutParameters,
+            {"amplitude": ["linspace", 0.1, 0.3, 3]},
+            AMPLITUDES,
+            "amplitude_range",
+        ),
+        (
+            ResonatorPunchoutAttenuationParameters,
+            {"attenuation": ["linspace", 0, 20, 3]},
+            ATTENUATIONS,
+            "attenuation_sweep",
+        ),
+    ],
+)
+def test_range_like_sweeps(parameters, sweeps, legacy, method):
+    """Amplitude and attenuation accept the range syntax, and the legacy fields."""
+    new = parameters.load({"frequency": ["center", 2e6, 1e6], **sweeps})
+    old = parameters.load({"frequency": ["center", 2e6, 1e6], **legacy})
+
+    assert pytest.approx(getattr(new, method)()) == getattr(old, method)()
+    assert getattr(old, method)() == tuple(legacy.values())
+    with pytest.raises(ValueError, match=f"Provide '{next(iter(sweeps))}'"):
+        getattr(parameters.load({}), method)()
+    with pytest.raises(ValueError, match="Center must be provided"):
+        getattr(parameters.load({next(iter(sweeps)): ["center", 1, 0.1]}), method)()
+
+
+def test_range_like_acquisition(platform, mocker):
+    """The range syntax defines the swept amplitudes and attenuations."""
+    frequency = {"frequency": ["center", 2e6, 1e6], "nshots": 10}
+    data = punchout_acquisition(
+        ResonatorPunchoutParameters.load({"amplitude": [0.1, 0.35, 0.1], **frequency}),
+        platform,
+        [0],
+    )
+    np.testing.assert_allclose(data.amplitudes, [0.1, 0.2, 0.3])
+
+    execute = mocker.spy(platform, "execute")
+    data = attenuation_acquisition(
+        ResonatorPunchoutAttenuationParameters.load(
+            {"attenuation": ["window", 10, 20, 10], **frequency}
+        ),
+        platform,
+        [0],
+    )
+    np.testing.assert_allclose(data.attenuations, [0, 10])
+    assert execute.call_count == 2
+
+
 def test_punchout_update_records_amplitude(platform):
     results = ResonatorPunchoutResults(
         readout_frequency={0: 7.1e9},

@@ -38,12 +38,30 @@ __all__ = ["ResonatorPunchoutData", "resonator_punchout"]
 class ResonatorPunchoutParameters(Parameters):
     """ResonatorPunchout runcard inputs."""
 
-    min_amp: float
-    """Minimum amplitude."""
-    max_amp: float
-    """Maximum amplitude."""
-    step_amp: float
-    """Step amplitude."""
+    amplitude: RangeLike | None = None
+    """Readout probe amplitude range for sweep [a.u.].
+
+    Center-based specifications (e.g. ``center``, ``asym``) are not supported, since
+    there is no reference amplitude.
+    """
+    min_amp: float | None = None
+    """Minimum amplitude.
+
+    .. deprecated:: 0.2.7
+        Use :attr:`amplitude` instead.
+    """
+    max_amp: float | None = None
+    """Maximum amplitude.
+
+    .. deprecated:: 0.2.7
+        Use :attr:`amplitude` instead.
+    """
+    step_amp: float | None = None
+    """Step amplitude.
+
+    .. deprecated:: 0.2.7
+        Use :attr:`amplitude` instead.
+    """
     frequency: RangeLike | None = None
     """Frequency range for sweep [Hz]."""
     freq_width: int | None = None
@@ -77,6 +95,16 @@ class ResonatorPunchoutParameters(Parameters):
             center + self.freq_width / 2,
             self.freq_step,
         )
+
+    def amplitude_range(self) -> Range:
+        """Readout probe amplitude range for sweep [a.u.]."""
+        if self.amplitude is not None:
+            return to_range(self.amplitude)
+        if self.min_amp is None or self.max_amp is None or self.step_amp is None:
+            raise ValueError(
+                "Provide 'amplitude' or all of 'min_amp', 'max_amp' and 'step_amp'."
+            )
+        return (self.min_amp, self.max_amp, self.step_amp)
 
 
 @dataclass
@@ -165,7 +193,7 @@ def _acquisition(
 
     amp_sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
+        range=params.amplitude_range(),
         pulses=[ro_pulses[qubit] for qubit in targets],
     )
 

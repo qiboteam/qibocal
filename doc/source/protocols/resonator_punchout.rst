@@ -34,13 +34,33 @@ Example
 
         operation: resonator_punchout
         parameters:
-          freq_width: 40_000_000
-          freq_step: 500_000
-          min_amp: 0.1
-          max_amp: 2.4
-          step_amp: 0.3
+          frequency: [center, 40_000_000, 500_000]
+          amplitude: [0.1, 0.9, 0.05]
           nshots: 2048
           relaxation_time: 5000
+
+Both ``frequency`` and ``amplitude`` accept any
+:class:`qibocal.protocols.utils.RangeLike` specification, e.g.
+``amplitude: [linspace, 0.1, 0.9, 17]``. ``amplitude`` has no reference value, so
+the ``center`` and ``asym`` variants can only be used for ``frequency``.
+
+The legacy parameters ``freq_width`` and ``freq_step`` (in place of ``frequency``),
+and ``min_amp``, ``max_amp`` and ``step_amp`` (in place of ``amplitude``), are
+deprecated but still supported.
+
+The same syntax is available for the LO attenuation punchout,
+``resonator_punchout_attenuation``, where ``attenuation`` (in dB) replaces the
+deprecated ``min_attenuation``, ``max_attenuation`` and ``step_attenuation``:
+
+.. code-block:: yaml
+
+      - id: resonator punchout attenuation
+
+        operation: resonator_punchout_attenuation
+        parameters:
+          frequency: [center, 40_000_000, 500_000]
+          attenuation: [0, 40, 2]
+          nshots: 2048
 
 Eventually, we want to have a plot like the one below:
 
