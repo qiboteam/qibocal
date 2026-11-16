@@ -5,14 +5,10 @@ from dataclasses import dataclass, field, fields
 import numpy as np
 import numpy.typing as npt
 from qibolab import (
-    Acquisition,
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
-    Readout,
-    Rectangular,
     Sweeper,
 )
 
@@ -189,14 +185,7 @@ def _acquisition(
     amplitudes = {}
 
     for q in targets:
-        readout = Readout(
-            acquisition=Acquisition(duration=params.duration),
-            probe=Pulse(
-                duration=params.duration,
-                amplitude=params.amplitude,
-                envelope=Rectangular(),
-            ),
-        )
+        readout = update.rectangular_readout(params.amplitude, params.duration)
         amplitudes[q] = params.amplitude
         ro_pulses[q] = readout
         sequence.append((platform.qubits[q].acquisition, readout))

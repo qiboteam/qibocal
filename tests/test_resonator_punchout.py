@@ -127,16 +127,30 @@ def test_range_like_acquisition(platform, mocker):
     assert execute.call_count == 2
 
 
-def test_punchout_update_records_amplitude(platform):
-    results = ResonatorPunchoutResults(
-        readout_frequency={0: 7.1e9},
-        bare_frequency={0: 7.2e9},
-        readout_amplitude={0: 0.25},
-        successful_fit={0: True},
-    )
-    punchout_update(results, platform, 0)
+PUNCHOUT_RESULTS = ResonatorPunchoutResults(
+    readout_frequency={0: 7.1e9},
+    bare_frequency={0: 7.2e9},
+    readout_amplitude={0: 0.25},
+    successful_fit={0: True},
+)
 
-    assert platform.natives.single_qubit[0].MZ()[0][1].probe.amplitude == 0.25
+
+def test_punchout_update_preserves_measurement(platform):
+    """An existing measurement is left untouched, the amplitude is only recorded."""
+    before = platform.natives.single_qubit[0].MZ()
+    punchout_update(PUNCHOUT_RESULTS, platform, 0)
+
+    assert platform.natives.single_qubit[0].MZ() == before
+    assert platform.calibration.single_qubits[0].resonator.punchout_amplitude == 0.25
+
+
+def test_punchout_update_creates_measurement(platform):
+    """A missing measurement is created, with the punchout amplitude."""
+    platform.update({"native_gates.single_qubit.0.MZ": None})
+    punchout_update(PUNCHOUT_RESULTS, platform, 0)
+
+    [(_, readout)] = platform.natives.single_qubit[0].MZ()
+    assert readout == update.rectangular_readout(0.25)
     assert platform.calibration.single_qubits[0].resonator.punchout_amplitude == 0.25
 
 
@@ -151,3 +165,14 @@ def test_readout_amplitude_creates_measurement(platform):
     assert readout.probe.duration == readout.acquisition.duration
     assert readout.probe.duration == update.DEFAULT_READOUT_DURATION
     assert readout.time_of_flight == 0
+
+
+def test_readout_amplitude_updates_measurement(platform):
+    """An existing measurement only gets its amplitude updated."""
+    [(_, before)] = platform.natives.single_qubit[0].MZ()
+    update.readout_amplitude(0.3, platform, 0)
+
+    [(_, readout)] = platform.natives.single_qubit[0].MZ()
+    assert readout.probe.amplitude == 0.3
+    assert readout.probe.envelope == before.probe.envelope
+    assert readout.probe.duration == before.probe.duration

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 from pydantic import BaseModel, TypeAdapter
 from qibolab import (
-    Acquisition,
     Platform,
     Pulse,
     PulseSequence,
@@ -60,31 +59,49 @@ def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId)
 
 
 DEFAULT_READOUT_DURATION = 2000
-"""Duration [ns] of the measurement, when created by :func:`readout_amplitude`."""
+"""Duration [ns] of the measurement, when created by :func:`default_measurement`."""
+
+
+def rectangular_readout(
+    amplitude: float, duration: float = DEFAULT_READOUT_DURATION
+) -> Readout:
+    """Rectangular readout, acquired for the whole probe duration.
+
+    This is the probe used by the resonator spectroscopies, and the measurement that
+    is created when none is available (cf. :func:`default_measurement`).
+    """
+    return Readout.from_probe(
+        Pulse(duration=duration, amplitude=amplitude, envelope=Rectangular())
+    )
+
+
+def default_measurement(amp: float, platform: Platform, qubit: QubitId) -> bool:
+    """Create the measurement for specific qubit, only if it has none yet.
+
+    The measurement is a :func:`rectangular_readout`, of duration
+    :data:`DEFAULT_READOUT_DURATION`. An existing measurement is never modified.
+
+    Returns whether the measurement has been created.
+    """
+    if platform.natives.single_qubit[qubit].MZ is not None:
+        return False
+    channel = platform.qubits[qubit].acquisition
+    readout = rectangular_readout(amp)
+    # the native measurement, in its serialized form
+    platform.update(
+        {f"native_gates.single_qubit.{qubit}.MZ": [(channel, readout.model_dump())]}
+    )
+    return True
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit.
 
-    If the qubit has no measurement yet, it is created as a rectangular readout, of
-    duration :data:`DEFAULT_READOUT_DURATION`, and with no time of flight.
+    If the qubit has no measurement yet, it is created by :func:`default_measurement`.
     """
-    path = f"native_gates.single_qubit.{qubit}.MZ"
-    if platform.natives.single_qubit[qubit].MZ is None:
-        channel = platform.qubits[qubit].acquisition
-        readout = Readout(
-            acquisition=Acquisition(duration=DEFAULT_READOUT_DURATION),
-            probe=Pulse(
-                duration=DEFAULT_READOUT_DURATION,
-                amplitude=amp,
-                envelope=Rectangular(),
-            ),
-            time_of_flight=0,
-        )
-        # the native measurement, in its serialized form
-        platform.update({path: [(channel, readout.model_dump())]})
+    if default_measurement(amp, platform, qubit):
         return
-    platform.update({f"{path}.0.1.probe.amplitude": amp})
+    platform.update({f"native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude": amp})
 
 
 def punchout_amplitude(amp: float, platform: "CalibrationPlatform", qubit: QubitId):

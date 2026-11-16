@@ -4,14 +4,10 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
-    Acquisition,
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
-    Readout,
-    Rectangular,
     Sweeper,
 )
 
@@ -175,12 +171,7 @@ def _acquisition(
     sequence = PulseSequence()
     for qubit in targets:
         ro_channel = platform.qubits[qubit].acquisition
-        ro_pulses[qubit] = Readout(
-            acquisition=Acquisition(duration=params.duration),
-            probe=Pulse(
-                duration=params.duration, amplitude=1.0, envelope=Rectangular()
-            ),
-        )
+        ro_pulses[qubit] = update.rectangular_readout(1.0, params.duration)
         sequence.append((ro_channel, ro_pulses[qubit]))
 
         probe = platform.qubits[qubit].probe
@@ -376,8 +367,10 @@ def _update(
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
         )
-        update.readout_amplitude(results.readout_amplitude[target], platform, target)
         update.punchout_amplitude(results.readout_amplitude[target], platform, target)
+        # an existing measurement may have been calibrated with a different shape or
+        # duration, thus it is not modified: the punchout only provides a default
+        update.default_measurement(results.readout_amplitude[target], platform, target)
 
 
 resonator_punchout = Protocol(_acquisition, _fit, _plot, _update)

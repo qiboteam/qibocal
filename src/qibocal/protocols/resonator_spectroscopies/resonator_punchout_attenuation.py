@@ -5,14 +5,10 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
-    Acquisition,
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
-    Readout,
-    Rectangular,
     Sweeper,
 )
 
@@ -194,14 +190,7 @@ def _acquisition(
     freq_sweepers = {}
     for qubit in targets:
         ro_channel = platform.qubits[qubit].acquisition
-        ro_pulse = Readout(
-            acquisition=Acquisition(duration=params.duration),
-            probe=Pulse(
-                duration=params.duration,
-                amplitude=params.amplitude,
-                envelope=Rectangular(),
-            ),
-        )
+        ro_pulse = update.rectangular_readout(params.amplitude, params.duration)
         ro_pulses[qubit] = ro_pulse
         sequence.append((ro_channel, ro_pulse))
 
