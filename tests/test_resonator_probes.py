@@ -1,8 +1,9 @@
 """Rectangular readout probes of the resonator spectroscopies with flux and states."""
 
 import pytest
-from qibolab import Readout, Rectangular
+from qibolab import Readout
 
+from qibocal import update
 from qibocal.protocols.dispersive_shift.dispersive_shift import (
     DispersiveShiftParameters,
 )
@@ -44,15 +45,17 @@ def test_rectangular_probe(
 
     sequences = execute.call_args.args[0]
     assert len(sequences) == nsequences
+    ids = set()
     for sequence in sequences:
         [readout] = [
             pulse
             for pulse in sequence.channel(platform.qubits[0].acquisition)
             if isinstance(pulse, Readout)
         ]
-        assert isinstance(readout.probe.envelope, Rectangular)
-        assert readout.probe.amplitude == 0.05
-        assert readout.probe.duration == readout.acquisition.duration == 1000
+        assert readout == update.rectangular_readout(0.05, 1000)
+        ids.add(readout.id)
+    # results are retrieved by pulse id, so each sequence needs its own readout
+    assert len(ids) == nsequences
 
 
 @pytest.mark.parametrize("parameters, extra", [(p, e) for _, p, e, _ in PROTOCOLS])
@@ -60,6 +63,6 @@ def test_amplitude_required(parameters, extra):
     loaded = parameters.load(
         {"frequency": ["center", 2e6, 1e6], "amplitude": 0.1, **extra}
     )
-    assert loaded.duration == 2000
+    assert loaded.duration == update.DEFAULT_READOUT_DURATION
     with pytest.raises(TypeError, match="amplitude"):
         parameters.load({"frequency": ["center", 2e6, 1e6], **extra})

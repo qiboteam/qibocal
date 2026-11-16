@@ -3,14 +3,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import (
-    Acquisition,
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
-    Readout,
-    Rectangular,
     Sweeper,
 )
 from scipy.ndimage import median_filter
@@ -43,7 +39,7 @@ class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
     freq_center: float | None = None
     amplitude: float = field(kw_only=True)
     """Readout probe amplitude, the same for all qubits."""
-    duration: float = 2000
+    duration: float = update.DEFAULT_READOUT_DURATION
     """Readout probe duration [ns], the same for all qubits.
 
     The probe is rectangular, and it is acquired for its whole duration.
@@ -131,14 +127,7 @@ def _acquisition(
     offset_sweepers = []
     for q in targets:
         ro_channel = platform.qubits[q].acquisition
-        ro_pulses[q] = Readout(
-            acquisition=Acquisition(duration=params.duration),
-            probe=Pulse(
-                duration=params.duration,
-                amplitude=params.amplitude,
-                envelope=Rectangular(),
-            ),
-        )
+        ro_pulses[q] = update.rectangular_readout(params.amplitude, params.duration)
         sequence.append((ro_channel, ro_pulses[q]))
 
         qubit = platform.qubits[q]

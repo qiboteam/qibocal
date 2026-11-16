@@ -6,14 +6,10 @@ import plotly.graph_objects as go
 import scipy.constants
 from plotly.subplots import make_subplots
 from qibolab import (
-    Acquisition,
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
-    Readout,
-    Rectangular,
     Sweeper,
 )
 
@@ -47,7 +43,7 @@ class DispersiveShiftParameters(Parameters):
     """Frequency step for sweep [Hz]."""
     amplitude: float = field(kw_only=True)
     """Readout probe amplitude, the same for all qubits."""
-    duration: float = 2000
+    duration: float = update.DEFAULT_READOUT_DURATION
     """Readout probe duration [ns], the same for all qubits.
 
     The probe is rectangular, and it is acquired for its whole duration.
@@ -111,18 +107,6 @@ class DispersiveShiftData(Data):
     )
 
 
-def readout(
-    params: DispersiveShiftParameters, platform: CalibrationPlatform, qubit: QubitId
-) -> PulseSequence:
-    """Rectangular readout, with the input amplitude and duration."""
-    channel = platform.qubits[qubit].acquisition
-    probe = Pulse(
-        duration=params.duration, amplitude=params.amplitude, envelope=Rectangular()
-    )
-    acquisition = Acquisition(duration=params.duration)
-    return PulseSequence([(channel, Readout(acquisition=acquisition, probe=probe))])
-
-
 def _acquisition(
     params: DispersiveShiftParameters,
     platform: CalibrationPlatform,
@@ -143,8 +127,14 @@ def _acquisition(
     sequence_1 = PulseSequence()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        sequence_0 += readout(params, platform, qubit)
-        sequence_1 += natives.RX() | readout(params, platform, qubit)
+        channel = platform.qubits[qubit].acquisition
+        # a distinct readout per sequence, since results are retrieved by pulse id
+        ro_0, ro_1 = (
+            update.rectangular_readout(params.amplitude, params.duration)
+            for _ in range(2)
+        )
+        sequence_0.append((channel, ro_0))
+        sequence_1 += natives.RX() | [(channel, ro_1)]
 
     data = DispersiveShiftData(resonator_type=platform.resonator_type)
 

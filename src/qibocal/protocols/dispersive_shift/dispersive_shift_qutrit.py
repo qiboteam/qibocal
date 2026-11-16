@@ -6,6 +6,7 @@ import scipy.constants
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
+from qibocal import update
 from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
@@ -19,7 +20,7 @@ from qibocal.protocols.utils import (
 
 from ...result import magnitude, phase
 from ..resonator_spectroscopies.resonator_spectroscopy import ResSpecType
-from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters, readout
+from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
 
 __all__ = ["dispersive_shift_qutrit"]
 
@@ -90,15 +91,21 @@ def _acquisition(
 
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
+        channel = platform.qubits[qubit].acquisition
+        # a distinct readout per sequence, since results are retrieved by pulse id
+        ro_0, ro_1, ro_2 = (
+            update.rectangular_readout(params.amplitude, params.duration)
+            for _ in range(3)
+        )
         # prepare 0 and measure
-        sequence_0 += readout(params, platform, qubit)
+        sequence_0.append((channel, ro_0))
 
         # prepare 1 and measure
-        sequence_1 += natives.RX() | readout(params, platform, qubit)
+        sequence_1 += natives.RX() | [(channel, ro_1)]
 
         # prepare 2 and measure
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
-        sequence_2 += (natives.RX() + natives.RX12()) | readout(params, platform, qubit)
+        sequence_2 += (natives.RX() + natives.RX12()) | [(channel, ro_2)]
 
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 
