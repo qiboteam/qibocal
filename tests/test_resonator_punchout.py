@@ -23,7 +23,7 @@ from qibocal.protocols.resonator_spectroscopies.resonator_punchout_attenuation i
 AMPLITUDES = {"min_amp": 0.1, "max_amp": 0.3, "step_amp": 0.1}
 ATTENUATIONS = {"min_attenuation": 0, "max_attenuation": 20, "step_attenuation": 10}
 PROBE = {"amplitude": 0.5}
-"""Fixed probe of the attenuation punchout."""
+"""Non-default probe amplitude of the attenuation punchout."""
 
 
 def readouts(execute, platform, qubits):
@@ -58,10 +58,17 @@ def test_rectangular_probe(platform, mocker, acquisition, parameters, sweeps):
         assert all(r.probe.amplitude == 0.5 for r in readouts(execute, platform, [0]))
 
 
-def test_attenuation_requires_amplitude():
-    """The probe amplitude of the attenuation punchout has no default."""
-    with pytest.raises(TypeError, match="amplitude"):
-        ResonatorPunchoutAttenuationParameters.load(ATTENUATIONS)
+def test_attenuation_default_amplitude(platform, mocker):
+    """The attenuation punchout probes at maximal amplitude, by default."""
+    execute = mocker.spy(platform, "execute")
+    params = ResonatorPunchoutAttenuationParameters.load(
+        {"frequency": ["center", 2e6, 1e6], "nshots": 10, **ATTENUATIONS}
+    )
+    attenuation_acquisition(params, platform, [0])
+
+    assert params.amplitude == 1.0
+    [readout] = readouts(execute, platform, [0])
+    assert readout == update.rectangular_readout(1.0)
 
 
 def test_legacy_frequency_ranges():
@@ -71,7 +78,7 @@ def test_legacy_frequency_ranges():
         {"freq_width": width, "freq_step": step, **AMPLITUDES}
     )
     attenuation = ResonatorPunchoutAttenuationParameters.load(
-        {"freq_width": width, "freq_step": step, **ATTENUATIONS, **PROBE}
+        {"freq_width": width, "freq_step": step, **ATTENUATIONS}
     )
 
     np.testing.assert_allclose(
@@ -87,36 +94,33 @@ def test_legacy_frequency_ranges():
 
 
 @pytest.mark.parametrize(
-    "parameters, sweeps, legacy, method, fixed",
+    "parameters, sweeps, legacy, method",
     [
         (
             ResonatorPunchoutParameters,
             {"amplitude": ["linspace", 0.1, 0.3, 3]},
             AMPLITUDES,
             "amplitude_range",
-            {},
         ),
         (
             ResonatorPunchoutAttenuationParameters,
             {"attenuation": ["linspace", 0, 20, 3]},
             ATTENUATIONS,
             "attenuation_sweep",
-            PROBE,
         ),
     ],
 )
-def test_range_like_sweeps(parameters, sweeps, legacy, method, fixed):
+def test_range_like_sweeps(parameters, sweeps, legacy, method):
     """Amplitude and attenuation accept the range syntax, and the legacy fields."""
-    new = parameters.load({"frequency": ["center", 2e6, 1e6], **sweeps, **fixed})
-    old = parameters.load({"frequency": ["center", 2e6, 1e6], **legacy, **fixed})
+    new = parameters.load({"frequency": ["center", 2e6, 1e6], **sweeps})
+    old = parameters.load({"frequency": ["center", 2e6, 1e6], **legacy})
 
     assert pytest.approx(getattr(new, method)()) == getattr(old, method)()
     assert getattr(old, method)() == tuple(legacy.values())
     with pytest.raises(ValueError, match=f"Provide '{next(iter(sweeps))}'"):
-        getattr(parameters.load(fixed), method)()
-    centered = {next(iter(sweeps)): ["center", 1, 0.1], **fixed}
+        getattr(parameters.load({}), method)()
     with pytest.raises(ValueError, match="Center must be provided"):
-        getattr(parameters.load(centered), method)()
+        getattr(parameters.load({next(iter(sweeps)): ["center", 1, 0.1]}), method)()
 
 
 def test_range_like_acquisition(platform, mocker):
@@ -132,7 +136,7 @@ def test_range_like_acquisition(platform, mocker):
     execute = mocker.spy(platform, "execute")
     data = attenuation_acquisition(
         ResonatorPunchoutAttenuationParameters.load(
-            {"attenuation": ["window", 10, 20, 10], **frequency, **PROBE}
+            {"attenuation": ["window", 10, 20, 10], **frequency}
         ),
         platform,
         [0],

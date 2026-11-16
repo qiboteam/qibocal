@@ -51,7 +51,8 @@ deprecated but still supported.
 The same syntax is available for the LO attenuation punchout,
 ``resonator_punchout_attenuation``, where ``attenuation`` (in dB) replaces the
 deprecated ``min_attenuation``, ``max_attenuation`` and ``step_attenuation``.
-There, the probe ``amplitude`` is fixed, and it is required:
+There, the probe power is controlled through the attenuation, so the probe
+``amplitude`` is fixed, and maximal (``1.0``) by default:
 
 .. code-block:: yaml
 
@@ -61,7 +62,6 @@ There, the probe ``amplitude`` is fixed, and it is required:
         parameters:
           frequency: [center, 40_000_000, 500_000]
           attenuation: [0, 40, 2]
-          amplitude: 0.5
           nshots: 2048
 
 Eventually, we want to have a plot like the one below:

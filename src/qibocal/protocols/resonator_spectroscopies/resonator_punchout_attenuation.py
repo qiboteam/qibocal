@@ -65,8 +65,13 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     .. deprecated:: 0.2.7
         Use :attr:`frequency` instead.
     """
-    amplitude: float = field(kw_only=True)
-    """Readout probe amplitude, the same for all qubits."""
+    amplitude: float = 1.0
+    """Readout probe amplitude, the same for all qubits.
+
+    The probe power is controlled through the LO attenuation, so the amplitude is
+    maximal by default, as a fixed reference to compare attenuation punchouts.
+    Unlike the other resonator spectroscopies, it is then not required.
+    """
     duration: float = update.DEFAULT_READOUT_DURATION
     """Readout probe duration [ns], the same for all qubits.
 
