@@ -59,7 +59,11 @@ def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId)
 
 
 DEFAULT_READOUT_DURATION = 2000
-"""Duration [ns] of the measurement, when created by :func:`default_measurement`."""
+"""Duration [ns] of a :func:`rectangular_readout`, unless specified.
+
+It is the default probe duration of the resonator spectroscopies, and the duration of
+the measurement created by :func:`default_measurement`.
+"""
 
 
 def rectangular_readout(

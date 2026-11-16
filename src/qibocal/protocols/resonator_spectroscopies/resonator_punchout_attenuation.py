@@ -65,9 +65,9 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     .. deprecated:: 0.2.7
         Use :attr:`frequency` instead.
     """
-    amplitude: float = 1.0
+    amplitude: float = field(kw_only=True)
     """Readout probe amplitude, the same for all qubits."""
-    duration: float = 2000
+    duration: float = update.DEFAULT_READOUT_DURATION
     """Readout probe duration [ns], the same for all qubits.
 
     The probe is rectangular, and it is acquired for its whole duration.
