@@ -5,7 +5,13 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy.constants
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -35,6 +41,13 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int | None = None
     """Frequency step for sweep [Hz]."""
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
+    duration: float = update.DEFAULT_READOUT_DURATION
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
 
     def frequency_range(self, center: float = 0.0) -> Range:
         def legacy_range() -> Range:
@@ -114,8 +127,14 @@ def _acquisition(
     sequence_1 = PulseSequence()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        sequence_0 += natives.MZ()
-        sequence_1 += natives.RX() | natives.MZ()
+        channel = platform.qubits[qubit].acquisition
+        # a distinct readout per sequence, since results are retrieved by pulse id
+        ro_0, ro_1 = (
+            update.rectangular_readout(params.amplitude, params.duration)
+            for _ in range(2)
+        )
+        sequence_0.append((channel, ro_0))
+        sequence_1 += natives.RX() | [(channel, ro_1)]
 
     data = DispersiveShiftData(resonator_type=platform.resonator_type)
 

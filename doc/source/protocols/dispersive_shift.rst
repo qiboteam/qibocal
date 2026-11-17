@@ -53,6 +53,7 @@ It follows an example of the experiment parameters.
       parameters:
         freq_step: 200000
         freq_width: 1000000
+        amplitude: 0.1
 
 
 After running `qq run`, the experiment is executed and the result will looks like

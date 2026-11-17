@@ -2,7 +2,13 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    PulseSequence,
+    Sweeper,
+)
 from scipy.ndimage import median_filter
 from scipy.signal import find_peaks
 
@@ -31,6 +37,13 @@ class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
 
     bias_center: float | None = None
     freq_center: float | None = None
+    amplitude: float = field(kw_only=True)
+    """Readout probe amplitude, the same for all qubits."""
+    duration: float = update.DEFAULT_READOUT_DURATION
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
 
 
 @dataclass
@@ -97,8 +110,11 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorFluxData:
-    """Data acquisition for ResonatorFlux experiment."""
+    """Data acquisition for ResonatorFlux experiment.
 
+    The resonators are probed with rectangular readouts, independent of the calibrated
+    measurements.
+    """
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
@@ -110,9 +126,9 @@ def _acquisition(
     freq_sweepers = []
     offset_sweepers = []
     for q in targets:
-        ro_sequence = platform.natives.single_qubit[q].MZ()
-        ro_pulses[q] = ro_sequence[0][1]
-        sequence += ro_sequence
+        ro_channel = platform.qubits[q].acquisition
+        ro_pulses[q] = update.rectangular_readout(params.amplitude, params.duration)
+        sequence.append((ro_channel, ro_pulses[q]))
 
         qubit = platform.qubits[q]
         offset0 = platform.config(qubit.flux).offset
