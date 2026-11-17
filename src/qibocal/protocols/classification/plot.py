@@ -10,7 +10,7 @@ from scipy.stats import norm as scipy_norm
 
 from qibocal.auto.operation import Data, QubitId, Results
 
-from ..utils import LEGEND_FONT_SIZE
+from ..utils import LEGEND_FONT_SIZE, project
 
 __all__ = ["plot_results"]
 
@@ -175,6 +175,32 @@ def _boundary(
     )
 
 
+def _centers(
+    qubit: QubitId, states: list[npt.NDArray], fit: Results | None
+) -> tuple[list[npt.NDArray], str]:
+    """Centers of the prepared states, and their description.
+
+    With a consistent Gaussian mixture fit, the centers lie at the means of the fitted
+    Gaussians, along the states axis, and at the median of each preparation across
+    it, such that spurious populations do not displace them. Otherwise, they are the
+    plain averages of each preparation.
+    """
+    mixture = (
+        fit.gaussian_mixture(qubit, consistent=True)
+        if fit is not None and hasattr(fit, "gaussian_mixture")
+        else None
+    )
+    if mixture is None:
+        return [np.mean(points, axis=0) for points in states], "average"
+    c, s = np.cos(fit.rotation_angle[qubit]), np.sin(fit.rotation_angle[qubit])
+    centers = []
+    for mean, points in zip(mixture.means, states):
+        # coordinate across the states axis, then back to the IQ plane
+        across = float(np.median(points @ np.array([s, c])))
+        centers.append(np.array([c * mean + s * across, -s * mean + c * across]))
+    return centers, "Gaussian mean"
+
+
 def _iq_plane(
     data: Data, qubit: QubitId, states: list[npt.NDArray], fit: Results | None
 ) -> go.Figure:
@@ -185,10 +211,10 @@ def _iq_plane(
     pad = PADDING * (high - low)
     low, high = low - pad, high + pad
     fig.add_trace(_density(states, edges))
-    for state, points in enumerate(states):
+    centers, center_kind = _centers(qubit, states, fit)
+    for state, centroid in enumerate(centers):
         name = f"state {state}"
         color = STATE_COLORS[state]
-        centroid = np.mean(points, axis=0)
         fig.add_trace(
             go.Scatter(
                 x=[centroid[0]],
@@ -202,6 +228,8 @@ def _iq_plane(
                     "color": color,
                     "line": {"width": 1, "color": "white"},
                 },
+                hovertemplate=f"{center_kind}<br>i: %{{x:.3g}}<br>q: %{{y:.3g}}"
+                f"<extra>{name}</extra>",
             )
         )
     if fit is not None:
@@ -239,11 +267,16 @@ def _iq_plane(
 def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Figure:
     """Histogram of the shots projected on the axis connecting the two centroids.
 
-    The projection is centered on the classification threshold.
+    The projection is centered on the threshold of the naive linear classifier. With a
+    Gaussian mixture fit, its densities are shown as well, together with its threshold
+    if the fit is consistent with the data. Otherwise, each state is fitted with a
+    single Gaussian.
     """
-    angle, threshold = fit.rotation_angle[qubit], fit.threshold[qubit]
-    c, s = np.cos(angle), np.sin(angle)
-    projections = [points @ np.array([c, -s]) - threshold for points in states]
+    threshold = fit.threshold[qubit]
+    projections = [
+        project(points, fit.rotation_angle[qubit]) - threshold for points in states
+    ]
+    mixture = fit.gaussian_mixture(qubit) if hasattr(fit, "gaussian_mixture") else None
     points = np.concatenate(projections)
     extent = float(np.ptp(points)) or 1.0
     shots = min(len(projection) for projection in projections)
@@ -273,11 +306,14 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
                 marker={"color": _rgba(color, 0.5)},
             )
         )
-        mu, std = scipy_norm.fit(projection)
+        if mixture is not None:
+            density = mixture.pdf(centers + threshold, state)
+        else:
+            density = scipy_norm.pdf(centers, *scipy_norm.fit(projection))
         fig.add_trace(
             go.Scatter(
                 x=centers,
-                y=scipy_norm.pdf(centers, mu, std),
+                y=density,
                 name=f"{name} fit",
                 legendgroup=name,
                 showlegend=False,
@@ -285,7 +321,18 @@ def _histogram(qubit: QubitId, states: list[npt.NDArray], fit: Results) -> go.Fi
                 line={"width": 2, "color": color},
             )
         )
-    fig.add_vline(x=0, line={"color": "black", "width": 2, "dash": "dot"})
+    fig.add_vline(
+        x=0,
+        line={"color": "black", "width": 2, "dash": "dot"},
+        annotation_text="naive" if mixture is not None else None,
+    )
+    if mixture is not None and mixture.consistent:
+        fig.add_vline(
+            x=mixture.threshold - threshold,
+            line={"color": "black", "width": 2},
+            annotation_text="Gaussian",
+            annotation_position="top left",
+        )
     fig.update_xaxes(title_text="projection on the states axis [a.u.]")
     fig.update_yaxes(title_text="density")
     fig.update_layout(
