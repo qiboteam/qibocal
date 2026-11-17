@@ -1,6 +1,6 @@
 """CZ/iSWAP virtual phase correction experiment for two qubit gates."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 import numpy as np
@@ -53,7 +53,7 @@ class VirtualZPhasesParameters(Parameters):
     """Step size for the theta sweep in radians."""
     native: Literal["CZ", "iSWAP"] = "CZ"
     """Two-qubit interaction to be calibrated, either CZ or iSWAP."""
-    dt: float = 16
+    dt: float = 0
     """Time delay between flux pulses and readout."""
 
     def theta_range(self) -> Range:
@@ -78,28 +78,32 @@ class VirtualZPhasesParameters(Parameters):
 class VirtualZPhasesResults(Results):
     """VirtualZ outputs when fitting will be done."""
 
-    fitted_parameters: dict[tuple[str, QubitId], object]
-    """Fitted parameters"""
     native: str
     """Native two qubit gate."""
-    leakage: dict[QubitPairId, dict[QubitId, float]]
+    fitted_parameters: dict[tuple[QubitId, QubitId, Literal["I", "X"]], list[float]] = (
+        field(default_factory=dict)
+    )
+    """Fitted parameters"""
+    leakage: dict[QubitId, float] = field(default_factory=dict)
     """Leakage on control qubit for pair."""
-    angle: dict[QubitPairId, float] | None = None
+    angle: dict[QubitId, float] = field(default_factory=dict)
     """Native angle.
 
     For CZ it is the conditional phase (ideally pi). For iSWAP it is the residual
     conditional phase on :math:`|11\\rangle`, which cannot be corrected with
     virtual Z rotations (ideally 0).
     """
-    virtual_phase: dict[QubitPairId, dict[QubitId, float]] | None = None
+    virtual_phase: dict[QubitId, float] = field(default_factory=dict)
     """Virtual Z phase correction."""
 
     def __contains__(self, key: QubitPairId):
-        """Check if key is in class.
-        While key is a QubitPairId both chsh and chsh_mitigated contain
-        an additional key which represents the basis chosen.
+        """Return whether results contain data for both qubits in ``key``.
+
+        ``angle`` is populated for each qubit whose pair was analyzed, so it
+        serves as the canonical indicator of pair presence. Other result
+        fields may not contain entries for every analyzed pair.
         """
-        return key in [(target, control) for target, control in self.angle]
+        return all(qubit in self.angle for qubit in key)
 
 
 @dataclass
@@ -121,10 +125,7 @@ class VirtualZPhasesData(Data):
 
     @property
     def order_pairs(self) -> list[QubitPairId]:
-        pairs: list[QubitPairId] = []
-        for key in self.data:
-            pairs.append((key[0], key[1]))
-        return np.unique(pairs, axis=0).tolist()
+        return list(dict.fromkeys((key[0], key[1]) for key in self.data))
 
 
 def _acquisition(
@@ -197,9 +198,7 @@ def _acquisition(
                     ro_oscillating.id,
                     ro_steady.id,
                 )
-
     sweeper = Sweeper(parameter=Parameter.phase, values=vzphases, pulses=vzs)
-
     results = platform.execute(
         sequences,
         [[sweeper]],
@@ -229,14 +228,16 @@ def _fit(
 
         y = p_0 sin\Big(x + p_2\Big) + p_1.
     """
-    fitted_parameters = {}
+    fitted_parameters: dict[
+        tuple[QubitId, QubitId, Literal["I", "X"]], list[float]
+    ] = {}
     pairs = data.order_pairs
-    virtual_phase = {}
-    angle = {}
-    leakage = {}
+    virtual_phase: dict[QubitId, float] = {}
+    angle: dict[QubitId, float] = {}
+    leakage: dict[QubitId, float] = {}
     for pair in pairs:
         new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
-            data[pair], tuple(pair), data.thetas, native=data.native
+            data[pair], pair, data.thetas, native=data.native
         )
         fitted_parameters |= new_fitted_parameter
         virtual_phase |= new_phases
@@ -303,7 +304,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         )
         if fit is not None:
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
-            fitted_parameters = fit.fitted_parameters[(target_q, control_q), setup]
+            fitted_parameters = fit.fitted_parameters[target_q, control_q, setup]
             fig.add_trace(
                 go.Scatter(
                     x=angle_range,
@@ -328,12 +329,12 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                             "Leakage [a.u.]",
                         ],
                         [
-                            np.round(fit.angle[target_q, control_q], 4),
+                            np.round(fit.angle[target_q], 4),
                             np.round(
-                                fit.virtual_phase[target_q, control_q],
+                                fit.virtual_phase[target_q],
                                 4,
                             ),
-                            np.round(fit.leakage[target_q, control_q], 4),
+                            np.round(fit.leakage[target_q], 4),
                         ],
                     )
                 )
@@ -363,8 +364,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 def _update(
     results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    # FIXME: quick fix for qubit order
-    target = tuple(sorted(target))
     update.virtual_phases(results.virtual_phase, results.native, platform, target)
 
 

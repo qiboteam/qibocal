@@ -1,3 +1,5 @@
+from typing import Literal, get_args
+
 import numpy as np
 from qibolab import Platform
 from scipy.optimize import curve_fit
@@ -6,6 +8,8 @@ from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.config import log
 
 from ..utils import fallback_period, guess_period
+
+Setups = Literal["I", "X"]
 
 
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
@@ -100,7 +104,12 @@ def fit_sinusoid(thetas, data):
 
 def fit_virtualz(
     data: dict, pair: QubitPairId, thetas: list, native: str = "CZ"
-) -> dict[tuple, list]:
+) -> tuple[
+    dict[tuple[QubitId, QubitId, Setups], list[float]],
+    dict[QubitId, float],
+    dict[QubitId, float],
+    dict[QubitId, float],
+]:
     """Fit the target qubit oscillations of the ``I`` and ``X`` setups."""
 
     builders = ["CZ", "iSWAP"]
@@ -108,9 +117,9 @@ def fit_virtualz(
 
     angle = np.pi / 2 if native == "iSWAP" else 0
 
-    fitted_param: dict[tuple[QubitId, QubitId, str], list] = {}
+    fitted_param: dict[tuple[QubitId, QubitId, Setups], list] = {}
     oscillating, steady = pair
-    for setup in ["I", "X"]:
+    for setup in get_args(Setups):
         target_data = data[oscillating, steady, setup][0]
         try:
             params = fit_sinusoid(np.array(thetas), target_data)
@@ -120,16 +129,16 @@ def fit_virtualz(
                 f"{native} fit failed for pair ({oscillating, steady}) due to {e}."
             )
 
-    conditional_phase: dict[QubitPairId, float] = {}
-    gate_error: dict[QubitPairId, float] = {}
-    virtual_phase: dict[QubitPairId, float] = {}
+    conditional_phase: dict[QubitId, float] = {}
+    gate_error: dict[QubitId, float] = {}
+    virtual_phase: dict[QubitId, float] = {}
     if all((oscillating, steady, setup) in fitted_param for setup in ["I", "X"]):
         phi_01 = phase_diff(
             fitted_param[oscillating, steady, "I"][2],
             angle,
         )
-        virtual_phase[pair] = phi_01
-        conditional_phase[pair] = phase_diff(
+        virtual_phase[oscillating] = phi_01
+        conditional_phase[oscillating] = phase_diff(
             fitted_param[oscillating, steady, "X"][2],
             fitted_param[oscillating, steady, "I"][2] - 2 * angle,
         )
@@ -138,7 +147,7 @@ def fit_virtualz(
             over_rotation_x = data[oscillating, steady, "X"][1]
             over_rotation_i = data[oscillating, steady, "I"][1]
             avg_over_rotation = float(np.mean([over_rotation_x, over_rotation_i]))
-            gate_error[pair] = avg_over_rotation
+            gate_error[oscillating] = avg_over_rotation
         else:
             # leakage estimate: L = m /2
             # See NZ paper from Di Carlo
@@ -150,4 +159,6 @@ def fit_virtualz(
                     - data[oscillating, steady, "I"][1]
                 )
             )
-            gate_error[pair] = leakage
+            gate_error[oscillating] = leakage
+
+    return fitted_param, virtual_phase, conditional_phase, gate_error
