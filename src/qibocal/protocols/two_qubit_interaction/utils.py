@@ -99,59 +99,55 @@ def fit_sinusoid(thetas, data):
 
 
 def fit_virtualz(
-    data: dict,
-    pair: list,
-    thetas: list,
-    key=None,
-    native: str = "CZ",
-):
-    r"""Extract virtual phase, angle and leakage from the virtual Z experiment.
+    data: dict, pair: QubitPairId, thetas: list, native: str = "CZ"
+) -> dict[tuple, list]:
+    """Fit the target qubit oscillations of the ``I`` and ``X`` setups."""
 
-    For CZ the phase of the ``I`` setup is the single-qubit phase acquired by the
-    target, and the difference between the ``X`` and ``I`` phases is the conditional
-    phase (ideally :math:`\pi`).
+    builders = ["CZ", "iSWAP"]
+    assert native in builders, f"Unsupported native gate {native}."
 
-    For iSWAP the target phase is measured after the excitation is transferred from
-    the partner qubit, :math:`|01\rangle \to i e^{i\phi_t}|10\rangle`, so the ``I``
-    phase is :math:`\phi_t + \pi/2` and the virtual phase is :math:`\phi_t`. The
-    ``X`` phase is :math:`\phi_{11} - \phi_c - \pi/2`, so the returned angle
-    :math:`\phi_{11} - \phi_t - \phi_c` is the residual conditional phase, which is
-    0 for an ideal iSWAP and cannot be corrected with virtual Z rotations.
-    """
-    fitted_parameters = {}
-    angle = {}
-    virtual_phase = {}
-    leakage = {}
-    fitted_param = {}
-    if key is None:
-        key = pair
+    angle = np.pi / 2 if native == "iSWAP" else 0
 
-    target, control = pair
+    fitted_param: dict[tuple[QubitId, QubitId, str], list] = {}
+    oscillating, steady = pair
     for setup in ["I", "X"]:
-        target_data = data[target, control, setup][0]
+        target_data = data[oscillating, steady, setup][0]
         try:
             params = fit_sinusoid(np.array(thetas), target_data)
-            fitted_param[target, control, setup] = params
+            fitted_param[oscillating, steady, setup] = params
         except Exception as e:
-            log.warning(f"{native} fit failed for pair ({target, control}) due to {e}.")
+            log.warning(
+                f"{native} fit failed for pair ({oscillating, steady}) due to {e}."
+            )
 
-    for setup in ["I", "X"]:
-        # leakage estimate: L = m /2
-        # See NZ paper from Di Carlo
-        # approximation which does not need qutrits
-        # https://arxiv.org/pdf/1903.02492.pdf
-        leakage[key] = 0.5 * float(
-            np.mean(data[target, control, "X"][1] - data[target, control, "I"][1])
+    conditional_phase: dict[QubitPairId, float] = {}
+    gate_error: dict[QubitPairId, float] = {}
+    virtual_phase: dict[QubitPairId, float] = {}
+    if all((oscillating, steady, setup) in fitted_param for setup in ["I", "X"]):
+        phi_01 = phase_diff(
+            fitted_param[oscillating, steady, "I"][2],
+            angle,
+        )
+        virtual_phase[pair] = phi_01
+        conditional_phase[pair] = phase_diff(
+            fitted_param[oscillating, steady, "X"][2],
+            fitted_param[oscillating, steady, "I"][2] - 2 * angle,
         )
 
-        phase_i = fitted_param[target, control, "I"][2]
-        phase_x = fitted_param[target, control, "X"][2]
         if native == "iSWAP":
-            angle[key] = float(np.mod(phase_x - phase_i + np.pi, 2 * np.pi))
-            virtual_phase[key] = float(np.mod(phase_i - np.pi / 2, 2 * np.pi))
+            over_rotation_x = data[oscillating, steady, "X"][1]
+            over_rotation_i = data[oscillating, steady, "I"][1]
+            avg_over_rotation = float(np.mean([over_rotation_x, over_rotation_i]))
+            gate_error[pair] = avg_over_rotation
         else:
-            angle[key] = phase_diff(phase_x, phase_i)
-            virtual_phase[key] = phase_i
-        fitted_parameters[key, setup] = fitted_param[target, control, setup]
-
-    return fitted_parameters, virtual_phase, angle, leakage
+            # leakage estimate: L = m /2
+            # See NZ paper from Di Carlo
+            # approximation which does not need qutrits
+            # https://arxiv.org/pdf/1903.02492.pdf
+            leakage = 0.5 * float(
+                np.mean(
+                    data[oscillating, steady, "X"][1]
+                    - data[oscillating, steady, "I"][1]
+                )
+            )
+            gate_error[pair] = leakage

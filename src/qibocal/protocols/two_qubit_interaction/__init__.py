@@ -9,7 +9,7 @@ from .cross_resonance import (
 from .optimize import optimize_two_qubit_gate
 from .snz_optimize import snz_optimize
 from .snz_optimize_t_idle import snz_optimize_t_idle
-from .virtual_z_phases import correct_virtual_z_phases
+from .virtual_z import correct_virtual_z_phases
 
 __all__ = [
     "cancellation_amplitude_tuning",

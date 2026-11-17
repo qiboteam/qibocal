@@ -13,7 +13,7 @@ from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
 from .utils import best_snz_point, fit_virtualz, order_pair
-from .virtual_z_phases import create_sequence
+from .virtual_z.acquisition import create_sequence
 
 
 @dataclass

@@ -6,24 +6,25 @@ from qibo import gates
 from qibolab import Pulse, VirtualZ
 
 from qibocal.protocols.two_qubit_interaction.utils import order_pair, sinusoid
-from qibocal.protocols.two_qubit_interaction.virtual_z_phases import (
+from qibocal.protocols.two_qubit_interaction.virtual_z import acquisition as vz_acq
+from qibocal.protocols.two_qubit_interaction.virtual_z.virtual_z_phases import (
     VirtualZPhasesData,
     VirtualZPhasesParameters,
     _acquisition,
     _fit,
     _plot,
     _update,
-    create_sequence,
 )
 
 
 def test_create_sequence_keyword_phase(platform):
     assert (
-        signature(create_sequence).parameters["vzphase"].kind == Parameter.KEYWORD_ONLY
+        signature(vz_acq.create_sequence).parameters["vzphase"].kind
+        == Parameter.KEYWORD_ONLY
     )
     pair = order_pair((0, 1), platform)
-    _, flux_pulse, _ = create_sequence(platform, "I", *pair, pair, 16)
-    sequence, flux, vz = create_sequence(
+    _, flux_pulse, _ = vz_acq.create_sequence(platform, "I", *pair, pair, 16)
+    sequence, flux, vz = vz_acq.create_sequence(
         platform, "I", *pair, pair, 16, 80, flux_pulse, vzphase=-0.7
     )
 
@@ -36,7 +37,7 @@ def test_create_sequence_keyword_phase(platform):
     ]
     assert fluxes == [flux]
     with pytest.raises(TypeError):
-        create_sequence(platform, "I", *pair, pair, 16, 80, flux_pulse, -0.7)
+        vz_acq.create_sequence(platform, "I", *pair, pair, 16, 80, flux_pulse, -0.7)
 
 
 def test_phase_correction_sign(platform):
@@ -45,7 +46,9 @@ def test_phase_correction_sign(platform):
     pair = order_pair((0, 1), platform)
     probabilities = []
     for theta in thetas:
-        sequence, _, _ = create_sequence(platform, "I", *pair, pair, 16, vzphase=-theta)
+        sequence, _, _ = vz_acq.create_sequence(
+            platform, "I", *pair, pair, 16, vzphase=-theta
+        )
         pulses = [
             pulse
             for pulse in sequence.to_relative_phases().channel(
@@ -214,7 +217,9 @@ def _simulate(platform, sequence, pair, gate, target):
 def test_iswap_sequence(platform):
     pair = order_pair((0, 1), platform)
     low, high = (platform.natives.single_qubit[q] for q in pair)
-    sequence, flux, _ = create_sequence(platform, "X", *pair, pair, 16, native="iSWAP")
+    sequence, flux, _ = vz_acq.create_sequence(
+        platform, "X", *pair, pair, 16, native="iSWAP"
+    )
     assert flux == next(
         iter(
             platform.natives.two_qubit[pair].iSWAP.channel(
@@ -253,7 +258,7 @@ def test_iswap_phase_correction(platform, phases):
         for setup in ("I", "X"):
             target_prob, control_prob = [], []
             for theta in thetas:
-                sequence, _, _ = create_sequence(
+                sequence, _, _ = vz_acq.create_sequence(
                     platform,
                     setup,
                     target,
@@ -322,3 +327,23 @@ def test_theta_range_legacy_and_missing():
     assert params.theta_range() == (0, 3, 0.5)
     with pytest.raises(AssertionError, match="Either theta"):
         VirtualZPhasesParameters.load({}).theta_range()
+
+
+@pytest.mark.parametrize(
+    "native, builder",
+    [("CZ", "_create_cz_sequence"), ("iSWAP", "_create_iswap_sequence")],
+)
+def test_create_sequence_dispatch(platform, mocker, native, builder):
+    pair = order_pair((0, 1), platform)
+    spy = mocker.spy(vz_acq, builder)
+    other = mocker.spy(
+        vz_acq,
+        "_create_iswap_sequence" if native == "CZ" else "_create_cz_sequence",
+    )
+    vz_acq.create_sequence(
+        platform, "X", *pair, pair, 16, 40, vzphase=0.3, native=native
+    )
+    spy.assert_called_once_with(platform, "X", *pair, pair, 16, 40, None, vzphase=0.3)
+    other.assert_not_called()
+    with pytest.raises(AssertionError, match="Unsupported"):
+        vz_acq.create_sequence(platform, "X", *pair, pair, 16, native="CNOT")

@@ -21,7 +21,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
 
 from .utils import fit_virtualz, order_pair
-from .virtual_z_phases import create_sequence
+from .virtual_z.acquisition import create_sequence
 
 __all__ = ["optimize_two_qubit_gate"]
 

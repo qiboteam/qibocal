@@ -16,7 +16,7 @@ from .snz_optimize import (
     SNZFinetuningResults,
 )
 from .utils import best_snz_point, fit_virtualz, order_pair
-from .virtual_z_phases import create_sequence
+from .virtual_z.acquisition import create_sequence
 
 
 @dataclass

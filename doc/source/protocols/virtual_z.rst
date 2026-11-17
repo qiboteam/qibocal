@@ -16,7 +16,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass::
-	qibocal.protocols.two_qubit_interaction.virtual_z_phases.VirtualZPhasesParameters
+	qibocal.protocols.two_qubit_interaction.virtual_z.virtual_z_phases.VirtualZPhasesParameters
 	:noindex:
 
 Example

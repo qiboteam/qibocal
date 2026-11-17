@@ -10,9 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Delay,
     Parameter,
-    Pulse,
     PulseId,
     PulseSequence,
     Sweeper,
@@ -30,11 +28,11 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.calibration.calibration import QubitId
 from qibocal.protocols.utils import Range, RangeLike, table_dict, table_html, to_range
 
-from ... import update
-from ...update import replace
-from .utils import fit_sinusoid, fit_virtualz, order_pair, phase_diff, sinusoid
+from .... import update
+from ..utils import fit_virtualz, order_pair, sinusoid
+from .acquisition import create_sequence
 
-__all__ = ["correct_virtual_z_phases", "create_sequence", "fit_sinusoid", "phase_diff"]
+__all__ = ["correct_virtual_z_phases"]
 
 
 @dataclass
@@ -129,110 +127,6 @@ class VirtualZPhasesData(Data):
         return np.unique(pairs, axis=0).tolist()
 
 
-def create_sequence(
-    platform: CalibrationPlatform,
-    setup: Literal["I", "X"],
-    target_qubit: QubitId,
-    control_qubit: QubitId,
-    ordered_pair: tuple[QubitId, QubitId],
-    dt: float,
-    flux_pulse_max_duration: float | None = None,
-    flux_pulse: Pulse | None = None,
-    *,
-    vzphase: float = 0.0,
-    native: Literal["CZ", "iSWAP"] = "CZ",
-) -> tuple[PulseSequence, Pulse, VirtualZ]:
-    """
-    Create the pulse sequence for the calibration of two-qubit gate virtual phases.
-
-    For ``native="CZ"`` the sequence includes:
-    - A preliminary RX90 pulse on the `target_qubit`.
-    - An optional X pulse on the `control_qubit` based on the `setup` type.
-    - A flux pulse implementing the two-qubit native gate.
-    - A delay of duration `dt` before the final X90 pulse on the target qubit.
-    - An optional X pulse on the `control_qubit` (leakage detection).
-    - Measurement pulses.
-
-    For ``native="iSWAP"`` the gate exchanges the excitation between the two
-    qubits, so the roles before the gate are swapped: the preliminary RX90 pulse is
-    played on the `control_qubit` (the superposition is transferred to the
-    `target_qubit` by the gate) and the optional X pulse on the `target_qubit`
-    (the excitation is transferred to the `control_qubit`). The rest of the
-    sequence is unchanged.
-
-    It is possible to specify the maximum duration for the flux pulses with the
-    `flux_pulse_max_duration` parameter.
-
-    The function returns:
-    - The full experiment pulse sequence.
-    - The applied flux pulse.
-    - The final `VirtualZ` pulse to be used for phase sweeping.
-    """
-    assert native in ("CZ", "iSWAP"), f"Unsupported native gate {native}."
-
-    target_natives = platform.natives.single_qubit[target_qubit]
-    control_natives = platform.natives.single_qubit[control_qubit]
-    # iSWAP swaps the qubits: prepare on the partner what must be found on the
-    # other qubit after the gate.
-    prep_natives, excited_natives = (
-        (target_natives, control_natives)
-        if native == "CZ"
-        else (control_natives, target_natives)
-    )
-
-    sequence = PulseSequence()
-    # X90
-    sequence += prep_natives.R(theta=np.pi / 2)
-    # X
-    if setup == "X":
-        assert excited_natives.RX is not None
-        sequence += excited_natives.RX()
-
-    flux_channel = platform.qubits[ordered_pair[1]].flux
-    assert flux_channel is not None, (
-        "Flux channel must be defined for the control qubit."
-    )
-    # native two-qubit gate
-    if flux_pulse is None:
-        native_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)
-        assert native_sequence is not None, (
-            f"{native} native not defined for pair {ordered_pair}."
-        )
-        flux_pulse_ = next(iter(native_sequence.channel(flux_channel)))
-        assert isinstance(flux_pulse_, Pulse), "Flux pulse must be a Pulse object."
-        flux_pulse = flux_pulse_
-
-    if flux_pulse_max_duration is not None:
-        flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
-
-    sequence |= PulseSequence(
-        [
-            (flux_channel, Delay(duration=dt)),
-            (flux_channel, flux_pulse),
-            (flux_channel, Delay(duration=dt)),
-        ]
-    )
-
-    vz = VirtualZ(phase=vzphase)
-    sequence.append((platform.qubits[target_qubit].drive, vz))
-
-    sequence |= target_natives.R(theta=np.pi / 2)
-
-    # X gate for the leakage: for both natives the control qubit ends in |1>
-    # in the X setup, so this brings it back to |0> unless it leaked.
-    if setup == "X":
-        sequence += control_natives.RX()
-
-    sequence |= PulseSequence(
-        [
-            target_natives.MZ()[0],
-            control_natives.MZ()[0],
-        ]
-    )
-
-    return sequence, flux_pulse, vz
-
-
 def _acquisition(
     params: VirtualZPhasesParameters,
     platform: CalibrationPlatform,
@@ -255,7 +149,8 @@ def _acquisition(
 
     For the iSWAP gate the excitation is exchanged between the two qubits, therefore
     the X90 pulse is played on the partner qubit and the superposition is
-    transferred by the gate onto the measured qubit (see :func:`create_sequence`).
+    transferred by the gate onto the measured qubit (see
+    :func:`~qibocal.protocols.two_qubit_interaction.virtual_z.utils.create_iswap_sequence`).
     """
 
     data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]] = {}
@@ -274,7 +169,7 @@ def _acquisition(
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
 
-        for target_q, control_q in (
+        for oscillating_q, steady_q in (
             (ordered_pair[0], ordered_pair[1]),
             (ordered_pair[1], ordered_pair[0]),
         ):
@@ -282,8 +177,8 @@ def _acquisition(
                 (sequence, _, vz) = create_sequence(
                     platform,
                     setup,
-                    target_q,
-                    control_q,
+                    oscillating_q,
+                    steady_q,
                     ordered_pair,
                     dt=params.dt,
                     native=params.native,
@@ -292,13 +187,16 @@ def _acquisition(
                 sequences.append(sequence)
                 vzs.append(vz)
 
-                ro_target = list(
-                    sequence.channel(platform.qubits[target_q].acquisition)
+                ro_oscillating = list(
+                    sequence.channel(platform.qubits[oscillating_q].acquisition)
                 )[-1]
-                ro_control = list(
-                    sequence.channel(platform.qubits[control_q].acquisition)
+                ro_steady = list(
+                    sequence.channel(platform.qubits[steady_q].acquisition)
                 )[-1]
-                readouts[target_q, control_q, setup] = (ro_target.id, ro_control.id)
+                readouts[oscillating_q, steady_q, setup] = (
+                    ro_oscillating.id,
+                    ro_steady.id,
+                )
 
     sweeper = Sweeper(parameter=Parameter.phase, values=vzphases, pulses=vzs)
 
@@ -310,8 +208,8 @@ def _acquisition(
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for key, (target, control) in readouts.items():
-        data[key] = np.stack([results[target], results[control]])
+    for key, (oscillating_q, steady_q) in readouts.items():
+        data[key] = np.stack([results[oscillating_q], results[steady_q]])
 
     return VirtualZPhasesData(
         data=data,
