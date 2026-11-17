@@ -5,14 +5,10 @@ from dataclasses import dataclass, field, fields
 import numpy as np
 import numpy.typing as npt
 from qibolab import (
-    Acquisition,
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
-    Readout,
-    Rectangular,
     Sweeper,
 )
 
@@ -103,7 +99,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     will apply a minus to the phase data."""
     amplitude: float = field(kw_only=True)
     """Readout probe amplitude, the same for all qubits."""
-    duration: float = 2000
+    duration: float = update.DEFAULT_READOUT_DURATION
     """Readout probe duration [ns], the same for all qubits.
 
     The probe is rectangular, and it is acquired for its whole duration.
@@ -189,14 +185,7 @@ def _acquisition(
     amplitudes = {}
 
     for q in targets:
-        readout = Readout(
-            acquisition=Acquisition(duration=params.duration),
-            probe=Pulse(
-                duration=params.duration,
-                amplitude=params.amplitude,
-                envelope=Rectangular(),
-            ),
-        )
+        readout = update.rectangular_readout(params.amplitude, params.duration)
         amplitudes[q] = params.amplitude
         ro_pulses[q] = readout
         sequence.append((platform.qubits[q].acquisition, readout))

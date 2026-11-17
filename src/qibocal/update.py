@@ -1,14 +1,24 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from pydantic import BaseModel, TypeAdapter
-from qibolab import Platform, PulseSequence, VirtualZ
+from qibolab import (
+    Platform,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Rectangular,
+    VirtualZ,
+)
 
 from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.calibration.calibration import TwoQubitCalibration
+
+if TYPE_CHECKING:
+    from qibocal.calibration import CalibrationPlatform
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -48,9 +58,59 @@ def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId)
     platform.calibration.single_qubits[qubit].resonator.dressed_frequency = freq
 
 
+DEFAULT_READOUT_DURATION = 2000
+"""Duration [ns] of a :func:`rectangular_readout`, unless specified.
+
+It is the default probe duration of the resonator spectroscopies, and the duration of
+the measurement created by :func:`default_measurement`.
+"""
+
+
+def rectangular_readout(
+    amplitude: float, duration: float = DEFAULT_READOUT_DURATION
+) -> Readout:
+    """Rectangular readout, acquired for the whole probe duration.
+
+    This is the probe used by the resonator spectroscopies, and the measurement that
+    is created when none is available (cf. :func:`default_measurement`).
+    """
+    return Readout.from_probe(
+        Pulse(duration=duration, amplitude=amplitude, envelope=Rectangular())
+    )
+
+
+def default_measurement(amp: float, platform: Platform, qubit: QubitId) -> bool:
+    """Create the measurement for specific qubit, only if it has none yet.
+
+    The measurement is a :func:`rectangular_readout`, of duration
+    :data:`DEFAULT_READOUT_DURATION`. An existing measurement is never modified.
+
+    Returns whether the measurement has been created.
+    """
+    if platform.natives.single_qubit[qubit].MZ is not None:
+        return False
+    channel = platform.qubits[qubit].acquisition
+    readout = rectangular_readout(amp)
+    # the native measurement, in its serialized form
+    platform.update(
+        {f"native_gates.single_qubit.{qubit}.MZ": [(channel, readout.model_dump())]}
+    )
+    return True
+
+
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
-    """Update readout amplitude value in platform for specific qubit."""
+    """Update readout amplitude value in platform for specific qubit.
+
+    If the qubit has no measurement yet, it is created by :func:`default_measurement`.
+    """
+    if default_measurement(amp, platform, qubit):
+        return
     platform.update({f"native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude": amp})
+
+
+def punchout_amplitude(amp: float, platform: "CalibrationPlatform", qubit: QubitId):
+    """Record the readout amplitude found by the punchout, for specific qubit."""
+    platform.calibration.single_qubits[qubit].resonator.punchout_amplitude = amp
 
 
 def drive_frequency(freq: float | tuple | list, platform: Platform, qubit: QubitId):

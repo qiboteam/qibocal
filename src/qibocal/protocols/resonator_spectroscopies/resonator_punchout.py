@@ -3,14 +3,28 @@ from dataclasses import dataclass, field
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
+from ..utils import (
+    HZ_TO_GHZ,
+    Range,
+    RangeLike,
+    minmax_scaling,
+    table_dict,
+    table_html,
+    to_range,
+)
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
 __all__ = ["ResonatorPunchoutData", "resonator_punchout"]
@@ -20,16 +34,73 @@ __all__ = ["ResonatorPunchoutData", "resonator_punchout"]
 class ResonatorPunchoutParameters(Parameters):
     """ResonatorPunchout runcard inputs."""
 
-    freq_width: int
-    """Width for frequency sweep relative  to the readout frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    min_amp: float
-    """Minimum amplitude."""
-    max_amp: float
-    """Maximum amplitude."""
-    step_amp: float
-    """Step amplitude."""
+    amplitude: RangeLike | None = None
+    """Readout probe amplitude range for sweep [a.u.].
+
+    Center-based specifications (e.g. ``center``, ``asym``) are not supported, since
+    there is no reference amplitude.
+    """
+    min_amp: float | None = None
+    """Minimum amplitude.
+
+    .. deprecated:: 0.2.7
+        Use :attr:`amplitude` instead.
+    """
+    max_amp: float | None = None
+    """Maximum amplitude.
+
+    .. deprecated:: 0.2.7
+        Use :attr:`amplitude` instead.
+    """
+    step_amp: float | None = None
+    """Step amplitude.
+
+    .. deprecated:: 0.2.7
+        Use :attr:`amplitude` instead.
+    """
+    frequency: RangeLike | None = None
+    """Frequency range for sweep [Hz]."""
+    freq_width: int | None = None
+    """Width for frequency sweep relative  to the readout frequency [Hz].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`frequency` instead.
+    """
+    freq_step: int | None = None
+    """Frequency step for sweep [Hz].
+
+    .. deprecated:: 0.2.7
+        Use :attr:`frequency` instead.
+    """
+    duration: float = update.DEFAULT_READOUT_DURATION
+    """Readout probe duration [ns], the same for all qubits.
+
+    The probe is rectangular, and it is acquired for its whole duration.
+    """
+
+    def frequency_range(self, center: float) -> Range:
+        """Frequency range for sweep [Hz], around the `center` readout frequency."""
+        if self.frequency is not None:
+            return to_range(self.frequency, center=center)
+        if self.freq_width is None or self.freq_step is None:
+            raise ValueError(
+                "Provide 'frequency' or both 'freq_width' and 'freq_step'."
+            )
+        return (
+            center - self.freq_width / 2,
+            center + self.freq_width / 2,
+            self.freq_step,
+        )
+
+    def amplitude_range(self) -> Range:
+        """Readout probe amplitude range for sweep [a.u.]."""
+        if self.amplitude is not None:
+            return to_range(self.amplitude)
+        if self.min_amp is None or self.max_amp is None or self.step_amp is None:
+            raise ValueError(
+                "Provide 'amplitude' or all of 'min_amp', 'max_amp' and 'step_amp'."
+            )
+        return (self.min_amp, self.max_amp, self.step_amp)
 
 
 @dataclass
@@ -90,39 +161,30 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorPunchoutData:
-    """Data acquisition for Punchout over amplitude."""
-    # create a sequence of pulses for the experiment:
-    # MZ
+    """Data acquisition for Punchout over amplitude.
 
-    # define the parameters to sweep and their range:
-    # resonator frequency
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    The sequence is made of simultaneous rectangular readouts, whose duration is given
+    as input. Their amplitude is swept.
+    """
     ro_pulses = {}
     freq_sweepers = {}
     sequence = PulseSequence()
     for qubit in targets:
-        natives = platform.natives.single_qubit[qubit]
-        ro_channel, ro_pulse = natives.MZ()[0]
-        ro_pulses[qubit] = ro_pulse.model_copy(
-            update={"probe": ro_pulse.probe.model_copy(update={"amplitude": 1.0})}
-        )
+        ro_channel = platform.qubits[qubit].acquisition
+        ro_pulses[qubit] = update.rectangular_readout(1.0, params.duration)
         sequence.append((ro_channel, ro_pulses[qubit]))
 
         probe = platform.qubits[qubit].probe
         f0 = platform.config(probe).frequency
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
-            values=f0 + delta_frequency_range,
+            range=params.frequency_range(f0),
             channels=[probe],
         )
 
     amp_sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
+        range=params.amplitude_range(),
         pulses=[ro_pulses[qubit] for qubit in targets],
     )
 
@@ -305,7 +367,10 @@ def _update(
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
         )
-        update.readout_amplitude(results.readout_amplitude[target], platform, target)
+        update.punchout_amplitude(results.readout_amplitude[target], platform, target)
+        # an existing measurement may have been calibrated with a different shape or
+        # duration, thus it is not modified: the punchout only provides a default
+        update.default_measurement(results.readout_amplitude[target], platform, target)
 
 
 resonator_punchout = Protocol(_acquisition, _fit, _plot, _update)

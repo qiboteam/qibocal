@@ -29,6 +29,13 @@ actions:
       step_amp: 0.005
       nshots: 10
 
+  - id: resonator punchout range
+    operation: resonator_punchout
+    parameters:
+      frequency: ['center', 10_000_000, 1_000_000]
+      amplitude: ['linspace', 0.005, 0.3, 60]
+      nshots: 10
+
   - id: readout 2D optimization
     operation: ro_amplitude_frequency
     parameters:
