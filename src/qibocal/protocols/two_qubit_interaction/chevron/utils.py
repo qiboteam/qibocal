@@ -3,6 +3,9 @@ from qibolab import Delay, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitPairId
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.two_qubit_interaction.utils import (
+    determine_cz_hybridization_state,
+)
 from qibocal.update import replace
 
 COUPLER_PULSE_START = 0
@@ -18,8 +21,15 @@ def chevron_sequence(
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,
+    infer_hybridization: bool = False,
 ):
-    """Chevron pulse sequence."""
+    """Chevron pulse sequence.
+
+    For CZ, the final RX pulse is applied to the high frequency qubit, assuming
+    the ``|11>-|02>`` interaction. If ``infer_hybridization`` is set, the qubit
+    occupying level 2 is instead inferred from the calibration data, see
+    :func:`determine_cz_hybridization_state`.
+    """
     sequence = PulseSequence()
     low_natives = platform.natives.single_qubit[ordered_pair[0]]
     high_natives = platform.natives.single_qubit[ordered_pair[1]]
@@ -57,7 +67,15 @@ def chevron_sequence(
     )
     ro_low_delay = ro_high_delay = drive_delay = Delay(duration=flux_duration)
     dt_delay = Delay(duration=dt)
-    drive_channel, second_rx = high_natives.RX()[0]
+
+    state2_qubit = ordered_pair[1]
+    if native == "CZ" and infer_hybridization:
+        hybridization_state, _ = determine_cz_hybridization_state(
+            platform, ordered_pair
+        )
+        state2_qubit = hybridization_state[2]
+    state2_channel, state2_rx = platform.natives.single_qubit[state2_qubit].RX()[0]
+
     sequence += [
         (ro_low_channel, Delay(duration=drive_duration)),
         (ro_high_channel, Delay(duration=drive_duration)),
@@ -65,15 +83,15 @@ def chevron_sequence(
         (ro_high_channel, ro_high_delay),
         (ro_low_channel, dt_delay),
         (ro_high_channel, dt_delay),
-        (drive_channel, drive_delay),
-        (drive_channel, dt_delay),
+        (state2_channel, drive_delay),
+        (state2_channel, dt_delay),
     ]
 
     if native == "CZ":
         sequence += [
-            (ro_low_channel, Delay(duration=second_rx.duration)),
-            (ro_high_channel, Delay(duration=second_rx.duration)),
-            (drive_channel, second_rx),
+            (ro_low_channel, Delay(duration=state2_rx.duration)),
+            (ro_high_channel, Delay(duration=state2_rx.duration)),
+            (state2_channel, state2_rx),
         ]
 
     # add readout
