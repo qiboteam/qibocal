@@ -421,6 +421,34 @@ def exponential_params(
     return popt
 
 
+def _valid_exponential_params(
+    step_response: npt.ArrayLike,
+    durations: npt.ArrayLike,
+    sampling_rate: float,
+    qubit: QubitId,
+) -> npt.NDArray[np.float64] | None:
+    """Fit an exponential distortion, if it is realizable as a filter.
+
+    The filter time constant is expressed in samples: a fit that does not converge,
+    or that gives a time constant below one sample (e.g. when it is absorbed by the
+    FIR taps), cannot be implemented. In that case no IIR filter is determined and
+    `None` is returned.
+    """
+    try:
+        popt = exponential_params(step_response, durations)
+    except RuntimeError:
+        log.warning(f"Exponential fit did not converge for qubit {qubit}: no IIR.")
+        return None
+    tau = popt[0]
+    if not np.isfinite(popt).all() or round(tau * sampling_rate) < 1:
+        log.warning(
+            f"Exponential fit for qubit {qubit} gives tau={tau} ns, below one sample: "
+            "no IIR."
+        )
+        return None
+    return popt
+
+
 def _fit_unit_sum_fir(
     response: npt.ArrayLike,
     target: npt.ArrayLike,
@@ -471,6 +499,31 @@ def _fit_unit_sum_fir(
 
 
 # TODO: refactor into sub-functions with smaller scopes
+def _invert_arc(poly: np.poly1d, detuning: float, reference: float) -> float:
+    """Flux amplitude producing a detuning from the drive frequency.
+
+    The detuning is measured with respect to the drive frequency, i.e. it vanishes
+    without flux pulse, while the fitted arc may carry a constant offset: that is
+    removed, so that ``poly(0)`` maps to a zero detuning.
+
+    Among the real solutions, the one with the same sign as the ``reference`` pulse
+    amplitude and the smallest magnitude is selected, i.e. the one connected with
+    the zero-flux point. If the detuning is out of the range spanned by the arc (no
+    real solution), the extremum of the arc is returned.
+    """
+    shifted = poly - poly(0.0)
+    roots = shifted - detuning
+    roots = roots.roots
+    real = roots[np.abs(roots.imag) < 1e-9 * max(1.0, np.max(np.abs(roots)))].real
+    candidates = real[np.sign(real) == np.sign(reference)]
+    if len(candidates) > 0:
+        return float(candidates[np.argmin(np.abs(candidates))])
+    if len(real) == 0 and shifted.order > 1:
+        # extremum of the arc
+        return float(shifted.deriv().roots[0].real)
+    return float(real[np.argmin(np.abs(real))]) if len(real) > 0 else 0.0
+
+
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
 
@@ -553,7 +606,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
         detuning[qubit] = detuning_wrt_drive_freq.tolist()
         amplitude[qubit] = [
-            max((detuning_poly - freq).roots).real for freq in detuning_wrt_drive_freq
+            _invert_arc(detuning_poly, freq, data.flux_pulse_amplitude)
+            for freq in detuning_wrt_drive_freq
         ]
 
         step_response[qubit] = (
@@ -564,8 +618,14 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         # determine and the filters are instead assessed in _plot
         if not data.platform_filters_applied[qubit]:
             # Derive IIR
-            if data.iir:
-                exp_params = exponential_params(step_response[qubit], durations)
+            exp_params = (
+                _valid_exponential_params(
+                    step_response[qubit], durations, sampling_rate, qubit
+                )
+                if data.iir
+                else None
+            )
+            if exp_params is not None:
                 tau, exp_amplitude, _ = exp_params
                 iir_filter = ExponentialFilter(
                     amplitude=exp_amplitude, tau=round(tau * sampling_rate)
