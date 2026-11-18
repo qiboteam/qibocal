@@ -11,10 +11,7 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Parameter,
-    PulseId,
-    PulseSequence,
     Sweeper,
-    VirtualZ,
 )
 
 from qibocal.auto.operation import (
@@ -155,16 +152,7 @@ def _acquisition(
     """
 
     data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]] = {}
-    sequences: list[PulseSequence] = []
-    vzs: list[VirtualZ] = []
-    readouts: dict[
-        tuple[QubitId, QubitId, Literal["I", "X"]], tuple[PulseId, PulseId]
-    ] = {}
-
     thetas = np.arange(*params.theta_range())
-    # RZ(theta) compiles to VirtualZ(phase=-theta). The fit returns the
-    # opposite frame shift, which cancels the gate's unwanted single-qubit phase.
-    vzphases = -thetas
 
     for pair in targets:
         # order the qubits so that the low frequency one is the first
@@ -175,7 +163,7 @@ def _acquisition(
             (ordered_pair[1], ordered_pair[0]),
         ):
             for setup in ("I", "X"):
-                (sequence, _, vz) = create_sequence(
+                sequence, _, vz = create_sequence(
                     platform,
                     setup,
                     oscillating_q,
@@ -184,31 +172,25 @@ def _acquisition(
                     dt=params.dt,
                     native=params.native,
                 )
-
-                sequences.append(sequence)
-                vzs.append(vz)
-
-                ro_oscillating = list(
-                    sequence.channel(platform.qubits[oscillating_q].acquisition)
-                )[-1]
-                ro_steady = list(
-                    sequence.channel(platform.qubits[steady_q].acquisition)
-                )[-1]
-                readouts[oscillating_q, steady_q, setup] = (
-                    ro_oscillating.id,
-                    ro_steady.id,
+                readouts = [
+                    list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+                    for qubit in (oscillating_q, steady_q)
+                ]
+                sweeper = Sweeper(
+                    parameter=Parameter.phase, values=-thetas, pulses=[vz]
                 )
-    sweeper = Sweeper(parameter=Parameter.phase, values=vzphases, pulses=vzs)
-    results = platform.execute(
-        sequences,
-        [[sweeper]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
-    for key, (oscillating_q, steady_q) in readouts.items():
-        data[key] = np.stack([results[oscillating_q], results[steady_q]])
+                # Keep setups in separate executions to avoid frame carry-over.
+                results = platform.execute(
+                    [sequence],
+                    [[sweeper]],
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                )
+                data[oscillating_q, steady_q, setup] = np.stack(
+                    [results[readout.id] for readout in readouts]
+                )
 
     return VirtualZPhasesData(
         data=data,
