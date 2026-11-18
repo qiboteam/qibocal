@@ -50,6 +50,13 @@ class TwpaFrequencyOffsetParameters(Parameters):
     """Probe wave duration."""
     probe_amplitude: float = 1.0
     """Probe wave amplitude."""
+    off_power: float | None = None
+    """Pump power [dB] of the TWPA-off reference.
+
+    It overrides :data:`PUMP_OFF_POWER`, for instruments supporting different power
+    ranges. It should be low enough to leave the TWPA unpumped, and to suppress the
+    LO leakage.
+    """
 
 
 @dataclass
@@ -107,7 +114,8 @@ PUMP_OFF_POWER = -60.0
 """Pump power [dB] of the TWPA-off reference.
 
 Low enough to leave the TWPA unpumped, while within the range of both standalone
-oscillators and controllers' ports.
+oscillators and controllers' ports, in the instruments it has been tuned on. It can
+be overridden through :attr:`TwpaFrequencyOffsetParameters.off_power`.
 """
 
 
@@ -229,9 +237,9 @@ def _acquisition(
     # 1. Reference measurements with TWPA off
     # The pump is turned off by lowering its power, which also suppresses the LO
     # leakage, unlike a null offset.
+    off_power = PUMP_OFF_POWER if params.off_power is None else params.off_power
     off_updates = {
-        _power_config(platform, ch): {"power": PUMP_OFF_POWER}
-        for ch in unique_twpa_channels
+        _power_config(platform, ch): {"power": off_power} for ch in unique_twpa_channels
     }
     for probe_updates in probe_updates_list:
         ref_results = platform.execute(

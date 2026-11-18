@@ -451,12 +451,15 @@ def test_shared_pump_switched_once(platform, mocker):
         assert sweeper.values.tolist() == _sweep(params.probe_frequency_range(center))
 
 
-def test_reference_pump_off(platform, mocker):
+@pytest.mark.parametrize("override", [None, -40.0])
+def test_reference_pump_off(platform, mocker, override):
+    """The reference turns the pump off, at the default or overridden power."""
     params = TwpaFrequencyOffsetParameters.load(
         {
             "amplitude": [0.1, 0.3, 0.1],
             "frequency": ["center", 10_000_000, 5_000_000],
             "nshots": 50,
+            **({} if override is None else {"off_power": override}),
         }
     )
     spy = mocker.spy(platform, "execute")
@@ -466,7 +469,8 @@ def test_reference_pump_off(platform, mocker):
     pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
     probe_updates, off_updates = reference_call.kwargs["updates"]
     assert all("offset" not in up for up in probe_updates.values())
-    assert off_updates == {pump: {"power": PUMP_OFF_POWER}}
+    expected = PUMP_OFF_POWER if override is None else override
+    assert off_updates == {pump: {"power": expected}}
 
 
 def _pump_platform(channels: dict, configs: dict) -> SimpleNamespace:
