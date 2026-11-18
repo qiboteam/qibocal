@@ -6,7 +6,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, NewType
+from typing import Any, NewType, get_args
 
 import numpy as np
 import numpy.typing as npt
@@ -274,6 +274,32 @@ class Protocol[ParametersT, FitParsT, ReportParsT, DataT, ResultsT]:
     def data_type(self) -> type:
         """Extract the return type of acquisition."""
         return inspect.signature(self.acquisition, eval_str=True).return_annotation
+
+    @property
+    def fit_parameters_type(self) -> type | None:
+        """Extract the type of fit parameters, if the fit accepts any.
+
+        They are declared by the ``fitpars`` argument of the fit, possibly optional.
+        """
+        if self.fit is None:
+            return None
+        param = inspect.signature(self.fit, eval_str=True).parameters.get("fitpars")
+        if param is None or param.annotation is inspect.Parameter.empty:
+            return None
+        types = [t for t in get_args(param.annotation) if t is not type(None)]
+        return types[0] if len(types) == 1 else param.annotation
+
+    def load_fit_parameters(self, parameters: dict[str, Any] | None) -> Any:
+        """Load fit parameters from their runcard representation.
+
+        Missing fit parameters are replaced by their defaults.
+        """
+        type_ = self.fit_parameters_type
+        if type_ is None:
+            if parameters:
+                raise ValueError("This protocol does not accept fit parameters.")
+            return None
+        return type_(**(parameters or {}))
 
     @property
     def results_type(self) -> type:

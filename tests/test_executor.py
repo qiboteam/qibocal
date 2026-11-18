@@ -602,3 +602,69 @@ def test_check_input_qubit_overlap():
     inputs = [(0, 1), (2, 2)]
     with pytest.raises(ValueError, match="One or more target qubits were repeated."):
         check_overlap_in_input_qubits(inputs)
+
+
+@dataclass
+class FakeFitParameters:
+    shift: int = 0
+
+
+def _fit_with_parameters(
+    data: FakeData, fitpars: FakeFitParameters | None = None
+) -> FakeResults:
+    shift = 0 if fitpars is None else fitpars.shift
+    return FakeResults(par={0: data.par + shift})
+
+
+def test_fit_parameters_type():
+    """Fit parameters are declared by the `fitpars` argument of the fit."""
+    with_pars = Protocol(_acquisition, _fit_with_parameters, _plot, _update)
+    without = Protocol(_acquisition, _fit, _plot, _update)
+
+    assert with_pars.fit_parameters_type is FakeFitParameters
+    assert with_pars.load_fit_parameters(None) == FakeFitParameters()
+    assert with_pars.load_fit_parameters({"shift": 3}) == FakeFitParameters(3)
+    assert without.fit_parameters_type is None
+    assert without.load_fit_parameters(None) is None
+    with pytest.raises(ValueError, match="does not accept fit parameters"):
+        without.load_fit_parameters({"shift": 3})
+    with pytest.raises(ValueError, match="does not accept fit parameters"):
+        Task(
+            Action("fake", "fake", parameters={"par": 7}, fit_parameters={"shift": 3}),
+            without,
+        )
+
+
+def test_fit_parameters_runcard_and_refit(tmp_path, platform, monkeypatch):
+    """Fit parameters from the runcard reach the fit, and are reused by refits."""
+    protocol = Protocol(_acquisition, _fit_with_parameters, _plot, _update)
+    monkeypatch.setattr(qibocal.protocols, "fake", protocol, raising=False)
+    action = Action(
+        "fake", "fake", targets=[0], parameters={"par": 7}, fit_parameters={"shift": 3}
+    )
+    completed = Task(action, protocol).run(
+        mode=ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+        folder=tmp_path,
+        platform=platform,
+    )
+    assert completed.results.par == {0: 10}
+
+    loaded = Completed.load(tmp_path)
+    assert loaded.bound.fitpars == FakeFitParameters(3)
+    assert Executor(None).fit(loaded).results.par == {0: 10}
+
+
+def test_fit_parameters_recorded_by_executor(tmp_path, platform, monkeypatch):
+    """Direct executions record their fit parameters with the action."""
+    protocol = Protocol(_acquisition, _fit_with_parameters, _plot, _update)
+    monkeypatch.setitem(qibocal.protocols.PROTOCOLS, "fake", protocol)
+    monkeypatch.setattr(qibocal.protocols, "fake", protocol, raising=False)
+    path = tmp_path / "report"
+    with Executor.open(path, platform=platform, targets=[0], force=True) as executor:
+        completed = executor(protocol(par=7, fit=FakeFitParameters(3)))
+
+    assert completed.results.par == {0: 10}
+    action = yaml.safe_load((path / "data" / "fake-0" / SINGLE_ACTION).read_text())
+    assert action["fit_parameters"] == {"shift": 3}
+    loaded = Output.load(path).history["fake"][0]
+    assert loaded.bound.fitpars == FakeFitParameters(3)

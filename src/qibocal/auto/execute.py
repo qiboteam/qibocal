@@ -353,6 +353,11 @@ class Executor:
                 targets=completed.targets,
                 update=self._update_enabled,
                 parameters=_action_parameters(completed.bound.parameters),
+                fit_parameters=(
+                    None
+                    if completed.bound.fitpars is None
+                    else _action_parameters(completed.bound.fitpars)
+                ),
             )
         except (TypeError, ValueError) as error:
             warnings.warn(f"Execution not recorded: {error}", stacklevel=3)
