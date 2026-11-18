@@ -1,6 +1,6 @@
 """Protocol to sweep TWPA signal control parameters (frequency and offset) using sweepers."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import cast
 
 import numpy as np
@@ -21,6 +21,7 @@ from qibolab import (
     Sweeper,
 )
 from scipy.constants import nano
+from scipy.ndimage import minimum_filter
 
 from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
 from ...calibration.platform import CalibrationPlatform
@@ -60,6 +61,19 @@ class TwpaFrequencyOffsetParameters(Parameters):
 
 
 @dataclass
+class TwpaFrequencyOffsetFitParameters:
+    """Fit parameters of the TWPA operating point selection."""
+
+    neighbourhood: int = 1
+    """Half-width of the neighbourhood of each grid point, in grid steps.
+
+    The operating point maximizes the minimum gain over the neighbourhood, such that
+    it lies within the gain plateau, away from the over-pumping region, where small
+    drifts of the pump cause large gain losses. ``0`` selects the plain maximum.
+    """
+
+
+@dataclass
 class TwpaFrequencyOffsetResults(Results):
     frequency: dict[QubitId, float]
     """Pump frequency [Hz]."""
@@ -69,6 +83,27 @@ class TwpaFrequencyOffsetResults(Results):
     """TWPA gain [dB]."""
     power: dict[QubitId, float] = field(default_factory=dict)
     """Pump power [dB], corresponding to the optimal offset."""
+    candidate: dict[QubitId, bool] = field(default_factory=dict)
+    """Whether the point is only a candidate, rather than the result.
+
+    It is a candidate when it lies at the edge of the scanned ranges, thus the optimum
+    may lie outside of them. Candidates are reported, but not applied.
+    """
+
+    def __contains__(self, key: QubitId) -> bool:
+        """Whether the fit produced a point for `key`.
+
+        Overwritten since `candidate` is missing in results of previous versions.
+        """
+        return all(
+            key in getattr(self, f.name)
+            for f in fields(self)
+            if isinstance(getattr(self, f.name), dict) and f.name != "candidate"
+        )
+
+    def is_candidate(self, qubit: QubitId) -> bool:
+        """Whether the point of `qubit` is only a candidate."""
+        return self.candidate.get(qubit, False)
 
 
 @dataclass
@@ -309,26 +344,66 @@ def _pump_lo(platform: CalibrationPlatform, pump: ChannelId) -> str:
     return lo
 
 
-def _fit(data: TwpaFrequencyOffsetData) -> TwpaFrequencyOffsetResults:
-    """Maximize measured gain.
+def _edges(gain: npt.NDArray, i: int, j: int) -> list[str]:
+    """Swept ranges whose edge contains the grid point `(i, j)`.
 
-    After computing the averaged gain across evaluated probes, select the
-    corresponding TWPA frequency and offset that maximizes the gain for each qubit.
+    Ranges with a single value are not swept, thus they have no edge.
     """
+    edges = []
+    for name, index, size in (
+        ("amplitude", i, gain.shape[0]),
+        ("frequency", j, gain.shape[1]),
+    ):
+        if size > 1 and index in (0, size - 1):
+            edges.append(name)
+    return edges
+
+
+def _select(gain: npt.NDArray, neighbourhood: int) -> tuple[int, int, bool]:
+    """Select the operating point on the gain grid.
+
+    The point maximizes the minimum gain over its neighbourhood. If the maximum lies at
+    the edge of the scanned ranges, it is returned as a candidate.
+
+    Returns:
+        The amplitude and frequency indices, and whether the point is a candidate.
+    """
+    smoothed = minimum_filter(gain, size=2 * neighbourhood + 1, mode="nearest")
+    i, j = (int(index) for index in np.unravel_index(np.argmax(smoothed), gain.shape))
+    return i, j, bool(_edges(gain, i, j))
+
+
+def _fit(
+    data: TwpaFrequencyOffsetData,
+    fitpars: TwpaFrequencyOffsetFitParameters | None = None,
+) -> TwpaFrequencyOffsetResults:
+    """Select a robust operating point, within the gain plateau.
+
+    After computing the averaged gain across evaluated probes, select the TWPA
+    frequency and offset as in :func:`_select`. The maximum gain may be just below the
+    over-pumping region, where the gain drops sharply, and small drifts of the pump
+    cause large gain losses: maximizing the gain over a neighbourhood trades a fraction
+    of the gain for stability.
+    """
+    fitpars = TwpaFrequencyOffsetFitParameters() if fitpars is None else fitpars
     frequency = {}
     offset = {}
     gain = {}
     power = {}
+    candidate = {}
     for qubit in data.qubits:
         averaged_gain = data.averaged_gain(qubit)
-        flat_index = np.argmax(averaged_gain)
-        i, j = np.unravel_index(flat_index, averaged_gain.shape)
+        i, j, candidate[qubit] = _select(averaged_gain, fitpars.neighbourhood)
         frequency[qubit] = data.frequency[qubit][j]
         offset[qubit] = data.offset[qubit][i]
         gain[qubit] = averaged_gain[i, j]
         power[qubit] = data.power.get(qubit, 0.0) + 20 * np.log10(abs(offset[qubit]))
     return TwpaFrequencyOffsetResults(
-        frequency=frequency, offset=offset, gain=gain, power=power
+        frequency=frequency,
+        offset=offset,
+        gain=gain,
+        power=power,
+        candidate=candidate,
     )
 
 
@@ -387,14 +462,40 @@ def _plot(
             yaxis="y2",
         )
     )
+    i, j = np.unravel_index(np.argmax(averaged_gain), averaged_gain.shape)
+    fig.add_trace(
+        go.Scatter(
+            x=[frequencies[j]],
+            y=[offsets[i]],
+            mode="markers",
+            marker={
+                "size": 12,
+                "color": "deepskyblue",
+                "symbol": "diamond-open",
+                "line": {"width": 2},
+            },
+            name="Maximum Gain",
+            showlegend=True,
+        )
+    )
     if fit is not None and target in fit:
+        candidate = fit.is_candidate(target)
         fig.add_trace(
             go.Scatter(
                 x=[fit.frequency[target] * nano],
                 y=[fit.offset[target]],
                 mode="markers",
-                marker={"size": 10, "color": "black", "symbol": "cross"},
-                name="Optimal Point",
+                marker=(
+                    {
+                        "size": 16,
+                        "color": "magenta",
+                        "symbol": "circle-x-open",
+                        "line": {"width": 2},
+                    }
+                    if candidate
+                    else {"size": 10, "color": "black", "symbol": "cross"}
+                ),
+                name="Candidate Point (scan edge)" if candidate else "Optimal Point",
                 showlegend=True,
             )
         )
@@ -408,7 +509,7 @@ def _plot(
         fig.update_yaxes(range=[np.min(offsets) - doff, np.max(offsets) + doff])
     fig.update_layout(
         showlegend=True,
-        legend={"orientation": "h"},
+        legend={"orientation": "h", "y": -0.25},
         yaxis2={
             "title_text": "Pump power [dB]",
             "overlaying": "y",
@@ -423,7 +524,17 @@ def _plot(
 
     figures.append(fig)
 
-    if fit is not None and target in fit:
+    if fit is not None and target in fit and fit.is_candidate(target):
+        i = data.offset[target].index(fit.offset[target])
+        j = data.frequency[target].index(fit.frequency[target])
+        edges = " and ".join(f"pump {edge}" for edge in _edges(averaged_gain, i, j))
+        fitting_report = (
+            f"<p><b>Fit failed</b>: the operating point lies at the edge of the scanned "
+            f"{edges} range, thus the optimum may lie outside of it. Extend the scan "
+            f"(e.g. changing the base pump power) and repeat it. The candidate point "
+            f"is marked in the plot, and it is not applied.</p>"
+        )
+    elif fit is not None and target in fit:
         opt_offset = fit.offset[target]
         opt_power = fit.power[target]
         labels = [
@@ -461,7 +572,11 @@ def _update(
 
     Targets sharing the same pump overwrite each other's update, thus the last one
     prevails.
+
+    Candidate points are not results, thus there is nothing to apply.
     """
+    if results.is_candidate(target):
+        return
     pump = platform.channels[platform.qubits[target].acquisition].twpa_pump
     assert pump is not None
     frequency, power = results.frequency[target], results.power[target]
