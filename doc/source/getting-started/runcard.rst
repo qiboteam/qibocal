@@ -47,3 +47,7 @@ For each protocol the user needs to specify the following:
     * ``id``: custom id chosen by the user.
     * ``operation``: protocol available in ``Qibocal``. See :ref:`calibration_routines` for a complete list of the protocols available.
     * ``parameters``: input parameters.
+    * ``fit_parameters`` (optional): parameters only affecting the fit of the acquired
+      data, for the protocols supporting them. They are stored with the protocol
+      execution, so that refitting its data from disk (e.g. with ``qq fit``) uses them
+      as well.
