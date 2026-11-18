@@ -65,23 +65,43 @@ linear steps, the amplitude/power sweep is replaced by a linear offset sweep.
 Offset values must lie in the inclusive interval [-1, 1].
 
 Before sweeping the pump parameters, a reference scan measures the readout signal
-with the TWPA pump off (its power set to zero). The reference uses the same probe
+with the TWPA pump off (its power lowered to ``PUMP_OFF_POWER``, or to the
+``off_power`` parameter). The reference uses the same probe
 frequencies, pulse duration, amplitude, and acquisition settings as the subsequent
 pump sweep: one reference measurement per target at its calibrated readout frequency
 by default, or one per target for each frequency listed in ``probes``.
-The acquired I/Q magnitudes are averaged over the evaluated probe frequencies,
-separately for the reference and for each pump working point. The gain displayed
-in the heatmap is then
+The gain of each probe :math:`p` is computed with respect to its own reference
 
 .. math::
 
-    G(f, o) = 20 \log_{10} \left(
-        \frac{\langle |IQ_{\mathrm{on}}(f, o)| \rangle_{\mathrm{probes}}}
-             {\langle |IQ_{\mathrm{off}}| \rangle_{\mathrm{probes}}}
-    \right),
+    G_p(f, o) = 20 \log_{10} \frac{|IQ_{\mathrm{on}, p}(f, o)|}{|IQ_{\mathrm{off}, p}|},
 
 where :math:`f` and :math:`o` are the pump frequency and offset. This reference
 normalizes the amplified signal to the unamplified readout signal.
+
+The probes' gains are then aggregated in a single map, as selected by the
+``objective`` fit parameter:
+
+- ``minimum`` (default): the minimum gain across the probes,
+  :math:`\min_p G_p(f, o)`, i.e. the gain of the worst probe, which is the one limiting
+  a multiplexed readout;
+- ``average``: the ratio of the probe-averaged magnitudes,
+
+  .. math::
+
+      G(f, o) = 20 \log_{10} \left(
+          \frac{\langle |IQ_{\mathrm{on}}(f, o)| \rangle_{\mathrm{probes}}}
+               {\langle |IQ_{\mathrm{off}}| \rangle_{\mathrm{probes}}}
+      \right),
+
+  which is not the average of the probes' gains, and it is dominated by the probes
+  with the largest signal.
+
+With a single probe, the two coincide. The operating point maximizes the selected
+map, over a neighbourhood of each point (cf. the ``neighbourhood`` fit parameter).
+The report shows the selected map, and with several probes also the other aggregated
+one, and the maps of each probe. The results table includes the gain of each probe
+at the selected point.
 
 By default, when the ``probes`` parameter is omitted, the protocol performs only a
 **single acquisition run** (a single execution for the reference scan, and a further
@@ -92,10 +112,9 @@ multiplexed characterization at the operational frequencies of all selected targ
 
 When a discrete list of probe frequencies is provided in ``probes``, the protocol
 instead evaluates each probe frequency in a loop, applying each frequency across all
-target probe lines and averaging the resulting gain over the evaluated probes to find
-the pump parameters that maximize average gain.
-Gain computation raises an error if a target's mean TWPA-off reference magnitude
-is non-finite or close to zero, since it cannot provide a reliable normalization.
+target probe lines.
+Gain computation raises an error if a target's TWPA-off reference magnitudes are
+non-finite or close to zero, since they cannot provide a reliable normalization.
 
 .. note::
 
@@ -115,6 +134,11 @@ Parameters
 .. autoclass:: qibocal.protocols.twpa.frequency_offset.TwpaFrequencyOffsetParameters
   :noindex:
 
+Fit parameters, provided under ``fit_parameters`` in the runcard:
+
+.. autoclass:: qibocal.protocols.twpa.frequency_offset.TwpaFrequencyOffsetFitParameters
+  :noindex:
+
 
 Example
 ^^^^^^^
@@ -128,3 +152,6 @@ Example
         frequency: ["center", 300000000, 50000000]
         amplitude: [0.1, 0.5, 0.05]
         nshots: 300
+      fit_parameters:
+        objective: minimum
+        neighbourhood: 1

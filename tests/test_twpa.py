@@ -186,9 +186,15 @@ def test_acquisition_and_fit(platform, tmp_path):
 
     # Test Plot with and without fit
     figs, report = _plot(data, fit_res, targets[0])
-    assert len(figs) == 1
+    # minimum and average maps, and per-probe maps, since there are two probes
+    assert len(figs) == 3
     fig = figs[0]
-    assert fig.data[0].colorbar.title.text == "TWPA Gain [dB]"
+    assert fig.data[0].colorbar.title.text == "Minimum TWPA Gain across probes [dB]"
+    assert figs[1].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    assert [t.text for t in figs[2].layout.annotations] == [
+        "Probe 7.0000 GHz",
+        "Probe 7.2000 GHz",
+    ]
     assert fig.layout.yaxis2 is not None
     assert fig.layout.yaxis2.title.text == "Pump power [dB]"
     assert fig.layout.yaxis2.ticktext == tuple(
@@ -214,11 +220,16 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert "Pump Frequency [Hz]" in report
         assert "Pump Amplitude" in report
         assert "Pump power [dB]" in report
-        assert "TWPA Gain [dB]" in report
+        assert "Minimum TWPA Gain across probes [dB]" in report
+        assert "Probe 7.0000 GHz Gain [dB]" in report
+        assert "Probe 7.2000 GHz Gain [dB]" in report
 
     figs_no_fit, report_no_fit = _plot(data, None, targets[0])
-    assert len(figs_no_fit) == 1
-    assert figs_no_fit[0].data[0].colorbar.title.text == "TWPA Gain [dB]"
+    assert len(figs_no_fit) == 3
+    assert (
+        figs_no_fit[0].data[0].colorbar.title.text
+        == "Minimum TWPA Gain across probes [dB]"
+    )
     assert figs_no_fit[0].layout.yaxis2.title.text == "Pump power [dB]"
     assert any(trace.yaxis == "y2" for trace in figs_no_fit[0].data)
     assert report_no_fit == ""
@@ -633,3 +644,102 @@ def test_results_without_candidate(platform):
     _update(results, platform, 0)
     pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
     assert platform.config(pump).frequency == 6.1e9
+
+
+def two_probes_data():
+    """Two probes, the second one with a larger signal and a shifted gain peak."""
+    gains = np.stack(
+        [
+            landscape(OFFSETS, FREQUENCIES),
+            landscape(OFFSETS, FREQUENCIES, center=6.02e9) + 10,
+        ],
+        axis=2,
+    )
+    references = np.array([1.0, 10.0])
+    magnitude = references * 10 ** (gains / 20)
+    return gains, TwpaFrequencyOffsetData(
+        data={0: np.stack([magnitude, np.zeros_like(magnitude)], axis=-1)},
+        reference_value={0: [[ref, 0.0] for ref in references]},
+        offset={0: list(OFFSETS)},
+        frequency={0: list(FREQUENCIES)},
+        power={0: 0.0},
+        probes=[7.0e9, 7.2e9],
+    )
+
+
+def test_probe_gain():
+    """Each probe gain is relative to its own reference, unlike the average."""
+    gains, data = two_probes_data()
+
+    np.testing.assert_allclose(data.probe_gain(0), gains)
+    np.testing.assert_allclose(data.minimum_gain(0), gains.min(axis=2))
+    # the ratio of averaged magnitudes is not the average of the gains
+    assert not np.allclose(data.averaged_gain(0), gains.mean(axis=2))
+
+
+def test_fit_minimum_across_probes():
+    """The minimum objective favours the worst probe, unlike the average."""
+    gains, data = two_probes_data()
+    minimum = _fit(data)
+    average = _fit(data, TwpaFrequencyOffsetFitParameters(objective="average"))
+
+    def point(fit):
+        i = list(OFFSETS).index(fit.offset[0])
+        j = list(FREQUENCIES).index(fit.frequency[0])
+        return gains[i, j]
+
+    assert minimum.objective == "minimum" and average.objective == "average"
+    assert minimum.frequency[0] != average.frequency[0]
+    assert point(minimum).min() > point(average).min()
+    np.testing.assert_allclose(minimum.probe_gain[0], point(minimum))
+    assert minimum.gain[0] == pytest.approx(point(minimum).min())
+
+    figures, report = _plot(data, minimum, 0)
+    assert len(figures) == 3
+    assert "Probe 7.0000 GHz Gain [dB]" in report
+    assert "Probe 7.2000 GHz Gain [dB]" in report
+    figures, report = _plot(data, average, 0)
+    assert figures[0].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    assert "Average TWPA Gain [dB]" in report
+
+
+def test_single_probe_objectives_coincide():
+    data = landscape_data(OFFSETS, FREQUENCIES)
+
+    np.testing.assert_allclose(data.minimum_gain(0), data.averaged_gain(0))
+    fit = _fit(data)
+    assert (
+        fit.offset[0]
+        == _fit(data, TwpaFrequencyOffsetFitParameters(objective="average")).offset[0]
+    )
+    figures, report = _plot(data, fit, 0)
+    assert len(figures) == 1
+    assert "Probe" not in report and "Readout probe" not in report
+
+
+def test_objective_fit_parameter(tmp_path):
+    assert twpa_frequency_offset.load_fit_parameters(
+        {"objective": "average"}
+    ) == TwpaFrequencyOffsetFitParameters(objective="average")
+    with pytest.raises(ValueError, match="Unknown gain objective"):
+        TwpaFrequencyOffsetFitParameters(objective="maximum")
+
+    _, data = two_probes_data()
+    fit = _fit(data)
+    fit.save(tmp_path)
+    loaded = TwpaFrequencyOffsetResults.load(tmp_path)
+    assert loaded.objective == "minimum"
+    assert loaded.probe_gain == fit.probe_gain
+
+
+def test_results_of_previous_versions():
+    """Results without per-probe gains were optimizing the average gain."""
+    results = TwpaFrequencyOffsetResults(
+        frequency={0: 6.1e9}, offset={0: 0.5}, gain={0: 20.0}, power={0: -12.0}
+    )
+    assert 0 in results
+    assert results.objective == "average"
+    _, data = two_probes_data()
+    figures, report = _plot(data, results, 0)
+    assert figures[0].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    assert "Probe" not in report
