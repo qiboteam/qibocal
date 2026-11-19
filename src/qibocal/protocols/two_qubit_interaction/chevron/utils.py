@@ -131,18 +131,6 @@ def readout_snr(data: NDArray[np.floating]) -> NDArray[np.floating]:
     return np.array(snr)
 
 
-def resonance_trace(
-    data: list[NDArray[np.floating]],
-    weights: Sequence[float] | NDArray[np.floating],
-    amplitude: NDArray[np.floating],
-    amplitude0: float,
-) -> NDArray[np.floating]:
-    """Weighted mean population on the resonance column and its two neighbours."""
-    k0 = int(np.abs(amplitude - amplitude0).argmin())
-    combined = np.average(data, axis=0, weights=weights)
-    return combined[:, max(k0 - 1, 0) : k0 + 2].mean(axis=1)
-
-
 def find_population_exchanges(
     data: NDArray[np.floating], duration: NDArray[np.floating]
 ) -> tuple[NDArray[np.intp], NDArray[np.intp]]:
@@ -290,8 +278,9 @@ def fit_gate_parameters(
     exchange_time = float(duration[resonance_exchange_idx])
     half_oscillation = (resonance_revival_idx - resonance_exchange_idx) // 2
     window = slice(0, min(n_duration, resonance_revival_idx + half_oscillation + 2))
-    trace = resonance_trace(scaled_data, weights, amplitude, resonance_amplitude)
-    trace = trace[window]
+    trace = np.average(
+        scaled_data[:, window, resonance_amplitude_idx], axis=0, weights=weights
+    )
     t = duration[window]
     omega0 = np.pi / max(exchange_time, step)
     lower = [0, 0, np.pi / np.ptp(duration), -0.25 * np.pi / omega0]
