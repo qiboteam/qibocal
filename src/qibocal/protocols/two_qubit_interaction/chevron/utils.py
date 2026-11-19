@@ -231,6 +231,8 @@ def fit_gate_parameters(
     snr = readout_snr(scaled_data)
     # Chevrons measurements with low SNR get zero weight in the combination.
     weights = np.where(snr >= SNR_THRESHOLD, snr, 0.0)
+    if not weights.any():
+        raise ValueError(FIT_FAILED)
     smooth = [uniform_filter(y, size=3, mode="nearest") for y in scaled_data]
     combined = np.average(smooth, axis=0, weights=weights)
 
