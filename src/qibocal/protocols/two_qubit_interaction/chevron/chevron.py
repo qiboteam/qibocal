@@ -304,8 +304,6 @@ def _update(
         target if target in platform.natives.two_qubit else reversed_target
     )
 
-    if result_target not in results.amplitude:
-        return
     getattr(update, f"{results.native}_duration")(
         results.duration[result_target], platform, platform_target
     )
