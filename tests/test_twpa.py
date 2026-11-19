@@ -19,7 +19,6 @@ from qibolab import (
 
 from qibocal.protocols import PROTOCOLS
 from qibocal.protocols.twpa.frequency_offset import (
-    PUMP_OFF_POWER,
     TwpaFrequencyOffsetData,
     TwpaFrequencyOffsetFitParameters,
     TwpaFrequencyOffsetParameters,
@@ -27,8 +26,6 @@ from qibocal.protocols.twpa.frequency_offset import (
     _acquisition,
     _fit,
     _plot,
-    _pump_power,
-    _select,
     _update,
     twpa_frequency_offset,
     twpa_sweep,
@@ -45,6 +42,9 @@ from qibocal.protocols.twpa.twpa import (
 from qibocal.protocols.twpa.twpa import (
     _plot as calibration_plot,
 )
+from qibocal.protocols.twpa.utils import PUMP_OFF_POWER
+from qibocal.protocols.twpa.utils import pump_power as _pump_power
+from qibocal.protocols.twpa.utils import select as _select
 from qibocal.protocols.utils import readout_frequency, to_range
 
 
