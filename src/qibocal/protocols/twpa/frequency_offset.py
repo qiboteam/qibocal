@@ -5,7 +5,7 @@ from typing import Literal, get_args
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode
 
 from ...auto.operation import Parameters, Protocol, QubitId, Results
 from ...calibration.platform import CalibrationPlatform
@@ -15,8 +15,10 @@ from .utils import (
     Selected,
     TwpaData,
     edges,
+    frequency_sweepers,
     map_figure,
     off_updates,
+    offset_sweepers,
     probe_labels,
     probe_updates,
     probes_figure,
@@ -261,25 +263,9 @@ def _acquisition(
 
     # Build 2D sweepers over TWPA pump parameters.
     # Use Sweeper-generated values to ensure consistency with backend semantics.
-    freq_sweeps = [
-        Sweeper(
-            parameter=Parameter.frequency,
-            range=freq_ranges[q],
-            channels=[ch],
-        )
-        for ch, q in pump.unique.items()
-    ]
-    offset_sweeps = [
-        Sweeper(
-            parameter=Parameter.offset,
-            range=offset_range,
-            channels=[ch],
-        )
-        for ch in pump.unique
-    ]
+    freq_sweeps = frequency_sweepers(pump, freq_ranges)
+    offset_sweeps = offset_sweepers(pump, offset_range)
     offset_values = offset_sweeps[0].values
-    if np.any(np.abs(offset_values) > 1.0):
-        raise ValueError("TWPA amplitude values must be between -1 and 1.")
 
     # 1. Reference measurements with TWPA off
     # The pump is turned off by lowering its power, which also suppresses the LO

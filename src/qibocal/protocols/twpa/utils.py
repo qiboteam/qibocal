@@ -26,17 +26,19 @@ from qibolab import (
     ChannelId,
     IqConfig,
     OscillatorConfig,
+    Parameter,
     Pulse,
     PulseSequence,
     Readout,
     Rectangular,
+    Sweeper,
 )
 from scipy.constants import nano
 from scipy.ndimage import minimum_filter
 
 from ...auto.operation import Data, QubitId
 from ...calibration.platform import CalibrationPlatform
-from ..utils import readout_frequency
+from ..utils import Range, readout_frequency
 
 PUMP_OFF_POWER = -60.0
 """Pump power [dB] of the TWPA-off reference.
@@ -179,6 +181,40 @@ def off_updates(
     """
     power = PUMP_OFF_POWER if off_power is None else off_power
     return {power_config(platform, ch): {"power": power} for ch in channels}
+
+
+def frequency_sweepers(pump: Pumps, ranges: Mapping[QubitId, Range]) -> list[Sweeper]:
+    """Frequency sweepers of the distinct pumps.
+
+    Each pump is swept as the first target amplified by it.
+    """
+    return [
+        Sweeper(parameter=Parameter.frequency, range=ranges[q], channels=[ch])
+        for ch, q in pump.unique.items()
+    ]
+
+
+def offset_sweepers(pump: Pumps, offsets: Range | npt.NDArray) -> list[Sweeper]:
+    """Offset sweepers of the distinct pumps, over a range or explicit values.
+
+    Raises:
+        ValueError: if the offsets exceed the amplitude of the pump, i.e. 1 in module.
+    """
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.offset,
+            channels=[ch],
+            **(
+                {"range": offsets}
+                if isinstance(offsets, tuple)
+                else {"values": np.asarray(offsets)}
+            ),
+        )
+        for ch in pump.unique
+    ]
+    if np.any(np.abs(sweepers[0].values) > 1.0):
+        raise ValueError("TWPA amplitude values must be between -1 and 1.")
+    return sweepers
 
 
 def reference(
