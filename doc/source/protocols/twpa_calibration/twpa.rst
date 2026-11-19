@@ -161,3 +161,140 @@ Example
       fit_parameters:
         objective: minimum
         neighbourhood: 1
+
+
+TWPA protocols at a glance
+--------------------------
+
+The TWPA protocols are independent, since they trade the same measurement for
+different costs. They share the plumbing of their acquisitions and figures, which lives
+in :mod:`qibocal.protocols.twpa.utils`, but each has its own parameters, data and
+results.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Protocol
+     - Measures
+     - Acquires
+     - Use it to
+   * - ``twpa_frequency_offset`` (``twpa_sweep``)
+     - the gain over the pump frequency and offset
+     - averages, computed on board
+     - find the region and the point of largest gain, cheaply
+   * - ``twpa_snr``
+     - the SNR improvement and the added noise, over the same pump parameters
+     - single shots, reduced in batches
+     - compare points of similar gain, by what matters to the readout
+   * - ``twpa_stability``
+     - repeated references and signals at a single operating point
+     - averages, computed on board
+     - validate a selected point, and tell a drifting reference from a drifting pump
+
+
+TWPA SNR Protocol
+-----------------
+
+The gain alone does not tell whether the readout improves: it ignores the noise added
+by the amplifier, thus a point of larger gain may give a lower signal to noise ratio.
+The ``twpa_snr`` protocol scans the same pump frequency and offset as ``twpa_sweep``,
+with the same TWPA-off reference per probe, but it acquires the individual shots, to
+know their spread. The SNR of a probe is the magnitude of its mean signal over the
+spread :math:`\sigma` of its shots, the root mean square of the standard deviations of
+the I and Q components, and the improvement with respect to the pump-off reference is
+
+.. math::
+
+    \Delta\mathrm{SNR}_p(f, o) = 20 \log_{10}
+        \frac{|\mu_{\mathrm{on}, p}(f, o)| / \sigma_{\mathrm{on}, p}(f, o)}
+             {|\mu_{\mathrm{off}, p}| / \sigma_{\mathrm{off}, p}}
+        = G_p(f, o) - N_p(f, o),
+
+i.e. the gain :math:`G_p` of ``twpa_sweep``, net of the noise added by the TWPA,
+:math:`N_p = 20 \log_{10} (\sigma_{\mathrm{on}, p} / \sigma_{\mathrm{off}, p})`.
+It needs no qubit calibration, since it only needs the readout resonator probed.
+
+As in ``twpa_sweep``, the ``objective`` fit parameter selects the map optimized by the
+fit, aggregated across the probes by their minimum: the SNR improvement (``snr``,
+default) or the gain (``gain``). The report shows both maps, the SNR improvements of
+each probe, and a table with the improvement, gain and added noise of each probe at the
+selected point.
+
+Single shots grow as ``nshots`` :math:`\times` offsets :math:`\times` frequencies
+:math:`\times` probes, which easily exceeds the acquisition memory of the controllers.
+Therefore:
+
+- the pump offsets are split in batches, each holding at most ``max_values`` shots of a
+  target, and covering all the pump frequencies;
+- the shots are reduced to their mean and spread as soon as they are downloaded, and
+  only these statistics are stored: ``(noffsets, nfrequencies, nprobes, 3)`` values,
+  independently of ``nshots``;
+- the reference is a single point, thus ``reference_shots`` may be larger than
+  ``nshots``, to make it the least contribution to the uncertainty.
+
+Another way to bound the cost is to run the scan on a small region only, selected with
+``twpa_sweep``.
+
+.. autoclass:: qibocal.protocols.twpa.snr.TwpaSnrParameters
+  :noindex:
+
+Fit parameters, provided under ``fit_parameters`` in the runcard:
+
+.. autoclass:: qibocal.protocols.twpa.snr.TwpaSnrFitParameters
+  :noindex:
+
+.. code-block:: yaml
+
+    - id: twpa_snr
+      operation: twpa_snr
+      parameters:
+        frequency: ["center", 20000000, 1000000]
+        amplitude: [0.6, 0.9, 0.025]
+        nshots: 1000
+        reference_shots: 20000
+        max_values: 2000000
+      fit_parameters:
+        objective: snr
+        neighbourhood: 1
+
+
+TWPA Stability Protocol
+-----------------------
+
+The gain of a TWPA is measured against a reference with the pump off, taken along with
+each scan. If that reference, or the pump, drifts between acquisitions, the very same
+working point shows a different gain in every scan, even if the point selected is
+reproducible. A scan of the pump parameters cannot tell: the map has the structure of
+the amplifier, and its level the one of the drift.
+
+The ``twpa_stability`` protocol validates a single operating point, as selected by
+``twpa_sweep`` or ``twpa_snr``. It repeats ``repeats`` times the pair of acquisitions a
+scan performs, the TWPA-off reference and the signal with the pump at the point
+(``frequency`` and ``offset``, by default the configured pump), for each probe, and it
+reports:
+
+- the mean gain, and its standard deviation, with respect to the reference of each
+  repetition, as a scan measures it;
+- the standard deviation of the gain with respect to the mean reference of all the
+  repetitions: if it is much smaller, the reference limits the stability of the gain,
+  and not the pump;
+- the standard deviations of the signals with the TWPA on and off, and their
+  correlation, since signals moving together (e.g. a common drift of the readout chain)
+  cancel in the gain.
+
+The first figure compares the gain of each repetition with respect to its own and to
+the common reference, and the second one the fluctuations of the signals with the TWPA
+on and off. It does not update the platform.
+
+.. autoclass:: qibocal.protocols.twpa.stability.TwpaStabilityParameters
+  :noindex:
+
+.. code-block:: yaml
+
+    - id: twpa_stability
+      operation: twpa_stability
+      parameters:
+        repeats: 20
+        offset: 0.76
+        frequency: 8279000000
+        nshots: 400
