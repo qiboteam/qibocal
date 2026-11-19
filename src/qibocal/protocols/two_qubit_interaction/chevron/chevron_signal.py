@@ -9,7 +9,7 @@ from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
-from ...utils import HZ_TO_GHZ, minmax_scaling, readout_frequency
+from ...utils import minmax_scaling, readout_frequency
 from ..utils import order_pair
 from .chevron import (
     ChevronData,
@@ -68,18 +68,6 @@ def _aquisition(
         ).tolist(),
     )
     data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
-    data.flux_coefficient = {
-        pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
-        for pair in data.sorted_pairs
-    }
-    data.detuning = {
-        pair: (
-            platform.calibration.single_qubits[pair[1]].qubit.frequency_01
-            - platform.calibration.single_qubits[pair[0]].qubit.frequency_01
-        )
-        * HZ_TO_GHZ
-        for pair in data.sorted_pairs
-    }
 
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
