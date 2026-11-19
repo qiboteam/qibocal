@@ -234,8 +234,29 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         )
 
     if fit is not None:
-        fig.add_hline(y=fit.amplitude[data_target], line_dash="dot")
-        fig.add_vline(x=fit.duration[data_target], line_dash="dot")
+        amplitude0, duration0 = fit.amplitude[data_target], fit.duration[data_target]
+        x_range = [min(data.duration), max(data.duration)]
+        y_range = [min(data.amplitude), max(data.amplitude)]
+        lines = {
+            "Resonance amplitude": (x_range, [amplitude0] * 2, "solid"),
+            f"{fit.native} duration": ([duration0] * 2, y_range, "dash"),
+        }
+        for col in [1, 2]:
+            for name, (x, y, dash) in lines.items():
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=y,
+                        mode="lines",
+                        # Green is a hue Inferno does not contain.
+                        line={"color": "#00c853", "width": 3, "dash": dash},
+                        name=name,
+                        legendgroup=name,
+                        showlegend=col == 1,
+                    ),
+                    row=1,
+                    col=col,
+                )
 
     fig.update_layout(
         xaxis_title="Duration [ns]",
@@ -249,6 +270,8 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
             "cmax": 1,
             "colorbar": {"title": {"text": "P<sub>e</sub>"}},
         },
+        # Horizontal legend, so it does not overlap the colorbar on the right.
+        legend={"orientation": "h", "y": -0.2},
         height=400,
     )
     for j in [1, 2]:
