@@ -158,6 +158,46 @@ class TwpaFrequencyOffsetData(Data):
     """
     power: dict[QubitId, float] = field(default_factory=dict)
     """Configured base pump power [dB] for each target."""
+    pump: dict[QubitId, str] = field(default_factory=dict)
+    """TWPA pump channel amplifying the readout of each target.
+
+    Missing in data of previous versions, whose targets are then treated as
+    amplified by distinct pumps.
+    """
+
+    def group(self, qubit: QubitId) -> list[QubitId]:
+        """Targets amplified by the same pump as `qubit`, in acquisition order.
+
+        Their probes are all amplified by the same pump working point, thus the gain
+        is aggregated over all of them, and a single point is selected for the pump.
+        """
+        pump = self.pump.get(qubit)
+        if pump is None:
+            return [qubit]
+        return [q for q in self.qubits if self.pump.get(q) == pump]
+
+    def group_probes(self, qubit: QubitId) -> list[tuple[QubitId, int]]:
+        """Probes amplified by the pump of `qubit`, as ``(target, probe index)``.
+
+        They are ordered as the last axis of :meth:`probe_gain`.
+        """
+        return [
+            (q, p)
+            for q in self.group(qubit)
+            for p in range(self.reference_value_array(q).shape[0])
+        ]
+
+    def _group_magnitudes(self, qubit: QubitId) -> tuple[npt.NDArray, npt.NDArray]:
+        """Pump on and off magnitudes of all the probes on the pump of `qubit`.
+
+        The shapes are ``(noffsets, nfrequencies, nprobes)`` and ``(nprobes,)``.
+        """
+        group = self.group(qubit)
+        signal = np.concatenate([magnitude(self[q]) for q in group], axis=2)
+        reference = np.concatenate(
+            [magnitude(self.reference_value_array(q)) for q in group]
+        )
+        return signal, reference
 
     def reference_value_array(self, qubit: QubitId) -> npt.NDArray:
         """Return reference value as a numpy array.
@@ -168,27 +208,35 @@ class TwpaFrequencyOffsetData(Data):
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
     def averaged_gain(self, qubit: QubitId) -> npt.NDArray:
-        reference = np.mean(magnitude(self.reference_value_array(qubit)), axis=0)
+        """Ratio of the probe-averaged magnitudes [dB], with and without pump.
+
+        The average runs over all the probes amplified by the pump of `qubit`, cf.
+        :meth:`group_probes`.
+        """
+        signal, reference = self._group_magnitudes(qubit)
+        reference = np.mean(reference)
         if not np.isfinite(reference) or np.isclose(reference, 0):
             raise ValueError(
                 f"TWPA-off reference magnitude for qubit {qubit} must be finite "
                 "and nonzero."
             )
-        return 20 * np.log10(np.mean(magnitude(self[qubit]), axis=2) / reference)
+        return 20 * np.log10(np.mean(signal, axis=2) / reference)
 
     def probe_gain(self, qubit: QubitId) -> npt.NDArray:
         """TWPA gain [dB] of each probe, with respect to its own reference.
 
         Unlike :meth:`averaged_gain`, it is not dominated by the probes with the
-        largest signal. The shape is ``(noffsets, nfrequencies, nprobes)``.
+        largest signal. The probes are all the ones amplified by the pump of `qubit`,
+        i.e. those of all the targets sharing it, as listed by :meth:`group_probes`.
+        The shape is ``(noffsets, nfrequencies, nprobes)``.
         """
-        reference = magnitude(self.reference_value_array(qubit))
+        signal, reference = self._group_magnitudes(qubit)
         if not np.all(np.isfinite(reference)) or np.any(np.isclose(reference, 0)):
             raise ValueError(
                 f"TWPA-off reference magnitude for qubit {qubit} must be finite "
                 "and nonzero, for every probe."
             )
-        return 20 * np.log10(magnitude(self[qubit]) / reference)
+        return 20 * np.log10(signal / reference)
 
     def minimum_gain(self, qubit: QubitId) -> npt.NDArray:
         """Minimum TWPA gain [dB] across the probes, cf. :meth:`probe_gain`.
@@ -372,6 +420,7 @@ def _acquisition(
         reference_value=reference_data,
         probes=params.probes,
         power=twpa_powers,
+        pump=twpa_channels,
     )
     for qubit in targets:
         data.data[qubit] = np.stack(raw_data[qubit], axis=2)
@@ -446,6 +495,9 @@ def _fit(
     the gain drops sharply, and small drifts of the pump cause large gain losses:
     maximizing the gain over a neighbourhood trades a fraction of the gain for
     stability.
+
+    Targets sharing a pump are amplified by the same working point: the gain is
+    aggregated over all their probes, and the same point is selected for all of them.
     """
     fitpars = TwpaFrequencyOffsetFitParameters() if fitpars is None else fitpars
     frequency = {}
@@ -455,13 +507,19 @@ def _fit(
     candidate = {}
     probe_gain = {}
     for qubit in data.qubits:
+        if qubit in frequency:
+            # already selected, together with a target sharing its pump
+            continue
         gain_map = data.gain(qubit, fitpars.objective)
-        i, j, candidate[qubit] = _select(gain_map, fitpars.neighbourhood)
-        frequency[qubit] = data.frequency[qubit][j]
-        offset[qubit] = data.offset[qubit][i]
-        gain[qubit] = gain_map[i, j]
-        power[qubit] = data.power.get(qubit, 0.0) + 20 * np.log10(abs(offset[qubit]))
-        probe_gain[qubit] = data.probe_gain(qubit)[i, j].tolist()
+        i, j, is_candidate = _select(gain_map, fitpars.neighbourhood)
+        point_gain = data.probe_gain(qubit)[i, j].tolist()
+        for q in data.group(qubit):
+            candidate[q] = is_candidate
+            frequency[q] = data.frequency[q][j]
+            offset[q] = data.offset[q][i]
+            gain[q] = gain_map[i, j]
+            power[q] = data.power.get(q, 0.0) + 20 * np.log10(abs(offset[q]))
+            probe_gain[q] = point_gain
     return TwpaFrequencyOffsetResults(
         frequency=frequency,
         offset=offset,
@@ -485,6 +543,19 @@ def _probe_label(data: TwpaFrequencyOffsetData, index: int) -> str:
     if data.probes is None:
         return "Readout probe"
     return f"Probe {data.probes[index] * nano:.4f} GHz"
+
+
+def _probe_labels(data: TwpaFrequencyOffsetData, target: QubitId) -> list[str]:
+    """Labels of the probes amplified by the pump of `target`.
+
+    With several targets on the pump, they are prefixed by the target.
+    """
+    probes = data.group_probes(target)
+    if len(data.group(target)) == 1:
+        return [_probe_label(data, p) for _, p in probes]
+    if data.probes is None:
+        return [f"Qubit {q} readout" for q, _ in probes]
+    return [f"Qubit {q} {_probe_label(data, p)}" for q, p in probes]
 
 
 def _gain_figure(
@@ -618,7 +689,7 @@ def _probes_figure(
         cols=cols,
         shared_xaxes=True,
         shared_yaxes=True,
-        subplot_titles=[_probe_label(data, p) for p in range(nprobes)],
+        subplot_titles=_probe_labels(data, target),
     )
     frequencies = np.array(data.frequency[target]) * nano
     zmin, zmax = float(np.min(gain)), float(np.max(gain))
@@ -672,20 +743,36 @@ def _plot(
     selected point is highlighted with a marker. With several probes, the other
     aggregated map (the average gain, by default) and the maps of each probe follow,
     since the aggregated maps alone hide how the gain is distributed among the probes.
+
+    The probes are all the ones amplified by the pump of `target`, including those of
+    the other targets sharing it. Since the maps are the same for all of them, they
+    are only plotted for the first one, and the others refer to it.
     """
     objective = fit.objective if fit is not None else "minimum"
     others = [other for other in OBJECTIVE_LABELS if other != objective]
-    figures = [
-        _gain_figure(
-            data,
-            fit,
-            target,
-            data.gain(target, objective),
-            OBJECTIVE_LABELS[objective],
+    group = data.group(target)
+    shared = (
+        f"<p>The TWPA pump <code>{data.pump[target]}</code> is shared by qubits "
+        f"{', '.join(str(q) for q in group)}: the gain is aggregated over all their "
+        f"probes, and a single operating point is selected for the pump.</p>"
+        if len(group) > 1
+        else ""
+    )
+    figures = []
+    if target == group[0]:
+        figures.append(
+            _gain_figure(
+                data,
+                fit,
+                target,
+                data.gain(target, objective),
+                OBJECTIVE_LABELS[objective],
+            )
         )
-    ]
+    else:
+        shared += f"<p>Gain maps are reported for qubit {group[0]}.</p>"
     nprobes = data.probe_gain(target).shape[2]
-    if nprobes > 1:
+    if nprobes > 1 and target == group[0]:
         figures += [
             _gain_figure(
                 data, fit, target, data.gain(target, other), OBJECTIVE_LABELS[other]
@@ -700,7 +787,7 @@ def _plot(
         edges = " and ".join(
             f"pump {edge}" for edge in _edges(data.gain(target, objective), i, j)
         )
-        fitting_report = (
+        fitting_report = shared + (
             f"<p><b>Fit failed</b>: the operating point lies at the edge of the scanned "
             f"{edges} range, thus the optimum may lie outside of it. Extend the scan "
             f"(e.g. changing the base pump power) and repeat it. The candidate point "
@@ -721,13 +808,17 @@ def _plot(
         ]
         probe_gain = fit.probe_gain.get(target, [])
         if len(probe_gain) > 1:
-            labels += [
-                f"{_probe_label(data, p)} Gain [dB]" for p in range(len(probe_gain))
-            ]
+            probe_labels = _probe_labels(data, target)
+            if len(probe_labels) != len(probe_gain):
+                # results not matching the probes grouping of the data
+                probe_labels = [f"Probe {p}" for p in range(len(probe_gain))]
+            labels += [f"{label} Gain [dB]" for label in probe_labels]
             values += [np.round(value, 4) for value in probe_gain]
-        fitting_report = table_html(table_dict([target] * len(labels), labels, values))
+        fitting_report = shared + table_html(
+            table_dict([target] * len(labels), labels, values)
+        )
     else:
-        fitting_report = ""
+        fitting_report = shared
 
     return figures, fitting_report
 
@@ -746,8 +837,8 @@ def _update(
     it would also move the LO leakage and the sideband image, which alter the pumping
     conditions, and thus the gain, of the selected point.
 
-    Targets sharing the same pump overwrite each other's update, thus the last one
-    prevails.
+    Targets sharing the same pump are assigned the same point by the fit, thus their
+    updates coincide.
 
     Candidate points are not results, thus there is nothing to apply.
     """

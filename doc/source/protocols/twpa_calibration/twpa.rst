@@ -103,6 +103,12 @@ The report shows the selected map, and with several probes also the other aggreg
 one, and the maps of each probe. The results table includes the gain of each probe
 at the selected point.
 
+The probes aggregated are all the ones amplified by the same TWPA pump, i.e. those of
+all the targets sharing it. This is the case also when ``probes`` is omitted: the
+readout frequencies of the targets on a pump are aggregated together, and a single
+operating point is selected for the pump, and applied to all of them. The gain maps
+are reported for the first of those targets only.
+
 By default, when the ``probes`` parameter is omitted, the protocol performs only a
 **single acquisition run** (a single execution for the reference scan, and a further
 individual one for the 2D pump sweep). In this run, each target qubit is updated and
