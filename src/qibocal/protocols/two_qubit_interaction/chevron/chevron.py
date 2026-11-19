@@ -109,9 +109,6 @@ class ChevronData(Data):
         data_dict = cls.load_data(path, DATAFILE)
         params = cls.load_params(path, DATAFILE)
         pairs = params.pop("_sorted_pairs")
-        # Fit inputs stored by the old 2D fit, kept loadable to re-fit old data.
-        for key in ("detuning", "anharmonicity", "flux_coefficient"):
-            params.pop(key, None)
         if data_dict is not None:
             if params is not None:
                 instance = cls(data=data_dict, **params)
