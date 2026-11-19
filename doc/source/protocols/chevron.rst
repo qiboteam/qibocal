@@ -16,6 +16,15 @@ The expected population oscillation pattern follows:
 
 where :math:`\Delta=\omega_1 - \omega_2`, :math:`g` is the coupling constant for the two qubits and :math:`\phi` takes into account flux distortions.
 
+The gate parameters are extracted from the first oscillation of the population. The two
+readouts are combined with weights given by their contrast, since a readout whose qubit
+ends in :math:`\ket{2}` carries no signal when only two states are discriminated. The
+resonance amplitude is where the first population exchange is largest among the
+amplitudes at which the population returns. A cosine fitted along the resonance column
+over the first oscillation gives the times of the first full exchange and of the first
+return of the population. The gate duration is the first return for CZ and the first
+exchange for iSWAP.
+
 The pulse sequence used to calibrate the CZ gate is the same as the one for the iSWAP gate, with the addition of an initial :math:`\pi` pulse applied to the qubit with the lower frequency so that both qubits are initially prepared in the :math:`\ket{1}`. With this sequence the CZ gate is implemented leveraging the avoided crossing between the states :math:`\ket{11}` and :math:`\ket{20}`.
 
 Parameters

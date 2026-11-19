@@ -8,7 +8,6 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import (
     DATAFILE,
@@ -20,11 +19,11 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import HZ_TO_GHZ, minmax_scaling, table_dict, table_html
+from qibocal.protocols.utils import table_dict, table_html
 
 from .... import update
 from ..utils import order_pair
-from .utils import chevron_fit, chevron_sequence
+from .utils import chevron_sequence, fit_gate_parameters
 
 __all__ = ["chevron"]
 
@@ -59,14 +58,15 @@ class ChevronResults(Results):
 
     native: str = "CZ"
     """Two qubit interaction to be calibrated."""
-    duration: dict[QubitPairId, list] = field(default_factory=dict)
-    """Gate duration."""
-    half_duration: dict[QubitPairId, list] = field(default_factory=dict)
-    """Half gate duration."""
-    amplitude: dict[QubitPairId, list] = field(default_factory=dict)
-    """Gate flux amplitude."""
-    fitted_parameters: dict[QubitPairId, list] = field(default_factory=dict)
-    """Fitted parameters for chevron pattern."""
+    duration: dict[QubitPairId, float] = field(default_factory=dict)
+    """Gate duration [ns], the first return for CZ and the first exchange for iSWAP."""
+    amplitude: dict[QubitPairId, float] = field(default_factory=dict)
+    """Resonance flux amplitude."""
+
+    def __contains__(self, key):
+        # results are stored under the frequency-ordered pair, the report may ask for
+        # the pair in runcard order
+        return super().__contains__(key) or super().__contains__(tuple(key)[::-1])
 
 
 @dataclass
@@ -85,22 +85,10 @@ class ChevronData(Data):
     """Duration values."""
     _sorted_pairs: list = field(init=False, repr=False, metadata={"exclude": True})
     """Pairs to be calibrated sorted by frequency."""
-    detuning: dict[QubitPairId, float] = field(default_factory=dict)
-    """Expected detuning between qubit in pair."""
-    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
-    """Anhamonicity of high frequency qubit in pair."""
-    flux_coefficient: dict[QubitPairId, float] = field(default_factory=dict)
-    """Flux coefficient to map frequency to amplitude."""
     data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
     """Raw data acquired."""
-
     label: str | None = None
     """Label for the data."""
-
-    @property
-    def grid(self) -> np.ndarray:
-        x, y = np.meshgrid(self.duration, self.amplitude)
-        return np.stack([x.ravel(), y.ravel()])
 
     @property
     def sorted_pairs(self) -> list:
@@ -158,23 +146,6 @@ def _aquisition(
     )
 
     data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
-    data.flux_coefficient = {
-        pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
-        for pair in data.sorted_pairs
-    }
-    data.detuning = {
-        pair: (
-            platform.calibration.single_qubits[pair[1]].qubit.frequency_01
-            - platform.calibration.single_qubits[pair[0]].qubit.frequency_01
-        )
-        * HZ_TO_GHZ
-        for pair in data.sorted_pairs
-    }
-    data.anharmonicity = {
-        pair: platform.calibration.single_qubits[pair[1]].qubit.anharmonicity
-        * HZ_TO_GHZ
-        for pair in data.sorted_pairs
-    }
 
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
@@ -220,45 +191,16 @@ def _aquisition(
 
 
 def _fit(data: ChevronData) -> ChevronResults:
-    fitted_parameters = {}
-    duration = {}
     amplitude = {}
-    half_duration = {}
+    duration = {}
     for pair in data.sorted_pairs:
-        fitted_parameters[pair] = []
-        duration[pair], half_duration[pair], amplitude[pair] = [], [], []
-        for _data in [data[pair][0], data[pair][1]]:
-            try:
-                popt, _ = curve_fit(
-                    chevron_fit,
-                    data.grid,
-                    minmax_scaling(_data.T.flatten(), axis=None),
-                    p0=[
-                        data.detuning[pair] + data.anharmonicity[pair],
-                        data.flux_coefficient[pair],
-                        0.07,
-                        0,
-                    ],
-                    maxfev=100000,
-                )
-                fitted_parameters[pair].append(popt.tolist())
-                duration[pair].append(np.pi / popt[2])
-                half_duration[pair].append(np.pi / popt[2] / 2)
-                amplitude[pair].append(np.sqrt(-popt[0] / popt[1]))
-            except Exception as e:
-                fitted_parameters[pair].append([])
-                duration[pair].append([])
-                half_duration[pair].append([])
-                amplitude[pair].append([])
-                log.warning(f"Chevron fit failed for pair {pair} due to {e}")
-
-    return ChevronResults(
-        native=data.native,
-        fitted_parameters=fitted_parameters,
-        duration=duration,
-        half_duration=half_duration,
-        amplitude=amplitude,
-    )
+        try:
+            amplitude[pair], duration[pair] = fit_gate_parameters(
+                data[pair], data.amplitude, data.duration, data.native
+            )
+        except Exception as e:
+            log.warning(f"Chevron fit failed for pair {pair} due to {e}")
+    return ChevronResults(native=data.native, amplitude=amplitude, duration=duration)
 
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
@@ -268,16 +210,13 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     reversed_target = (target[1], target[0])
     data_target = target if target in data.data else reversed_target
     fig = make_subplots(
-        rows=2,
+        rows=1,
         cols=2,
         subplot_titles=(
             f"Qubit {data_target[0]} - Low Frequency - Data",
             f"Qubit {data_target[1]} - High Frequency - Data",
-            f"Qubit {data_target[0]} - Low Frequency - minmax scaled",
-            f"Qubit {data_target[1]} - High Frequency - minmax scaled",
         ),
         shared_xaxes="all",
-        shared_yaxes="all",
     )
     fitting_report = ""
     for i, _data in enumerate([data[data_target][0], data[data_target][1]]):
@@ -293,59 +232,14 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         )
 
     if fit is not None:
-        for i in range(2):
-            if len(fit.fitted_parameters[data_target][i]) > 0:
-                fig.add_trace(
-                    go.Heatmap(
-                        x=data.duration,
-                        y=data.amplitude,
-                        z=chevron_fit(
-                            data.grid, *fit.fitted_parameters[data_target][i]
-                        ).reshape(
-                            len(data.amplitude),
-                            len(data.duration),
-                        ),
-                        coloraxis="coloraxis",
-                    ),
-                    row=2,
-                    col=i + 1,
-                )
-
-                for j in range(2):
-                    fig.add_hline(
-                        y=fit.amplitude[data_target][i],
-                        line_dash="dot",
-                        row=j + 1,
-                        col=i + 1,
-                        name="Fit",
-                    )
-
-                    fig.add_vline(
-                        x=fit.duration[data_target][i],
-                        line_dash="dot",
-                        row=j + 1,
-                        col=i + 1,
-                        name="Fit",
-                    )
-
-                    fig.add_vline(
-                        x=fit.half_duration[data_target][i],
-                        line_dash="dot",
-                        row=j + 1,
-                        col=i + 1,
-                        name="Fit",
-                    )
+        fig.add_hline(y=fit.amplitude[data_target], line_dash="dot")
+        fig.add_vline(x=fit.duration[data_target], line_dash="dot")
 
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
-        xaxis3_title="Duration [ns]",
-        xaxis4_title="Duration [ns]",
         yaxis_title="Amplitude [a.u.]",
         yaxis2_title="Amplitude [a.u.]",
-        yaxis3_title="Amplitude [a.u.]",
-        yaxis4_title="Amplitude [a.u.]",
-        legend={"orientation": "h"},
         coloraxis={
             "colorscale": "Inferno",
             # Fix colorbar range to [0, 1]: the plotted values are probabilities.
@@ -353,23 +247,20 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
             "cmax": 1,
             "colorbar": {"title": {"text": "P<sub>e</sub>"}},
         },
-        height=800,
+        height=400,
     )
-    for i in range(1, 3):
-        for j in range(1, 3):
-            fig.update_xaxes(showticklabels=True, showline=True, row=i, col=j)
-            fig.update_yaxes(showticklabels=True, showline=True, row=i, col=j)
+    for j in [1, 2]:
+        fig.update_xaxes(showticklabels=True, showline=True, row=1, col=j)
+        fig.update_yaxes(showticklabels=True, showline=True, row=1, col=j)
 
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 data_target[1],
-                [f"{fit.native} amplitude", f"{fit.native} duration"],
+                ["Resonance amplitude", f"{fit.native} duration [ns]"],
                 [
-                    np.mean(fit.amplitude[data_target]),
-                    np.round(np.mean(fit.duration[data_target]))
-                    if data.native == "CZ"
-                    else np.round(np.mean(fit.half_duration[data_target])),
+                    fit.amplitude[data_target],
+                    np.round(fit.duration[data_target], 1),
                 ],
             )
         )
@@ -383,19 +274,18 @@ def _update(
     # Fit results use the acquisition order, while native gates use the platform's pair
     # order.
     reversed_target = (target[1], target[0])
-    result_target = target if target in results.duration else reversed_target
+    result_target = target if target in results.amplitude else reversed_target
     platform_target = (
         target if target in platform.natives.two_qubit else reversed_target
     )
 
-    # CZ requires a full oscillation |11> -> |02> -> |11>, while iSWAP
-    # corresponds to the semi-period of the fitted oscillation.
-    duration = results.duration if results.native == "CZ" else results.half_duration
+    if result_target not in results.amplitude:
+        return
     getattr(update, f"{results.native}_duration")(
-        np.mean(duration[result_target]), platform, platform_target
+        results.duration[result_target], platform, platform_target
     )
     getattr(update, f"{results.native}_amplitude")(
-        np.mean(results.amplitude[result_target]), platform, platform_target
+        results.amplitude[result_target], platform, platform_target
     )
 
 
