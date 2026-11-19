@@ -558,6 +558,30 @@ def _probe_labels(data: TwpaFrequencyOffsetData, target: QubitId) -> list[str]:
     return [f"Qubit {q} {_probe_label(data, p)}" for q, p in probes]
 
 
+POWER_AXIS_WIDTH = 70
+"""Width [px] of the pump power axis, ticks and title, on the right of the heatmap."""
+
+MARGIN = {"t": 30}
+"""Figure margins [px], with no title on top."""
+
+
+def _colorbar(title: str, xpad: int = 10) -> dict:
+    """Colorbar of a gain map, as narrow as possible.
+
+    The title runs vertically along the bar, instead of on top of it, where its length
+    would reserve a wide margin, shrinking the heatmap. The bar is placed `xpad` pixels
+    past the plot area, independently of the figure width.
+    """
+    return {
+        "title": {"text": title, "side": "right"},
+        "x": 1,
+        "xref": "paper",
+        "xanchor": "left",
+        "xpad": xpad,
+        "thickness": 20,
+    }
+
+
 def _gain_figure(
     data: TwpaFrequencyOffsetData,
     fit: TwpaFrequencyOffsetResults | None,
@@ -592,8 +616,8 @@ def _gain_figure(
             y=data.offset[target],
             z=gain,
             colorscale="inferno",
-            colorbar_x=1.15,
-            colorbar_title_text=title,
+            # past the pump power axis, on its right
+            colorbar=_colorbar(title, xpad=POWER_AXIS_WIDTH),
         ),
     )
     # Invisible trace required for Plotly to render the secondary y-axis (yaxis2).
@@ -656,6 +680,7 @@ def _gain_figure(
     fig.update_layout(
         showlegend=True,
         legend={"orientation": "h", "y": -0.25},
+        margin=MARGIN,
         yaxis2={
             "title_text": "Pump power [dB]",
             "overlaying": "y",
@@ -721,8 +746,9 @@ def _probes_figure(
                 col=col,
             )
     fig.update_layout(
-        coloraxis={"colorscale": "inferno", "colorbar_title_text": "TWPA Gain [dB]"},
+        coloraxis={"colorscale": "inferno", "colorbar": _colorbar("TWPA Gain [dB]")},
         legend={"orientation": "h", "y": -0.15},
+        margin=MARGIN,
         height=300 * rows + 100,
     )
     fig.update_xaxes(title_text="Pump Frequency [GHz]", row=rows)
