@@ -109,6 +109,9 @@ class ChevronData(Data):
         data_dict = cls.load_data(path, DATAFILE)
         params = cls.load_params(path, DATAFILE)
         pairs = params.pop("_sorted_pairs")
+        # Fit inputs stored by the old 2D fit, kept loadable to re-fit old data.
+        for key in ("detuning", "anharmonicity", "flux_coefficient"):
+            params.pop(key, None)
         if data_dict is not None:
             if params is not None:
                 instance = cls(data=data_dict, **params)
@@ -238,18 +241,18 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         x_range = [min(data.duration), max(data.duration)]
         y_range = [min(data.amplitude), max(data.amplitude)]
         lines = {
-            "Resonance amplitude": (x_range, [amplitude0] * 2, "solid"),
-            f"{fit.native} duration": ([duration0] * 2, y_range, "dash"),
+            "Resonance amplitude": (x_range, [amplitude0] * 2),
+            f"{fit.native} duration": ([duration0] * 2, y_range),
         }
         for col in [1, 2]:
-            for name, (x, y, dash) in lines.items():
+            for name, (x, y) in lines.items():
                 fig.add_trace(
                     go.Scatter(
                         x=x,
                         y=y,
                         mode="lines",
                         # Green is a hue Inferno does not contain.
-                        line={"color": "#00c853", "width": 3, "dash": dash},
+                        line={"color": "#00c853", "width": 3, "dash": "dash"},
                         name=name,
                         legendgroup=name,
                         showlegend=col == 1,
