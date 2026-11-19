@@ -38,6 +38,8 @@ class ChevronSignalResults(ChevronResults):
 class ChevronSignalData(ChevronData):
     """Chevron acquisition outputs."""
 
+    signal = True
+
 
 def _aquisition(
     params: ChevronSignalParameters,

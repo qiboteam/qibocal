@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import ClassVar, Literal
 
 import numpy as np
 import plotly.graph_objects as go
@@ -89,6 +89,8 @@ class ChevronData(Data):
     """Raw data acquired."""
     label: str | None = None
     """Label for the data."""
+    signal: ClassVar[bool] = False
+    """Whether ``data`` is readout magnitude instead of probability."""
 
     @property
     def sorted_pairs(self) -> list:
@@ -196,7 +198,7 @@ def _fit(data: ChevronData) -> ChevronResults:
     for pair in data.sorted_pairs:
         try:
             amplitude[pair], duration[pair] = fit_gate_parameters(
-                data[pair], data.amplitude, data.duration, data.native
+                data[pair], data.amplitude, data.duration, data.native, data.signal
             )
         except Exception as e:
             log.warning(f"Chevron fit failed for pair {pair} due to {e}")

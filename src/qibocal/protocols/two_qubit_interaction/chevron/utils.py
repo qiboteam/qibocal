@@ -212,8 +212,12 @@ def fit_gate_parameters(
     amplitude: Sequence[float] | NDArray[np.floating],
     duration: Sequence[float] | NDArray[np.floating],
     native: str,
+    signal: bool = False,
 ) -> tuple[float, float]:
     """Gate amplitude and duration from the first oscillation of the chevron.
+
+    With ``signal``, ``data`` is readout magnitude, whose direction is unknown, and each
+    readout is oriented from the data instead.
 
     Returns:
         ``(amplitude0, duration0)``, the resonance amplitude and the gate duration [ns].
@@ -231,6 +235,11 @@ def fit_gate_parameters(
     scaled_data = minmax_scaling(data, axis=(1, 2))
     if native == "iSWAP":
         scaled_data[0] = 1 - scaled_data[0]
+    if signal:
+        # Whether |1> reads higher or lower depends on the readout point. Most of the
+        # scan is off resonance, so the median is the background, which must be high.
+        flip = np.median(scaled_data, axis=(1, 2)) < 0.5
+        scaled_data[flip] = 1 - scaled_data[flip]
     snr = readout_snr(scaled_data)
     # Chevrons measurements with low SNR get zero weight in the combination.
     weights = np.where(snr >= SNR_THRESHOLD, snr, 0.0)
