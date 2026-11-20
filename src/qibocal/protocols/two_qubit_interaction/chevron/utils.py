@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from qibolab import Delay, PulseSequence, VirtualZ
 from scipy.ndimage import uniform_filter
-from scipy.optimize import least_squares
+from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal.auto.operation import QubitPairId
@@ -287,14 +287,10 @@ def fit_gate_parameters(
     lower = [0, 0, np.pi / np.ptp(duration), -0.25 * np.pi / omega0]
     upper = [1, 1, np.pi / (2 * step), 0.25 * np.pi / omega0]
     p0 = np.clip(np.array([trace.mean(), np.ptp(trace) / 2, omega0, 0.0]), lower, upper)
-    result = least_squares(
-        lambda p: cosine(duration[:end], *p) - trace,
-        p0,
-        bounds=(lower, upper),
-        max_nfev=2000,
+    (_, _, omega, t0), _ = curve_fit(
+        cosine, duration[:end], trace, p0=p0, bounds=(lower, upper), max_nfev=2000
     )
-    params = result.x.tolist()
-    period, t0 = 2 * np.pi / params[2], params[3]
+    period = 2 * np.pi / omega
 
     # 5. gate duration
     # CZ lasts until the return (full period), iSWAP until the exchange (half).
