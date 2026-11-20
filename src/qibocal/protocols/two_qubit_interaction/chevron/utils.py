@@ -213,7 +213,7 @@ def fit_gate_parameters(
         exchange.
     """
     amplitude, duration = np.asarray(amplitude, float), np.asarray(duration, float)
-    n_duration, n_amplitude = len(duration), len(amplitude)
+    n_amplitude = len(amplitude)
     step = duration[1] - duration[0]
     assert np.allclose(np.diff(duration), step)
 
@@ -279,17 +279,19 @@ def fit_gate_parameters(
     resonance_revival_idx = int(revival_idx_guess[resonance_amplitude_idx])
     exchange_time = float(duration[resonance_exchange_idx])
     half_oscillation = (resonance_revival_idx - resonance_exchange_idx) // 2
-    window = slice(0, min(n_duration, resonance_revival_idx + half_oscillation + 2))
+    end = resonance_revival_idx + half_oscillation + 2
     trace = np.average(
-        scaled_data[:, window, resonance_amplitude_idx], axis=0, weights=weights
+        scaled_data[:, :end, resonance_amplitude_idx], axis=0, weights=weights
     )
-    t = duration[window]
     omega0 = np.pi / max(exchange_time, step)
     lower = [0, 0, np.pi / np.ptp(duration), -0.25 * np.pi / omega0]
     upper = [1, 1, np.pi / (2 * step), 0.25 * np.pi / omega0]
     p0 = np.clip(np.array([trace.mean(), np.ptp(trace) / 2, omega0, 0.0]), lower, upper)
     result = least_squares(
-        lambda p: cosine(t, *p) - trace, p0, bounds=(lower, upper), max_nfev=2000
+        lambda p: cosine(duration[:end], *p) - trace,
+        p0,
+        bounds=(lower, upper),
+        max_nfev=2000,
     )
     params = result.x.tolist()
     period, t0 = 2 * np.pi / params[2], params[3]
