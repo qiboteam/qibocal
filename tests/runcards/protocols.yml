@@ -859,6 +859,44 @@ actions:
       amplitude: [0.1, 0.4, 0.1]
       nshots: 20000
 
+  - id: twpa_sweep in-sweep reference
+    operation: twpa_sweep
+    parameters:
+      detunings: [-1_000_000, 0]
+      frequency: ["center", 10_000_000, 2_000_000]
+      amplitude: [0.0, 0.4, 0.1]
+      reference_shots: 2000
+      nshots: 1000
+    fit_parameters:
+      reference: zero_offset
+
+  - id: twpa_snr
+    operation: twpa_snr
+    parameters:
+      frequency: ["center", 10_000_000, 5_000_000]
+      amplitude: [0.2, 0.6, 0.2]
+      reference_shots: 200
+      nshots: 100
+
+  - id: twpa_stability
+    operation: twpa_stability
+    parameters:
+      repeats: 3
+      offset: 0.8
+      detunings: [-1_000_000, 0]
+      reference_shots: 200
+      nshots: 100
+
+  - id: twpa_spectrum
+    operation: twpa_spectrum
+    parameters:
+      probe_frequency: ["center", 6_000_000, 500_000]
+      repeats: 2
+      offset: 0.8
+      nshots: 100
+    fit_parameters:
+      exclusion: 1_000_000
+
   - id: CR tomography amplitude
     operation: cr_amplitude
     targets: [[0, 1]]
