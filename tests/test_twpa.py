@@ -26,7 +26,6 @@ from qibocal.protocols.twpa.frequency_offset import (
     _acquisition,
     _fit,
     _plot,
-    _update,
     twpa_frequency_offset,
     twpa_sweep,
 )
@@ -42,9 +41,10 @@ from qibocal.protocols.twpa.twpa import (
 from qibocal.protocols.twpa.twpa import (
     _plot as calibration_plot,
 )
-from qibocal.protocols.twpa.utils import PUMP_OFF_POWER
+from qibocal.protocols.twpa.utils import PUMP_OFF_POWER, Pumps, probe_labels, pump_point
 from qibocal.protocols.twpa.utils import pump_power as _pump_power
 from qibocal.protocols.twpa.utils import select as _select
+from qibocal.protocols.twpa.utils import update_point as _update
 from qibocal.protocols.utils import readout_frequency, to_range
 
 
@@ -168,8 +168,8 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert data.data[qubit].shape[2] == len(probes)
         assert data.data[qubit].shape[3] == 2
 
-        ref_arr = data.reference_value_array(qubit)
-        assert ref_arr.shape == (len(probes), 2)
+        # each sweep is bracketed by a reference before and after it
+        assert data.references(qubit).shape == (len(probes), 2, 2)
 
     # Test Fit
     fit_res = _fit(data)
@@ -269,8 +269,9 @@ def test_acquisition_default_probes(platform, mocker):
     spy = mocker.spy(platform, "execute")
     data = _acquisition(params, platform, targets)
     assert data.probes is None
-    # Exactly 2 platform.execute calls: 1 for reference scan, 1 for 2D sweep
-    assert spy.call_count == 2
+    # Exactly 3 platform.execute calls: the 2D sweep, bracketed by two references
+    assert spy.call_count == 3
+    assert [len(call.args) for call in spy.call_args_list] == [1, 2, 1]
     sweep_call = spy.call_args_list[1]
     updates = sweep_call.kwargs["updates"][0]
     for q in targets:
@@ -278,7 +279,7 @@ def test_acquisition_default_probes(platform, mocker):
         ro_freq = readout_frequency(q, platform)
         assert updates[probe_ch]["frequency"] == ro_freq
         assert data.data[q].shape[2] == 1
-        assert data.reference_value_array(q).shape == (1, 2)
+        assert data.references(q).shape == (1, 2, 2)
 
     sweepers = sweep_call.args[1]
     assert len(sweepers) == 2
@@ -677,7 +678,7 @@ def test_probe_gain():
     gains, data = two_probes_data()
 
     np.testing.assert_allclose(data.probe_gain(0), gains)
-    np.testing.assert_allclose(data.minimum_gain(0), gains.min(axis=2))
+    np.testing.assert_allclose(data.gain(0, "minimum"), gains.min(axis=2))
     # the ratio of averaged magnitudes is not the average of the gains
     assert not np.allclose(data.averaged_gain(0), gains.mean(axis=2))
 
@@ -711,7 +712,7 @@ def test_fit_minimum_across_probes():
 def test_single_probe_objectives_coincide():
     data = landscape_data(OFFSETS, FREQUENCIES)
 
-    np.testing.assert_allclose(data.minimum_gain(0), data.averaged_gain(0))
+    np.testing.assert_allclose(data.gain(0, "minimum"), data.averaged_gain(0))
     fit = _fit(data)
     assert (
         fit.offset[0]
@@ -719,7 +720,9 @@ def test_single_probe_objectives_coincide():
     )
     figures, report = _plot(data, fit, 0)
     assert len(figures) == 1
-    assert "Probe" not in report and "Readout probe" not in report
+    # the gain of the only probe is the aggregated one, but its reference is reported
+    assert "Readout probe Gain" not in report
+    assert "Readout probe reference drift [dB]" in report
 
 
 def test_objective_fit_parameter(tmp_path):
@@ -788,7 +791,7 @@ def test_shared_pump_gain():
     assert data.group_probes(1) == [(0, 0), (1, 0)]
     for qubit in (0, 1):
         np.testing.assert_allclose(data.probe_gain(qubit), shared)
-        np.testing.assert_allclose(data.minimum_gain(qubit), shared.min(axis=2))
+        np.testing.assert_allclose(data.gain(qubit, "minimum"), shared.min(axis=2))
     np.testing.assert_allclose(data.probe_gain(2), gains[2])
 
 
@@ -854,3 +857,131 @@ def test_shared_pump_acquisition(platform):
     for q in targets:
         assert data.group(q) == [t for t in targets if pumps[t] == pumps[q]]
         assert data.probe_gain(q).shape[2] == len(data.group(q))
+
+
+def bracketed_data(before, after, zero=None):
+    """A flat 10 dB landscape, whose reference changes from `before` to `after`.
+
+    With `zero`, the null offset is scanned, giving the in-sweep reference `zero`.
+    """
+    offsets = [0.0, 0.5, 0.6] if zero is not None else [0.5, 0.6]
+    magnitude = np.full((len(offsets), 3, 1), 10 ** (10 / 20))
+    if zero is not None:
+        magnitude[0] = zero
+    return TwpaFrequencyOffsetData(
+        data={0: np.stack([magnitude, np.zeros_like(magnitude)], axis=-1)},
+        reference_value={0: [[[before, 0.0], [after, 0.0]]]},
+        offset={0: offsets},
+        frequency={0: [6.0e9, 6.01e9, 6.02e9]},
+        power={0: 0.0},
+    )
+
+
+def test_bracketed_reference():
+    """The reference is the average of the brackets, whose change is the drift."""
+    data = bracketed_data(1.0, 10 ** (6 / 20))
+    np.testing.assert_allclose(data.reference_drift(0), [6.0])
+    reference = (1 + 10 ** (6 / 20)) / 2
+    np.testing.assert_allclose(
+        data.probe_gain(0)[..., 0], 10 - 20 * np.log10(reference)
+    )
+    fit = _fit(data)
+    assert fit.reference_drift[0] == pytest.approx([6.0])
+    _, report = _plot(data, fit, 0)
+    assert "Unstable reference" in report and "+6.0 dB" in report
+
+
+def test_previous_references_are_a_single_bracket():
+    data = landscape_data(OFFSETS, FREQUENCIES)
+    assert data.references(0).shape == (1, 1, 2)
+    np.testing.assert_allclose(data.reference_drift(0), [0.0])
+
+
+def test_suspicious_gain():
+    data = bracketed_data(1e-2, 1e-2)
+    fit = _fit(data)
+    assert fit.gain[0] == pytest.approx(50.0)
+    _, report = _plot(data, fit, 0)
+    assert "Suspicious gain" in report and "Unstable reference" not in report
+
+
+def test_zero_offset_reference():
+    """The null offset row checks the pump-off reference, or replaces it."""
+    data = bracketed_data(1.0, 1.0, zero=2.0)
+    assert data.zero_offset(0) == 0
+    np.testing.assert_allclose(data.zero_offset_error(0), [20 * np.log10(2)])
+
+    pump_off = _fit(data)
+    assert pump_off.zero_offset_error[0] == pytest.approx([20 * np.log10(2)])
+    zero = _fit(data, TwpaFrequencyOffsetFitParameters(reference="zero_offset"))
+    assert zero.reference == "zero_offset"
+    assert zero.gain[0] == pytest.approx(pump_off.gain[0] - 20 * np.log10(2))
+    # the reference only shifts the map: the point is the same
+    assert (zero.frequency[0], zero.offset[0]) == (
+        pump_off.frequency[0],
+        pump_off.offset[0],
+    )
+    _, report = _plot(data, zero, 0)
+    assert "zero offset error [dB]" in report
+
+
+def test_zero_offset_reference_not_scanned():
+    data = bracketed_data(1.0, 1.0)
+    assert data.zero_offset(0) is None and data.zero_offset_error(0) is None
+    assert _fit(data).zero_offset_error == {}
+    with pytest.raises(ValueError, match="null pump offset"):
+        _fit(data, TwpaFrequencyOffsetFitParameters(reference="zero_offset"))
+    with pytest.raises(ValueError, match="Unknown reference"):
+        TwpaFrequencyOffsetFitParameters(reference="other")
+
+
+def test_acquisition_detunings(platform, mocker):
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.1, 0.3, 0.1],
+            "frequency": ["center", 10_000_000, 5_000_000],
+            "detunings": [-1e6, 2e6],
+            "nshots": 10,
+            "reference_shots": 40,
+        }
+    )
+    spy = mocker.spy(platform, "execute")
+    data = _acquisition(params, platform, [0, 1])
+    assert data.detunings == [-1e6, 2e6]
+    # each probe: reference, sweep, reference
+    assert [len(c.args) for c in spy.call_args_list] == [1, 2, 1] * 2
+    assert [c.kwargs["nshots"] for c in spy.call_args_list] == [40, 10, 40] * 2
+    for index, detuning in enumerate([-1e6, 2e6]):
+        probes = spy.call_args_list[3 * index + 1].kwargs["updates"][0]
+        for q in (0, 1):
+            assert probes[platform.qubits[q].probe]["frequency"] == (
+                readout_frequency(q, platform) + detuning
+            )
+    assert probe_labels(data, 0) == [
+        f"Qubit {q} Detuning {d} MHz" for q in (0, 1) for d in ("-1.000", "+2.000")
+    ]
+    _fit(data)
+
+
+def test_pump_point():
+    channel = _pump_platform(
+        {"pump": IqChannel(path="8/o2", lo="pump/lo")},
+        {
+            "pump": IqConfig(frequency=6e9),
+            "pump/lo": OscillatorConfig(frequency=5.9e9, power=-20.0),
+        },
+    )
+    pump = Pumps(
+        channel={0: "pump", 1: "pump"},
+        config={0: IqConfig(frequency=6e9), 1: IqConfig(frequency=6e9)},
+        power={0: -20.0, 1: -20.0},
+    )
+    frequency, updates = pump_point(channel, pump, None, 0.1)
+    assert frequency == {0: 6e9, 1: 6e9}
+    # the frequency on the pump, the power on its LO, both once for a shared pump
+    assert updates == {
+        "pump": {"frequency": 6e9},
+        "pump/lo": {"power": pytest.approx(-40.0)},
+    }
+    frequency, updates = pump_point(channel, pump, 6.1e9, -1.0)
+    assert frequency[0] == 6.1e9 and updates["pump/lo"]["power"] == -20.0

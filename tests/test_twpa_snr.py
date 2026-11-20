@@ -13,11 +13,10 @@ from qibocal.protocols.twpa.snr import (
     _acquisition,
     _fit,
     _plot,
-    _update,
-    statistics,
     twpa_snr,
 )
-from qibocal.protocols.twpa.utils import PUMP_OFF_POWER
+from qibocal.protocols.twpa.utils import PUMP_OFF_POWER, statistics
+from qibocal.protocols.twpa.utils import update_point as _update
 
 OFFSETS = np.round(np.arange(0.1, 1.0, 0.05), 2)
 FREQUENCIES = 6.0e9 + np.arange(-30e6, 31e6, 5e6)
@@ -235,13 +234,15 @@ def test_acquisition_batches(platform, mocker, probes, max_values):
     noffsets, nfrequencies = 5, 5
     rows = max(1, max_values // (params.nshots * nfrequencies))
     nbatches = -(-noffsets // rows)
-    # a reference per probe, then the sweep of each batch, for each probe
-    assert spy.call_count == nprobes + nprobes * nbatches
+    # for each probe, the sweep of each batch, bracketed by two references
+    assert spy.call_count == nprobes * (nbatches + 2)
     for call in spy.call_args_list:
         assert call.kwargs["averaging_mode"] is AveragingMode.SINGLESHOT
-    references = spy.call_args_list[:nprobes]
+    swept = [len(call.args) > 1 for call in spy.call_args_list]
+    assert swept == nprobes * ([False] + [True] * nbatches + [False])
+    references = [c for c, s in zip(spy.call_args_list, swept) if not s]
     assert all(call.kwargs["nshots"] == 25 for call in references)
-    sweeps = spy.call_args_list[nprobes:]
+    sweeps = [c for c, s in zip(spy.call_args_list, swept) if s]
     assert all(call.kwargs["nshots"] == 10 for call in sweeps)
     sizes = [len(call.args[1][0][0].values) for call in sweeps[:nbatches]]
     assert sum(sizes) == noffsets and max(sizes) <= rows
@@ -249,7 +250,7 @@ def test_acquisition_batches(platform, mocker, probes, max_values):
     assert isinstance(data, TwpaSnrData)
     for qubit in (0, 1):
         assert data[qubit].shape == (noffsets, nfrequencies, nprobes, 3)
-        assert data.reference_array(qubit).shape == (nprobes, 3)
+        assert data.references(qubit).shape == (nprobes, 2, 3)
         assert data.offset[qubit] == pytest.approx([0.1, 0.2, 0.3, 0.4, 0.5])
         assert len(data.frequency[qubit]) == nfrequencies
     assert data.group(0) == [0, 1]
@@ -264,7 +265,9 @@ def test_batched_acquisition_is_the_unbatched_one(platform, mocker):
     }
     spy = mocker.spy(platform, "execute")
     _acquisition(TwpaSnrParameters.load({**params, "max_values": 50}), platform, [0])
-    offsets = np.concatenate([c.args[1][0][0].values for c in spy.call_args_list[1:]])
+    offsets = np.concatenate(
+        [c.args[1][0][0].values for c in spy.call_args_list if len(c.args) > 1]
+    )
     np.testing.assert_allclose(offsets, [0.1, 0.2, 0.3, 0.4, 0.5])
 
 
@@ -337,3 +340,21 @@ def test_acquisition_fit_plot_and_serialization(platform, tmp_path):
     loaded_fit = TwpaSnrResults.load(tmp_path)
     assert loaded_fit.frequency == fit.frequency
     assert loaded_fit.probe_snr == fit.probe_snr
+
+
+def test_bracketed_reference():
+    """Magnitudes are averaged over the brackets, spreads in quadrature."""
+    data = TwpaSnrData(
+        data={0: iq([[[2.0]]], 4.0)},
+        reference_value={0: [[[1.0, 0.0, 1.0], [0.0, 3.0, 7**0.5]]]},
+        offset={0: [0.5]},
+        frequency={0: [6e9]},
+    )
+    assert data.references(0).shape == (1, 2, 3)
+    np.testing.assert_allclose(data.reference_drift(0), [20 * np.log10(3)])
+    np.testing.assert_allclose(data.probe_gain(0), [[[0.0]]])
+    np.testing.assert_allclose(data.probe_noise(0), [[[20 * np.log10(2)]]])
+    fit = _fit(data)
+    assert fit.reference_drift[0] == pytest.approx([20 * np.log10(3)])
+    _, report = _plot(data, fit, 0)
+    assert "Unstable reference" in report

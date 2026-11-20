@@ -4,9 +4,10 @@ The protocols themselves are independent: each one defines its own parameters, d
 results and acquisition, since they trade different quantities for acquisition time and
 memory. Only the plumbing they have in common lives here:
 
+- the parameters of the readout probes, and of the pump-off reference;
 - the discovery of the pump driving the readout of each target, and of its power;
-- the readout sequence, and the probe and TWPA-off updates;
-- the pump-off reference acquisition;
+- the readout sequence, and the probe, TWPA-off and operating point updates;
+- the pump-off reference acquisition, and the statistics of single shots;
 - the selection of a robust operating point on a 2D map;
 - the update of the pump, and the figures displaying maps over its frequency and offset.
 """
@@ -33,11 +34,12 @@ from qibolab import (
     Rectangular,
     Sweeper,
 )
-from scipy.constants import nano
+from scipy.constants import mega, nano
 from scipy.ndimage import minimum_filter
 
-from ...auto.operation import Data, QubitId
+from ...auto.operation import Data, Parameters, QubitId
 from ...calibration.platform import CalibrationPlatform
+from ...result import magnitude
 from ..utils import Range, readout_frequency
 
 PUMP_OFF_POWER = -60.0
@@ -46,7 +48,82 @@ PUMP_OFF_POWER = -60.0
 Low enough to leave the TWPA unpumped, while within the range of both standalone
 oscillators and controllers' ports, in the instruments it has been tuned on. It can
 be overridden through the ``off_power`` parameter of the protocols.
+
+On Qblox controllers, the power of an IQ pump is the port attenuation, at most 30 dB on
+the QCM-RF II, and an AWG offset applying the remainder. The pump tone is then
+suppressed by the full amount, but its LO leakage only by the port attenuation.
 """
+
+MAX_GAIN = 30.0
+"""Largest gain [dB] expected from a TWPA.
+
+Larger gains are reported as suspicious, since they rather hint at a pump-off reference
+lower than it should be, e.g. because it is taken on a resonance dip.
+"""
+
+MAX_REFERENCE_DRIFT = 1.0
+"""Largest change [dB] of the pump-off reference, across a scan, considered stable."""
+
+
+@dataclass
+class TwpaReadoutParameters(Parameters):
+    """Readout probe and pump-off reference parameters, shared by the TWPA protocols."""
+
+    probe_duration: float = 4e3
+    """Probe wave duration."""
+    probe_amplitude: float = 1.0
+    """Probe wave amplitude."""
+    off_power: float | None = None
+    """Pump power [dB] of the TWPA-off reference, cf. :data:`PUMP_OFF_POWER`.
+
+    It overrides the default, for instruments supporting different power ranges. It
+    should be low enough to leave the TWPA unpumped, and to suppress the LO leakage.
+    """
+    reference_shots: int | None = None
+    """Shots of each TWPA-off reference acquisition.
+
+    By default, as many as ``nshots``. The reference is a single point, while the
+    signal it normalizes may be averaged over a whole scan: it is cheap to give it more
+    shots, to make it the least contribution to the uncertainty of the gain.
+    """
+
+
+@dataclass
+class TwpaProbeParameters(TwpaReadoutParameters):
+    """Readout parameters of protocols evaluating a discrete set of probes."""
+
+    probes: list[float] | None = None
+    """List of probe frequencies to evaluate (Hz), common to all the targets.
+
+    If omitted, as :attr:`detunings`, each target is probed exclusively at its own
+    calibrated readout frequency.
+    """
+    detunings: list[float] | None = None
+    """List of probe detunings [Hz] to evaluate, from the readout frequency of each target.
+
+    It is an alternative to :attr:`probes`, probing each target around its own
+    readout frequency, e.g. just off its resonance dip, where the signal is the
+    largest and the most stable. With ``[0]``, it is the readout frequency itself.
+    """
+
+    def __post_init__(self):
+        if self.probes is not None and self.detunings is not None:
+            raise ValueError("Specify either 'probes' or 'detunings', not both.")
+        for name in ("probes", "detunings"):
+            if getattr(self, name) is not None and len(getattr(self, name)) == 0:
+                raise ValueError(f"'{name}' must not be empty, if specified.")
+
+
+def shots(params: TwpaReadoutParameters, platform: CalibrationPlatform) -> int:
+    """Shots of the signal acquisitions, resolving the platform default."""
+    return params.nshots if params.nshots is not None else platform.settings.nshots
+
+
+def reference_shots(
+    params: TwpaReadoutParameters, platform: CalibrationPlatform
+) -> int:
+    """Shots of the TWPA-off reference acquisitions."""
+    return params.reference_shots or shots(params, platform)
 
 
 def power_config(platform: CalibrationPlatform, pump: ChannelId) -> str:
@@ -151,11 +228,14 @@ def probe_updates(
     platform: CalibrationPlatform,
     targets: Sequence[QubitId],
     probes: Sequence[float] | None,
+    detunings: Sequence[float] | None = None,
 ) -> list[dict[ChannelId, dict[str, float]]]:
     """Platform updates setting the probes frequencies, one per probe evaluated.
 
-    When `probes` is omitted, there is a single probe, where each target is probed at
-    its own calibrated readout frequency.
+    The probes are either the absolute frequencies `probes`, common to all the
+    targets, or the `detunings` from the readout frequency of each target. When both
+    are omitted, there is a single probe, where each target is probed at its own
+    calibrated readout frequency.
     """
     if probes is not None:
         return [
@@ -164,10 +244,57 @@ def probe_updates(
         ]
     return [
         {
-            platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}
+            platform.qubits[q].probe: {
+                "frequency": readout_frequency(q, platform) + detuning
+            }
             for q in targets
         }
+        for detuning in (detunings if detunings is not None else [0.0])
     ]
+
+
+def probe_frequencies(
+    updates: Sequence[dict[ChannelId, dict[str, float]]],
+    platform: CalibrationPlatform,
+    targets: Sequence[QubitId],
+) -> dict[QubitId, list[float]]:
+    """Probe frequencies [Hz] of each target, as set by the probe `updates`."""
+    return {
+        q: [update[platform.qubits[q].probe]["frequency"] for update in updates]
+        for q in targets
+    }
+
+
+def pump_point(
+    platform: CalibrationPlatform,
+    pump: "Pumps",
+    frequency: float | None,
+    offset: float,
+) -> tuple[dict[QubitId, float], dict[ChannelId, dict[str, float]]]:
+    """Pump frequency of each target, and updates setting the pumps at a point.
+
+    The pumps play a continuous wave at `frequency` (by default, the configured one),
+    with the power set to the configured one scaled by `offset`. Unlike sweeping the
+    offset, this is the very same way the pump is driven during the readout.
+
+    Raises:
+        ValueError: if the offset is null or exceeds the pump amplitude, 1 in module.
+    """
+    if not 0 < abs(offset) <= 1:
+        raise ValueError(
+            f"The pump offset must be nonzero, and at most 1 in module: got {offset}."
+        )
+    frequencies = {
+        q: pump.config[q].frequency if frequency is None else frequency
+        for q in pump.channel
+    }
+    updates: dict[ChannelId, dict[str, float]] = {}
+    for ch, q in pump.unique.items():
+        updates.setdefault(ch, {})["frequency"] = frequencies[q]
+        updates.setdefault(power_config(platform, ch), {})["power"] = pump.power[
+            q
+        ] + 20 * np.log10(abs(offset))
+    return frequencies, updates
 
 
 def off_updates(
@@ -181,6 +308,21 @@ def off_updates(
     """
     power = PUMP_OFF_POWER if off_power is None else off_power
     return {power_config(platform, ch): {"power": power} for ch in channels}
+
+
+def range_values(range_: Range) -> list[float]:
+    """Values of a range, as a list.
+
+    The number of values only depends on the width of the range, and not on its
+    center, unlike :func:`numpy.arange`, which suffers of floating point errors on the
+    end points. Thus, ranges with the same width and step, but different centers, have
+    the same number of values, and they can be swept in parallel.
+    """
+    start, stop, step = range_
+    # as in numpy.arange, the stop is excluded, while rounding the number of steps
+    # discards floating point errors in the width
+    count = max(int(np.ceil(np.round((stop - start) / step, 9))), 0)
+    return (start + step * np.arange(count)).tolist()
 
 
 def frequency_sweepers(pump: Pumps, ranges: Mapping[QubitId, Range]) -> list[Sweeper]:
@@ -246,6 +388,68 @@ def reference(
     return results
 
 
+def statistics(shots: npt.NDArray) -> npt.NDArray:
+    """Mean and spread of single shots.
+
+    Args:
+        shots: the shots along the first axis, and I/Q along the last one.
+
+    Returns:
+        An array without the shots axis, whose last axis has three components: the
+        mean I and Q, and the spread of the shots. The latter is the root mean square
+        of the standard deviations of I and Q.
+    """
+    if shots.shape[0] < 2:
+        raise ValueError("At least two shots are needed to estimate their spread.")
+    mean = np.mean(shots, axis=0)
+    spread = np.sqrt(np.mean(np.var(shots, axis=0, ddof=1), axis=-1))
+    return np.concatenate([mean, spread[..., None]], axis=-1)
+
+
+def brackets(values: npt.ArrayLike, components: int) -> npt.NDArray:
+    """Pump-off references of a scan, with shape ``(nprobes, nbrackets, components)``.
+
+    A scan brackets each of its sweeps by a reference before and one after it. Data of
+    previous versions only hold the one before, with shape ``(nprobes, components)``,
+    which is read as a single bracket.
+    """
+    array = np.array(values, dtype=float)
+    if array.ndim == 2:
+        return array[:, None, :]
+    return array.reshape(-1, array.shape[-2], components)
+
+
+def bracket_magnitude(references: npt.NDArray) -> npt.NDArray:
+    """Magnitude of the references of each probe, averaged over its brackets.
+
+    The magnitudes are averaged, rather than the I/Q points, since the phase of the
+    signal may drift between the brackets, leaving the magnitude unchanged.
+    """
+    return np.mean(magnitude(references[..., :2]), axis=1)
+
+
+def bracket_drift(references: npt.NDArray) -> npt.NDArray:
+    """Change [dB] of the reference of each probe, from before to after its sweep.
+
+    It is null with a single bracket.
+    """
+    mags = magnitude(references[..., :2])
+    return 20 * np.log10(mags[:, -1] / mags[:, 0])
+
+
+def valid_reference(reference: npt.NDArray, qubit: QubitId):
+    """Check the pump-off reference magnitudes of the probes on the pump of `qubit`.
+
+    Raises:
+        ValueError: if any of them is not finite or null.
+    """
+    if not np.all(np.isfinite(reference)) or np.any(np.isclose(reference, 0)):
+        raise ValueError(
+            f"TWPA-off reference magnitude for qubit {qubit} must be finite "
+            "and nonzero, for every probe."
+        )
+
+
 @dataclass
 class TwpaData(Data):
     """Data of the protocols amplifying many targets by shared pumps.
@@ -258,6 +462,11 @@ class TwpaData(Data):
     """List of probe frequencies evaluated.
 
     ``None`` if native readout frequencies were used.
+    """
+    detunings: list[float] | None = None
+    """List of probe detunings evaluated, from the readout frequency of each target.
+
+    ``None`` if absolute :attr:`probes`, or native readout frequencies, were used.
     """
     power: dict[QubitId, float] = field(default_factory=dict)
     """Configured base pump power [dB] for each target."""
@@ -284,27 +493,27 @@ class TwpaData(Data):
         return [(q, p) for q in self.group(qubit) for p in range(self.nprobes(q))]
 
 
-def probe_label(probes: Sequence[float] | None, index: int) -> str:
-    """Label of the probe `index`, by its frequency if known."""
-    if probes is None:
-        return "Readout probe"
-    return f"Probe {probes[index] * nano:.4f} GHz"
+def probe_label(data: TwpaData, index: int) -> str:
+    """Label of the probe `index`, by its frequency or detuning if known."""
+    if data.probes is not None:
+        return f"Probe {data.probes[index] * nano:.4f} GHz"
+    if data.detunings is not None:
+        return f"Detuning {data.detunings[index] / mega:+.3f} MHz"
+    return "Readout probe"
 
 
-def probe_labels(
-    probes: Sequence[float] | None,
-    group: Sequence[QubitId],
-    group_probes: Sequence[tuple[QubitId, int]],
-) -> list[str]:
-    """Labels of the probes amplified by a pump.
+def probe_labels(data: TwpaData, qubit: QubitId) -> list[str]:
+    """Labels of the probes amplified by the pump of `qubit`.
 
     With several targets on the pump, they are prefixed by the target.
     """
+    group = data.group(qubit)
+    group_probes = data.group_probes(qubit)
     if len(group) == 1:
-        return [probe_label(probes, p) for _, p in group_probes]
-    if probes is None:
+        return [probe_label(data, p) for _, p in group_probes]
+    if data.probes is None and data.detunings is None:
         return [f"Qubit {q} readout" for q, _ in group_probes]
-    return [f"Qubit {q} {probe_label(probes, p)}" for q, p in group_probes]
+    return [f"Qubit {q} {probe_label(data, p)}" for q, p in group_probes]
 
 
 def edges(shape: tuple[int, int], i: int, j: int) -> list[str]:
@@ -361,6 +570,72 @@ def update_pump(
     )
 
 
+def update_point(results, platform: CalibrationPlatform, target: QubitId):
+    """Set the pump of `target` to the operating point selected by a scan.
+
+    `results` are the ones of a scan, holding the selected pump ``frequency`` and
+    ``power``. Candidate points are not results, thus there is nothing to apply.
+    Targets sharing a pump are assigned the same point, thus their updates coincide.
+    """
+    if results.is_candidate(target):
+        return
+    update_pump(platform, target, results.frequency[target], results.power[target])
+
+
+def candidate_note(
+    shape: tuple[int, int],
+    offset: Sequence[float],
+    frequency: Sequence[float],
+    selected: "Selected",
+) -> str:
+    """Report of a failed fit, whose point lies at the edge of the scanned ranges."""
+    i, j = (
+        list(offset).index(selected.offset),
+        list(frequency).index(selected.frequency),
+    )
+    failed = " and ".join(f"pump {edge}" for edge in edges(shape, i, j))
+    return (
+        f"<p><b>Fit failed</b>: the operating point lies at the edge of the scanned "
+        f"{failed} range, thus the optimum may lie outside of it. Extend the scan "
+        f"(e.g. changing the base pump power) and repeat it. The candidate point "
+        f"is marked in the plot, and it is not applied.</p>"
+    )
+
+
+def reference_notes(
+    labels: Sequence[str],
+    drift: Sequence[float],
+    gain: Sequence[float] = (),
+) -> str:
+    """Warnings on the pump-off reference of a scan, if it is not reliable.
+
+    The reference is suspicious when it drifts by more than
+    :data:`MAX_REFERENCE_DRIFT` across its sweep, or when it yields a gain larger than
+    :data:`MAX_GAIN`.
+    """
+    notes = []
+    drifting = [
+        f"{label} ({d:+.1f} dB)"
+        for label, d in zip(labels, drift)
+        if abs(d) > MAX_REFERENCE_DRIFT
+    ]
+    if drifting:
+        notes.append(
+            "<p><b>Unstable reference</b>: the pump-off reference changed across the "
+            f"scan by more than {MAX_REFERENCE_DRIFT} dB, for "
+            f"{', '.join(drifting)}. The gain level is unreliable, while the shape "
+            "of the maps is not affected.</p>"
+        )
+    large = [f"{label} ({g:.1f} dB)" for label, g in zip(labels, gain) if g > MAX_GAIN]
+    if large:
+        notes.append(
+            f"<p><b>Suspicious gain</b>: above {MAX_GAIN} dB for {', '.join(large)}. "
+            "It is not expected from a TWPA: the pump-off reference may be too low, "
+            "e.g. if probed on a resonance dip (cf. <code>twpa_spectrum</code>).</p>"
+        )
+    return "".join(notes)
+
+
 POWER_AXIS_WIDTH = 70
 """Width [px] of the pump power axis, ticks and title, on the right of the heatmap."""
 
@@ -398,6 +673,17 @@ class Selected:
     """Pump offset."""
     candidate: bool = False
     """Whether it is only a candidate, lying at the edge of the scanned ranges."""
+
+    @classmethod
+    def of(cls, fit, target: QubitId) -> "Selected | None":
+        """The point selected by the fit of a scan for `target`, if any."""
+        if fit is None or target not in fit:
+            return None
+        return cls(
+            frequency=fit.frequency[target],
+            offset=fit.offset[target],
+            candidate=fit.is_candidate(target),
+        )
 
 
 def map_figure(

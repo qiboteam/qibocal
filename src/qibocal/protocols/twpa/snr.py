@@ -19,14 +19,18 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode
 
-from ...auto.operation import Parameters, Protocol, QubitId, Results
+from ...auto.operation import Protocol, QubitId, Results
 from ...calibration.platform import CalibrationPlatform
 from ...result import magnitude
 from ..utils import RangeLike, table_dict, table_html, to_range
 from .utils import (
     Selected,
     TwpaData,
-    edges,
+    TwpaProbeParameters,
+    bracket_drift,
+    bracket_magnitude,
+    brackets,
+    candidate_note,
     frequency_sweepers,
     map_figure,
     off_updates,
@@ -37,39 +41,25 @@ from .utils import (
     pumps,
     readouts,
     reference,
+    reference_notes,
+    reference_shots,
     select,
     shared_note,
-    update_pump,
+    shots,
+    statistics,
+    update_point,
+    valid_reference,
 )
 
 
-@dataclass
-class TwpaSnrParameters(Parameters):
+@dataclass(kw_only=True)
+class TwpaSnrParameters(TwpaProbeParameters):
     """Inputs of the TWPA SNR improvement scan."""
 
     amplitude: RangeLike
     """Range of amplitude (offset) values for TWPA sweep."""
     frequency: RangeLike
     """Range of TWPA frequency values for sweep."""
-    probes: list[float] | None = None
-    """List of probe frequencies to evaluate (Hz).
-
-    If omitted, a single acquisition run is performed where each target is probed
-    exclusively at its own calibrated readout frequency.
-    """
-    probe_duration: float = 4e3
-    """Probe wave duration."""
-    probe_amplitude: float = 1.0
-    """Probe wave amplitude."""
-    off_power: float | None = None
-    """Pump power [dB] of the TWPA-off reference, cf. :data:`.utils.PUMP_OFF_POWER`."""
-    reference_shots: int | None = None
-    """Shots of the TWPA-off reference.
-
-    By default, as many as ``nshots``. The reference is a single point, thus it is
-    cheap to acquire it with more shots than the scan, to make it the least
-    contribution to the uncertainty of the improvement.
-    """
     max_values: int = 2_000_000
     """Maximum number of shots (I/Q pairs) of a target, held by a single execution.
 
@@ -79,6 +69,7 @@ class TwpaSnrParameters(Parameters):
     """
 
     def __post_init__(self):
+        super().__post_init__()
         if self.max_values < 1:
             raise ValueError("The maximum number of shots per execution must be >= 1.")
 
@@ -141,6 +132,8 @@ class TwpaSnrResults(Results):
     """TWPA gain [dB] of each probe at the selected point."""
     probe_noise: dict[QubitId, list[float]] = field(default_factory=dict)
     """Noise added [dB] by the TWPA to each probe at the selected point."""
+    reference_drift: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Change [dB] of the pump-off reference of each probe, across its sweep."""
     objective: SnrObjective = "snr"
     """Improvement optimized by the fit."""
 
@@ -151,30 +144,12 @@ class TwpaSnrResults(Results):
             for f in fields(self)
             if isinstance(getattr(self, f.name), dict)
             and not f.name.startswith("probe_")
-            and f.name != "candidate"
+            and f.name not in ("candidate", "reference_drift")
         )
 
     def is_candidate(self, qubit: QubitId) -> bool:
         """Whether the point of `qubit` is only a candidate."""
         return self.candidate.get(qubit, False)
-
-
-def statistics(shots: npt.NDArray) -> npt.NDArray:
-    """Mean and spread of single shots.
-
-    Args:
-        shots: the shots along the first axis, and I/Q along the last one.
-
-    Returns:
-        An array without the shots axis, whose last axis has three components: the
-        mean I and Q, and the spread of the shots. The latter is the root mean square
-        of the standard deviations of I and Q.
-    """
-    if shots.shape[0] < 2:
-        raise ValueError("At least two shots are needed to estimate their spread.")
-    mean = np.mean(shots, axis=0)
-    spread = np.sqrt(np.mean(np.var(shots, axis=0, ddof=1), axis=-1))
-    return np.concatenate([mean, spread[..., None]], axis=-1)
 
 
 @dataclass
@@ -189,39 +164,48 @@ class TwpaSnrData(TwpaData):
     """List with twpa frequency values swept."""
     offset: dict[QubitId, list[float]] = field(default_factory=dict)
     """List with twpa offset values swept."""
-    reference_value: dict[QubitId, list[list[float]]] = field(default_factory=dict)
-    """Statistics of the shots with TWPA off, for each probe.
+    reference_value: dict[QubitId, list] = field(default_factory=dict)
+    """Statistics of the shots with TWPA off, for each probe and bracket.
 
-    The shape is ``(nprobes, 3)``, as the last axes of :attr:`data`.
+    The shape is ``(nprobes, nbrackets, 3)``, with the last axis as the one of
+    :attr:`data`, and the brackets before and after the sweep of each probe, cf.
+    :func:`.utils.brackets`.
     """
 
     def nprobes(self, qubit: QubitId) -> int:
         """Number of probes evaluated for `qubit`."""
-        return self.reference_array(qubit).shape[0]
+        return self.references(qubit).shape[0]
 
-    def reference_array(self, qubit: QubitId) -> npt.NDArray:
-        """Statistics of the reference shots, with shape ``(nprobes, 3)``."""
-        return np.array(self.reference_value[qubit]).reshape(-1, 3)
+    def references(self, qubit: QubitId) -> npt.NDArray:
+        """Statistics of the reference shots, ``(nprobes, nbrackets, 3)``."""
+        return brackets(self.reference_value[qubit], 3)
 
-    def _group(self, qubit: QubitId) -> tuple[npt.NDArray, npt.NDArray]:
+    def _group(self, qubit: QubitId) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """Statistics with the pump on and off, of the probes on the pump of `qubit`.
 
-        The shapes are ``(noffsets, nfrequencies, nprobes, 3)`` and ``(nprobes, 3)``.
+        Returns:
+            The statistics with the pump on, ``(noffsets, nfrequencies, nprobes, 3)``,
+            and the magnitude and spread with the pump off, ``(nprobes,)``, averaged
+            over the brackets (the spread in quadrature).
         """
         group = self.group(qubit)
         signal = np.concatenate([self[q] for q in group], axis=2)
-        reference = np.concatenate([self.reference_array(q) for q in group])
-        if not np.all(np.isfinite(reference)) or np.any(np.isclose(reference[:, 2], 0)):
+        references = np.concatenate([self.references(q) for q in group])
+        off = bracket_magnitude(references)
+        spread = np.sqrt(np.mean(references[..., 2] ** 2, axis=1))
+        valid_reference(off, qubit)
+        if not np.all(np.isfinite(spread)) or np.any(np.isclose(spread, 0)):
             raise ValueError(
-                f"TWPA-off reference for qubit {qubit} must be finite, with a "
+                f"TWPA-off reference for qubit {qubit} must have a finite and "
                 "nonzero spread, for every probe."
             )
-        if np.any(np.isclose(magnitude(reference[:, :2]), 0)):
-            raise ValueError(
-                f"TWPA-off reference magnitude for qubit {qubit} must be nonzero, "
-                "for every probe."
-            )
-        return signal, reference
+        return signal, off, spread
+
+    def reference_drift(self, qubit: QubitId) -> npt.NDArray:
+        """Drift [dB] of the pump-off reference of the probes on the pump of `qubit`."""
+        return np.concatenate(
+            [bracket_drift(self.references(q)) for q in self.group(qubit)]
+        )
 
     def probe_gain(self, qubit: QubitId) -> npt.NDArray:
         """TWPA gain [dB] of each probe, with respect to its own reference.
@@ -230,8 +214,8 @@ class TwpaSnrData(TwpaData):
         ones amplified by the pump of `qubit`, as listed by :meth:`group_probes`. The
         shape is ``(noffsets, nfrequencies, nprobes)``.
         """
-        signal, reference = self._group(qubit)
-        return 20 * np.log10(magnitude(signal[..., :2]) / magnitude(reference[:, :2]))
+        signal, off, _ = self._group(qubit)
+        return 20 * np.log10(magnitude(signal[..., :2]) / off)
 
     def probe_noise(self, qubit: QubitId) -> npt.NDArray:
         """Noise [dB] added by the TWPA to each probe, with the shape of the gain.
@@ -239,8 +223,8 @@ class TwpaSnrData(TwpaData):
         It is the ratio of the spreads of the shots, with and without pump, and it is
         the part of the gain which is not signal.
         """
-        signal, reference = self._group(qubit)
-        return 20 * np.log10(signal[..., 2] / reference[:, 2])
+        signal, _, spread = self._group(qubit)
+        return 20 * np.log10(signal[..., 2] / spread)
 
     def probe_snr(self, qubit: QubitId) -> npt.NDArray:
         """SNR improvement [dB] of each probe, with the shape of the gain.
@@ -270,10 +254,10 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> TwpaSnrData:
-    """Acquire the shots statistics with the TWPA off, and over its pump.
+    """Acquire the shots statistics over the pump, bracketed by TWPA-off references.
 
-    As in :func:`.frequency_offset._acquisition`, a reference with the TWPA off is
-    followed by a 2D hardware sweep over the pump frequency and offset, for each probe.
+    As in :func:`.frequency_offset._acquisition`, the 2D hardware sweep over the pump
+    frequency and offset of each probe is bracketed by references with the TWPA off.
     But the individual shots are acquired, to know their spread: they are reduced to
     their statistics as soon as downloaded. To bound the memory they need, the sweep is
     split in batches of pump offsets, according to ``params.max_values``.
@@ -282,7 +266,7 @@ def _acquisition(
         platform, targets, params.probe_amplitude, params.probe_duration
     )
     pump = pumps(platform, targets)
-    updates = probe_updates(platform, targets, params.probes)
+    updates = probe_updates(platform, targets, params.probes, params.detunings)
 
     freq_ranges = {
         q: to_range(params.frequency, center=pump.config[q].frequency) for q in targets
@@ -290,30 +274,30 @@ def _acquisition(
     freq_sweeps = frequency_sweepers(pump, freq_ranges)
     frequencies = {q: s.values for q, s in zip(pump.unique.values(), freq_sweeps)}
     offsets = offset_sweepers(pump, to_range(params.amplitude))[0].values
+    off = off_updates(platform, pump.unique, params.off_power)
 
     # the shots default to the platform ones, which the batches have to know
-    nshots = params.nshots if params.nshots is not None else platform.settings.nshots
-
-    # 1. Reference measurements with TWPA off
-    references = reference(
-        platform,
-        sequence,
-        handles,
-        updates,
-        off_updates(platform, pump.unique, params.off_power),
-        params.reference_shots or nshots,
-        params.relaxation_time,
-        AveragingMode.SINGLESHOT,
-    )
-    reference_data = {
-        q: [statistics(probe[q]).tolist() for probe in references] for q in targets
-    }
-
-    # 2. 2D TWPA sweeps (amplitude and frequency), in batches of offsets
+    nshots = shots(params, platform)
     nfrequencies = max(len(f) for f in frequencies.values())
     rows = max(1, params.max_values // (nshots * nfrequencies))
+
+    def pump_off(probe) -> dict[QubitId, list[float]]:
+        execution = reference(
+            platform,
+            sequence,
+            handles,
+            [probe],
+            off,
+            reference_shots(params, platform),
+            params.relaxation_time,
+            AveragingMode.SINGLESHOT,
+        )[0]
+        return {q: statistics(execution[q]).tolist() for q in targets}
+
+    references: dict[QubitId, list] = {q: [] for q in targets}
     raw_data: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
     for probe in updates:
+        before = pump_off(probe)
         batches: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
         for batch in _batches(len(offsets), rows):
             results = platform.execute(
@@ -327,22 +311,23 @@ def _acquisition(
             )
             for qubit in targets:
                 batches[qubit].append(statistics(results[handles[qubit]]))
+        after = pump_off(probe)
         for qubit in targets:
             raw_data[qubit].append(np.concatenate(batches[qubit], axis=0))
+            references[qubit].append([before[qubit], after[qubit]])
 
-    data = TwpaSnrData(
+    return TwpaSnrData(
+        data={q: np.stack(raw_data[q], axis=2) for q in targets},
         offset={q: offsets.tolist() for q in targets},
         frequency={
             q: frequencies[pump.unique[pump.channel[q]]].tolist() for q in targets
         },
-        reference_value=reference_data,
+        reference_value=references,
         probes=params.probes,
+        detunings=params.detunings,
         power=pump.power,
         pump=pump.channel,
     )
-    for qubit in targets:
-        data.data[qubit] = np.stack(raw_data[qubit], axis=2)
-    return data
 
 
 def _fit(
@@ -357,7 +342,7 @@ def _fit(
     """
     fitpars = TwpaSnrFitParameters() if fitpars is None else fitpars
     frequency, offset, improvement, power, candidate = {}, {}, {}, {}, {}
-    probe_snr, probe_gain, probe_noise = {}, {}, {}
+    probe_snr, probe_gain, probe_noise, drift = {}, {}, {}, {}
     for qubit in data.qubits:
         if qubit in frequency:
             # already selected, together with a target sharing its pump
@@ -369,6 +354,7 @@ def _fit(
             "gain": data.probe_gain(qubit)[i, j].tolist(),
             "noise": data.probe_noise(qubit)[i, j].tolist(),
         }
+        qubit_drift = data.reference_drift(qubit).tolist()
         for q in data.group(qubit):
             candidate[q] = is_candidate
             frequency[q] = data.frequency[q][j]
@@ -380,6 +366,7 @@ def _fit(
                 point["gain"],
                 point["noise"],
             )
+            drift[q] = qubit_drift
     return TwpaSnrResults(
         frequency=frequency,
         offset=offset,
@@ -389,18 +376,8 @@ def _fit(
         probe_snr=probe_snr,
         probe_gain=probe_gain,
         probe_noise=probe_noise,
+        reference_drift=drift,
         objective=fitpars.objective,
-    )
-
-
-def _selected(fit: TwpaSnrResults | None, target: QubitId) -> Selected | None:
-    """The point selected by the fit for `target`, if any."""
-    if fit is None or target not in fit:
-        return None
-    return Selected(
-        frequency=fit.frequency[target],
-        offset=fit.offset[target],
-        candidate=fit.is_candidate(target),
     )
 
 
@@ -417,10 +394,10 @@ def _plot(data: TwpaSnrData, fit: TwpaSnrResults | None, target: QubitId):
     other = "gain" if objective == "snr" else "snr"
     group = data.group(target)
     shared = shared_note(data, target, "improvement")
-    selected = _selected(fit, target)
+    selected = Selected.of(fit, target)
     frequency, offset = data.frequency[target], data.offset[target]
     base_power = data.power.get(target, 0.0)
-    labels = probe_labels(data.probes, group, data.group_probes(target))
+    labels = probe_labels(data, target)
 
     figures = []
     if target == group[0]:
@@ -450,59 +427,47 @@ def _plot(data: TwpaSnrData, fit: TwpaSnrResults | None, target: QubitId):
     else:
         shared += f"<p>Maps are reported for qubit {group[0]}.</p>"
 
-    if selected is not None and selected.candidate:
-        i = offset.index(selected.offset)
-        j = frequency.index(selected.frequency)
-        failed = " and ".join(
-            f"pump {edge}"
-            for edge in edges(data.improvement(target, objective).shape, i, j)
+    if fit is None or selected is None:
+        return figures, shared
+    if len(labels) != len(fit.probe_snr.get(target, [])):
+        # results not matching the probes grouping of the data
+        labels = [f"Probe {p}" for p in range(len(fit.probe_snr.get(target, [])))]
+    # the reference does not depend on the point, thus it is checked even for candidates
+    notes = reference_notes(
+        labels, fit.reference_drift.get(target, []), fit.probe_gain.get(target, [])
+    )
+    if selected.candidate:
+        return figures, shared + notes + candidate_note(
+            data.improvement(target, objective).shape, offset, frequency, selected
         )
-        report = shared + (
-            f"<p><b>Fit failed</b>: the operating point lies at the edge of the scanned "
-            f"{failed} range, thus the optimum may lie outside of it. Extend the scan "
-            f"(e.g. changing the base pump power) and repeat it. The candidate point "
-            f"is marked in the plot, and it is not applied.</p>"
-        )
-    elif fit is not None and selected is not None:
-        columns = [
-            "Pump Frequency [Hz]",
-            "Pump Amplitude",
-            "Pump power [dB]",
-            OBJECTIVE_LABELS[fit.objective],
-        ]
-        values = [
-            np.round(fit.frequency[target], 4),
-            np.round(fit.offset[target], 4),
-            np.round(fit.power[target], 4),
-            np.round(fit.improvement[target], 4),
-        ]
-        if len(labels) != len(fit.probe_snr.get(target, [])):
-            labels = [f"Probe {p}" for p in range(len(fit.probe_snr.get(target, [])))]
-        for name, probe_values in (
-            ("SNR improvement", fit.probe_snr),
-            ("Gain", fit.probe_gain),
-            ("Added noise", fit.probe_noise),
-        ):
-            columns += [f"{label} {name} [dB]" for label in labels]
-            values += [np.round(v, 4) for v in probe_values.get(target, [])]
-        report = shared + table_html(
-            table_dict([target] * len(columns), columns, values)
-        )
-    else:
-        report = shared
+    columns = [
+        "Pump Frequency [Hz]",
+        "Pump Amplitude",
+        "Pump power [dB]",
+        OBJECTIVE_LABELS[fit.objective],
+    ]
+    values = [
+        np.round(fit.frequency[target], 4),
+        np.round(fit.offset[target], 4),
+        np.round(fit.power[target], 4),
+        np.round(fit.improvement[target], 4),
+    ]
+    for name, probe_values in (
+        ("SNR improvement", fit.probe_snr),
+        ("Gain", fit.probe_gain),
+        ("Added noise", fit.probe_noise),
+        ("reference drift", fit.reference_drift),
+    ):
+        stat = probe_values.get(target, [])
+        columns += [f"{label} {name} [dB]" for label in labels[: len(stat)]]
+        values += [np.round(v, 4) for v in stat]
+    report = (
+        shared
+        + notes
+        + table_html(table_dict([target] * len(columns), columns, values))
+    )
     return figures, report
 
 
-def _update(results: TwpaSnrResults, platform: CalibrationPlatform, target: QubitId):
-    """Set the pump to the optimal frequency and power.
-
-    Candidate points are not results, thus there is nothing to apply. For the details
-    of the update, cf. :func:`.utils.update_pump`.
-    """
-    if results.is_candidate(target):
-        return
-    update_pump(platform, target, results.frequency[target], results.power[target])
-
-
-twpa_snr = Protocol(_acquisition, _fit, _plot, _update)
+twpa_snr = Protocol(_acquisition, _fit, _plot, update_point)
 """TWPA SNR improvement over the pump frequency and offset."""

@@ -36,6 +36,7 @@ from ..utils import (
     table_html,
     to_range,
 )
+from .utils import range_values
 
 
 @dataclass
@@ -150,19 +151,8 @@ class TwpaCalibrationData(Data):
         return np.array(self.reference_value[qubit]).reshape(-1, 2)
 
 
-def _sweep(range_: Range) -> list[float]:
-    """Values of a range, as a list.
-
-    The number of values only depends on the width of the range, and not on its
-    center, unlike :func:`numpy.arange`, which suffers of floating point errors on the
-    end points. Thus, ranges with the same width and step, but different centers, have
-    the same number of values.
-    """
-    start, stop, step = range_
-    # as in numpy.arange, the stop is excluded, while rounding the number of steps
-    # discards floating point errors in the width
-    count = max(int(np.ceil(np.round((stop - start) / step, 9))), 0)
-    return (start + step * np.arange(count)).tolist()
+_sweep = range_values
+"""Values of a range, cf. :func:`.utils.range_values`."""
 
 
 def _reference_scan(
