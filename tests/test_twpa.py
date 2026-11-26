@@ -186,9 +186,18 @@ def test_acquisition_and_fit(platform, tmp_path):
 
     # Test Plot with and without fit
     figs, report = _plot(data, fit_res, targets[0])
-    assert len(figs) == 1
+    # minimum and average maps, and per-probe maps, since there are two probes
+    assert len(figs) == 3
     fig = figs[0]
-    assert fig.data[0].colorbar.title.text == "TWPA Gain [dB]"
+    assert fig.data[0].colorbar.title.text == "Minimum TWPA Gain across probes [dB]"
+    assert figs[1].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    # the targets share the pump: the probes of both are aggregated
+    assert data.group(targets[0]) == targets
+    assert fit_res.frequency[0] == fit_res.frequency[1]
+    assert fit_res.offset[0] == fit_res.offset[1]
+    labels = [f"Qubit {q} Probe {p} GHz" for q in targets for p in ("7.0000", "7.2000")]
+    assert [t.text for t in figs[2].layout.annotations] == labels
+    assert _plot(data, fit_res, targets[1])[0] == []
     assert fig.layout.yaxis2 is not None
     assert fig.layout.yaxis2.title.text == "Pump power [dB]"
     assert fig.layout.yaxis2.ticktext == tuple(
@@ -214,14 +223,21 @@ def test_acquisition_and_fit(platform, tmp_path):
         assert "Pump Frequency [Hz]" in report
         assert "Pump Amplitude" in report
         assert "Pump power [dB]" in report
-        assert "TWPA Gain [dB]" in report
+        assert "Minimum TWPA Gain across probes [dB]" in report
+        for label in labels:
+            assert f"{label} Gain [dB]" in report
 
     figs_no_fit, report_no_fit = _plot(data, None, targets[0])
-    assert len(figs_no_fit) == 1
-    assert figs_no_fit[0].data[0].colorbar.title.text == "TWPA Gain [dB]"
+    assert len(figs_no_fit) == 3
+    assert (
+        figs_no_fit[0].data[0].colorbar.title.text
+        == "Minimum TWPA Gain across probes [dB]"
+    )
     assert figs_no_fit[0].layout.yaxis2.title.text == "Pump power [dB]"
     assert any(trace.yaxis == "y2" for trace in figs_no_fit[0].data)
-    assert report_no_fit == ""
+    # no fit results, but the aggregation across the shared pump is explained
+    assert "shared by qubits 0, 1" in report_no_fit
+    assert "<table" not in report_no_fit
 
     # Test serialization
     data.save(tmp_path)
@@ -633,3 +649,208 @@ def test_results_without_candidate(platform):
     _update(results, platform, 0)
     pump = platform.channels[platform.qubits[0].acquisition].twpa_pump
     assert platform.config(pump).frequency == 6.1e9
+
+
+def two_probes_data():
+    """Two probes, the second one with a larger signal and a shifted gain peak."""
+    gains = np.stack(
+        [
+            landscape(OFFSETS, FREQUENCIES),
+            landscape(OFFSETS, FREQUENCIES, center=6.02e9) + 10,
+        ],
+        axis=2,
+    )
+    references = np.array([1.0, 10.0])
+    magnitude = references * 10 ** (gains / 20)
+    return gains, TwpaFrequencyOffsetData(
+        data={0: np.stack([magnitude, np.zeros_like(magnitude)], axis=-1)},
+        reference_value={0: [[ref, 0.0] for ref in references]},
+        offset={0: list(OFFSETS)},
+        frequency={0: list(FREQUENCIES)},
+        power={0: 0.0},
+        probes=[7.0e9, 7.2e9],
+    )
+
+
+def test_probe_gain():
+    """Each probe gain is relative to its own reference, unlike the average."""
+    gains, data = two_probes_data()
+
+    np.testing.assert_allclose(data.probe_gain(0), gains)
+    np.testing.assert_allclose(data.minimum_gain(0), gains.min(axis=2))
+    # the ratio of averaged magnitudes is not the average of the gains
+    assert not np.allclose(data.averaged_gain(0), gains.mean(axis=2))
+
+
+def test_fit_minimum_across_probes():
+    """The minimum objective favours the worst probe, unlike the average."""
+    gains, data = two_probes_data()
+    minimum = _fit(data)
+    average = _fit(data, TwpaFrequencyOffsetFitParameters(objective="average"))
+
+    def point(fit):
+        i = list(OFFSETS).index(fit.offset[0])
+        j = list(FREQUENCIES).index(fit.frequency[0])
+        return gains[i, j]
+
+    assert minimum.objective == "minimum" and average.objective == "average"
+    assert minimum.frequency[0] != average.frequency[0]
+    assert point(minimum).min() > point(average).min()
+    np.testing.assert_allclose(minimum.probe_gain[0], point(minimum))
+    assert minimum.gain[0] == pytest.approx(point(minimum).min())
+
+    figures, report = _plot(data, minimum, 0)
+    assert len(figures) == 3
+    assert "Probe 7.0000 GHz Gain [dB]" in report
+    assert "Probe 7.2000 GHz Gain [dB]" in report
+    figures, report = _plot(data, average, 0)
+    assert figures[0].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    assert "Average TWPA Gain [dB]" in report
+
+
+def test_single_probe_objectives_coincide():
+    data = landscape_data(OFFSETS, FREQUENCIES)
+
+    np.testing.assert_allclose(data.minimum_gain(0), data.averaged_gain(0))
+    fit = _fit(data)
+    assert (
+        fit.offset[0]
+        == _fit(data, TwpaFrequencyOffsetFitParameters(objective="average")).offset[0]
+    )
+    figures, report = _plot(data, fit, 0)
+    assert len(figures) == 1
+    assert "Probe" not in report and "Readout probe" not in report
+
+
+def test_objective_fit_parameter(tmp_path):
+    assert twpa_frequency_offset.load_fit_parameters(
+        {"objective": "average"}
+    ) == TwpaFrequencyOffsetFitParameters(objective="average")
+    with pytest.raises(ValueError, match="Unknown gain objective"):
+        TwpaFrequencyOffsetFitParameters(objective="maximum")
+
+    _, data = two_probes_data()
+    fit = _fit(data)
+    fit.save(tmp_path)
+    loaded = TwpaFrequencyOffsetResults.load(tmp_path)
+    assert loaded.objective == "minimum"
+    assert loaded.probe_gain == fit.probe_gain
+
+
+def test_results_of_previous_versions():
+    """Results without per-probe gains were optimizing the average gain."""
+    results = TwpaFrequencyOffsetResults(
+        frequency={0: 6.1e9}, offset={0: 0.5}, gain={0: 20.0}, power={0: -12.0}
+    )
+    assert 0 in results
+    assert results.objective == "average"
+    _, data = two_probes_data()
+    figures, report = _plot(data, results, 0)
+    assert figures[0].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    assert "Probe" not in report
+
+
+def shared_pump_data(pumps=("pump", "pump", "other")):
+    """One readout probe per target, as with omitted probes.
+
+    The targets on ``pump`` have the gain peak at different pump frequencies, and the
+    second one has a larger signal.
+    """
+    centers = [6.0e9, 6.02e9, 6.0e9]
+    shifts = [0.0, 10.0, 0.0]
+    references = [1.0, 10.0, 1.0]
+    targets = list(range(len(pumps)))
+    gains = {
+        q: landscape(OFFSETS, FREQUENCIES, center=centers[q])[:, :, None] + shifts[q]
+        for q in targets
+    }
+    magnitudes = {q: references[q] * 10 ** (gains[q] / 20) for q in targets}
+    return gains, TwpaFrequencyOffsetData(
+        data={
+            q: np.stack([magnitudes[q], np.zeros_like(magnitudes[q])], axis=-1)
+            for q in targets
+        },
+        reference_value={q: [[references[q], 0.0]] for q in targets},
+        offset={q: list(OFFSETS) for q in targets},
+        frequency={q: list(FREQUENCIES) for q in targets},
+        power={q: 0.0 for q in targets},
+        pump=dict(zip(targets, pumps)),
+    )
+
+
+def test_shared_pump_gain():
+    """The gain is aggregated over the probes of all the targets on a pump."""
+    gains, data = shared_pump_data()
+    shared = np.concatenate([gains[0], gains[1]], axis=2)
+
+    assert data.group(0) == data.group(1) == [0, 1]
+    assert data.group(2) == [2]
+    assert data.group_probes(1) == [(0, 0), (1, 0)]
+    for qubit in (0, 1):
+        np.testing.assert_allclose(data.probe_gain(qubit), shared)
+        np.testing.assert_allclose(data.minimum_gain(qubit), shared.min(axis=2))
+    np.testing.assert_allclose(data.probe_gain(2), gains[2])
+
+
+def test_shared_pump_fit_and_plot():
+    """A single point is selected for each pump, and plotted once."""
+    gains, data = shared_pump_data()
+    fit = _fit(data)
+
+    assert fit.frequency[0] == fit.frequency[1]
+    assert fit.offset[0] == fit.offset[1]
+    assert fit.probe_gain[0] == fit.probe_gain[1]
+    assert len(fit.probe_gain[0]) == 2
+    assert fit.gain[0] == pytest.approx(min(fit.probe_gain[0]))
+    # the worst resonator is better off than at the optimum of the other one alone
+    i = list(OFFSETS).index(fit.offset[0])
+    j = list(FREQUENCIES).index(fit.frequency[0])
+    alone = _fit(shared_pump_data(pumps=("a", "b", "c"))[1])
+    k = list(FREQUENCIES).index(alone.frequency[1])
+    assert min(gains[0][i, j, 0], gains[1][i, j, 0]) > min(
+        gains[0][i, k, 0], gains[1][i, k, 0]
+    )
+    assert len(fit.probe_gain[2]) == 1
+
+    figures, report = _plot(data, fit, 0)
+    # minimum and average maps, and per-probe maps, across the targets on the pump
+    assert len(figures) == 3
+    assert figures[0].data[0].colorbar.title.text == (
+        "Minimum TWPA Gain across probes [dB]"
+    )
+    assert figures[1].data[0].colorbar.title.text == "Average TWPA Gain [dB]"
+    assert [t.text for t in figures[2].layout.annotations] == [
+        "Qubit 0 readout",
+        "Qubit 1 readout",
+    ]
+    assert "shared by qubits 0, 1" in report
+    assert "Qubit 0 readout Gain [dB]" in report
+    assert "Qubit 1 readout Gain [dB]" in report
+
+    figures, report = _plot(data, fit, 1)
+    assert figures == []
+    assert "Gain maps are reported for qubit 0" in report
+
+    figures, report = _plot(data, fit, 2)
+    assert len(figures) == 1
+    assert "shared" not in report
+
+
+def test_shared_pump_acquisition(platform):
+    """The pump of each target is recorded, and it groups the targets."""
+    targets = [0, 1]
+    params = TwpaFrequencyOffsetParameters.load(
+        {
+            "amplitude": [0.1, 0.3, 0.1],
+            "frequency": ["center", 10_000_000, 5_000_000],
+            "nshots": 50,
+        }
+    )
+    data = _acquisition(params, platform, targets)
+    pumps = {
+        q: platform.channels[platform.qubits[q].acquisition].twpa_pump for q in targets
+    }
+    assert data.pump == pumps
+    for q in targets:
+        assert data.group(q) == [t for t in targets if pumps[t] == pumps[q]]
+        assert data.probe_gain(q).shape[2] == len(data.group(q))
