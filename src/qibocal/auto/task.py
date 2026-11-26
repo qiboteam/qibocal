@@ -52,6 +52,11 @@ class Action:
     """Runcard update mechanism."""
     parameters: dict[str, Any] | None = None
     """Input parameters, either values or provider reference."""
+    fit_parameters: dict[str, Any] | None = None
+    """Fit parameters, only affecting the fit of the acquired data.
+
+    They are stored with the action, so that refitting the data from disk reuses them.
+    """
 
     def dump(self, path: Path):
         """Dump single action to yaml."""
@@ -110,6 +115,11 @@ class Task:
     def __post_init__(self):
         # validate parameters
         self.operation.parameters_type.load(self.action.parameters)
+        self.operation.load_fit_parameters(self.action.fit_parameters)
+
+    def bind(self) -> BoundProtocol:
+        """Bind the operation to the acquisition and fit parameters of the action."""
+        return self.operation(pars=self.parameters, fit=self.fit_parameters)
 
     @classmethod
     def load(cls, path: Path):
@@ -133,6 +143,11 @@ class Task:
     def parameters(self):
         """Inputs parameters for self.operation."""
         return self.operation.parameters_type.load(self.action.parameters)
+
+    @property
+    def fit_parameters(self):
+        """Fit parameters for self.operation, if it supports any."""
+        return self.operation.load_fit_parameters(self.action.fit_parameters)
 
     @property
     def update(self):
@@ -164,12 +179,11 @@ class Task:
                     self.action.parameters["nshots"] = DEFAULT_NSHOTS
 
             operation: Protocol = self.operation
-            parameters = self.parameters
+            bound = self.bind()
 
         except (RuntimeError, AttributeError):
             operation = dummy_operation
-            parameters = DummyPars()
-        bound = operation(pars=parameters)
+            bound = operation(pars=DummyPars())
         completed = Completed(self, folder, bound=bound, notes=load_notes(folder))
         completed.dump_parameters()
         executor = Executor(platform, targets=self.targets)
@@ -225,7 +239,7 @@ class Completed:
         if self.task is not None:
             self.task = copy.deepcopy(self.task)
             if self.bound is None:
-                self.bound = self.task.operation(pars=self.task.parameters)
+                self.bound = self.task.bind()
 
     @property
     def targets(self) -> Targets:
