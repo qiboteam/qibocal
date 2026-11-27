@@ -31,13 +31,12 @@ from qibocal.protocols.utils import (
     classify,
     compute_assignment_fidelity,
     compute_qnd,
+    linear_classifier,
     readout_frequency,
     table_dict,
     table_html,
     to_range,
 )
-
-from .utils import fit_classification_model
 
 __all__ = ["ro_amplitude_frequency"]
 
@@ -66,14 +65,13 @@ def elaborate_raw_data(
             for m in range(3)
         }
 
-        model = fit_classification_model(measurements[0, 0], measurements[0, 1])
+        angle, threshold = linear_classifier(measurements[0, 0], measurements[0, 1])
 
-        grids[qubit, "angle"][j, k] = model.angle
-        grids[qubit, "threshold"][j, k] = model.threshold
+        grids[qubit, "angle"][j, k] = angle
+        grids[qubit, "threshold"][j, k] = threshold
 
         classified_states = {
-            key: classify(val, model.angle, model.threshold)
-            for key, val in measurements.items()
+            key: classify(val, angle, threshold) for key, val in measurements.items()
         }
 
         grids[qubit, "fidelity"][j, k] = compute_assignment_fidelity(
