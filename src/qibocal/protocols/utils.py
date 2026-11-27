@@ -558,7 +558,7 @@ def zca_whiten(X):
     return X_white
 
 
-def minmax_scaling(sig: np.ndarray, axis: int | None) -> np.ndarray:
+def minmax_scaling(sig: np.ndarray, axis: int | tuple[int, ...] | None) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
     sig_min = np.min(sig, axis=axis, keepdims=True)
     sig_max = np.max(sig, axis=axis, keepdims=True)
