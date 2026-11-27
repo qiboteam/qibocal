@@ -23,7 +23,12 @@ from .processing import (
     signal_plot,
 )
 
-__all__ = ["ramsey_signal"]
+__all__ = [
+    "RamseySignalData",
+    "RamseySignalType",
+    "_fit",
+    "ramsey_signal",
+]
 
 
 RamseySignalType = np.dtype(

@@ -40,7 +40,7 @@ class RabiAmplitudeEFResults(RabiAmplitudeSignalResults):
 
 @dataclass
 class RabiAmplitudeEFData(RabiAmplitudeSignalData):
-    """RabiAmplitude data acquisition."""
+    """RabiAmplitudeEF data acquisition."""
 
 
 def _acquisition(
