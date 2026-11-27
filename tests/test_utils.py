@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from qibocal.protocols.two_qubit_interaction.utils import solve_quadratic
 from qibocal.protocols.utils import cumulative, eval_magnitude, to_range
 
 
@@ -40,3 +41,22 @@ def test_range_conversion():
         to_range(("center", 50, 10, 20))
     with pytest.raises(ValidationError):
         to_range(("asym", -10, 10, 20))
+
+
+@pytest.mark.parametrize(
+    "coefficients,roots",
+    [
+        ((1, -3, 2), [1.0, 2.0]),
+        ((-2, 0.1, 0.001), [(0.1 - np.sqrt(0.018)) / 4, (0.1 + np.sqrt(0.018)) / 4]),
+        ((1, 2, 1), [-1.0]),
+        ((1, 0, 1), []),
+        ((0, 2, -1), [0.5]),
+        ((0, 0, 1), []),
+        # large b: the naive formula loses the small root to cancellation
+        ((1, 1e8, 1), [-1e8, -1e-8]),
+    ],
+)
+def test_solve_quadratic(coefficients, roots):
+    solution = solve_quadratic(*coefficients)
+    assert len(solution) == len(roots)
+    np.testing.assert_allclose(solution, roots, rtol=1e-12)
